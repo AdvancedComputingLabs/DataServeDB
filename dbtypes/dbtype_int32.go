@@ -1,0 +1,41 @@
+// Copyright (c) 2019 Advanced Computing Labs DMCC
+
+/*
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+	THE SOFTWARE.
+*/
+
+package dbtypes
+
+import (
+	"DataServeDB/utils/convert"
+)
+
+type dbTypeInt32 struct {
+	//private to package
+	dbTypeBase
+}
+
+func (t dbTypeInt32) ConvertValue(v interface{}, weakConversion bool) (interface{}, error) {
+	return convert.ToInt32(v, weakConversionFlagToRule(weakConversion))
+}
+
+func (t dbTypeInt32) GetDbTypeDisplayName() string {
+	return t.DisplayName
+}
+
+func (t dbTypeInt32) GetDbTypeId() int {
+	return t.DbTypeId
+}
+
+var Int32 = dbTypeInt32{
+	dbTypeBase{
+		DbTypeId:    dbInt32,
+		DisplayName: "int32",
+	},
+}
