@@ -26,7 +26,7 @@
     tbl01 := dbtable.CreateTableJSON(createTableJSON)
     
     // Rest Api 
-    https://dataserv.db/create_table (post createTableJSON)
+    https://dataserv.db/tables/create //post createTableJSON
     
     ```
 
@@ -42,7 +42,7 @@
    tbl01.InsertRowJSON(row01Json)
    
    //Rest Api
-   https://dataserv.db/tables/tbl01/insert_row (post row01Json)
+   https://dataserv.db/tables/tbl01/insert_row //post row01Json
    
     ```
     2.2 Row Data Validation Api
