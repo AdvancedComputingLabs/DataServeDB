@@ -22,8 +22,8 @@ import (
 type tableFieldProperties struct {
 	FieldInternalId int
 	FieldName       string
-	FieldType       dbtypes.DbTypeInterface
-	IsPk            bool //Keeping it here since more than 1 field could be primary key in the future.
+	FieldType       dbtypes.DbTypeI
+	FieldTypeProps  dbtypes.DbTypePropertiesI
 }
 
 type tableFieldsMetadataT struct {

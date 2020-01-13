@@ -13,6 +13,7 @@
 package dbtable
 
 import (
+	"DataServeDB/dbtypes"
 	"errors"
 	"fmt"
 
@@ -33,30 +34,21 @@ func validateTableName(tableName string) error {
 	return nil
 }
 
-func validateFieldName(fieldName string) error {
-	if !db_rules.TableFieldNameRulesCheck(fieldName) {
-		return fmt.Errorf("invalid table field name '%s'", fieldName)
-	}
-	return nil
-}
-
-func validateFieldMetaData(fi *createTableExternalInterfaceFieldInfo, pkKeyName string, pkIsSet *bool) (*tableFieldProperties, error) {
+func validateFieldMetaData(fieldCreationText string, pkIsSet *bool) (*tableFieldProperties, error) {
 
 	fp := newTableFieldProperties()
 
-	if e := validateFieldName(fi.FieldName); e != nil {
-		return nil, e
-	}
+	//QUESTION: does makes sense to make parse field in this pkg?
 
-	fp.FieldName = fi.FieldName
-
-	if dt, e := getDbType(fi.FieldType); e != nil {
+	if tableFieldName, tableFieldDbType, tableFieldDbTypeProperties, e := dbtypes.ParseFieldProperties(fieldCreationText); e != nil {
 		return nil, e
 	} else {
-		fp.FieldType = dt
+		fp.FieldName = tableFieldName
+		fp.FieldType = tableFieldDbType
+		fp.FieldTypeProps = tableFieldDbTypeProperties
 	}
 
-	if dbsystem.SystemCasingHandler.AreEqual(fp.FieldName, pkKeyName) {
+	if fp.FieldTypeProps.IsPrimaryKey() {
 		if *pkIsSet {
 			return nil, errors.New("table can only have one primary key")
 		}
@@ -82,13 +74,13 @@ func validateCreateTableMetaData(createTableData *createTableExternalInterface) 
 	pkIsSet := false
 	dbTbl := newTableMain(createTableData.TableName)
 
-	for _, fi := range createTableData.TableFields {
+	for _, fieldCreationText := range createTableData.TableFields {
 		//_ = i
 
 		var fp *tableFieldProperties
 		var e error
 
-		if fp, e = validateFieldMetaData(&fi, createTableData.PrimaryKeyName, &pkIsSet); e != nil {
+		if fp, e = validateFieldMetaData(fieldCreationText, &pkIsSet); e != nil {
 			return nil, e
 		}
 
@@ -96,6 +88,7 @@ func validateCreateTableMetaData(createTableData *createTableExternalInterface) 
 			return nil, e
 		}
 
+		//NOTE: db type property validation is done during parsing.
 	}
 
 	if !pkIsSet {

@@ -13,15 +13,31 @@
 package dbtypes
 
 import (
+	"DataServeDB/dbtypes/dbtype_props"
 	"DataServeDB/utils/convert"
 )
+
+// section: declarations
 
 type dbTypeBool struct {
 	//private to package
 	dbTypeBase
 }
 
-func (t dbTypeBool) ConvertValue(v interface{}, weakConversion bool) (interface{}, error) {
+type DbTypeBoolProperties struct {
+	dbtype_props.Nullable
+}
+
+// public
+
+var Bool = dbTypeBool{
+	dbTypeBase{
+		DbTypeId:    dbBool,
+		DisplayName: "bool",
+	},
+}
+
+func (t dbTypeBool) ConvertValue(v interface{}, dbTypeProperties interface{}, weakConversion bool) (interface{}, error) {
 	return convert.ToBool(v, weakConversionFlagToRule(weakConversion))
 }
 
@@ -33,12 +49,33 @@ func (t dbTypeBool) GetDbTypeId() int {
 	return t.DbTypeId
 }
 
-var Bool = dbTypeBool{
-	dbTypeBase{
-		DbTypeId:    dbBool,
-		DisplayName: "bool",
-	},
+// public DbTypeBoolProperties
+
+func (t dbTypeBool) defaultDbTypeProperties() DbTypePropertiesI {
+	return defaultDbTypeBoolProperties()
 }
 
+func (t *DbTypeBoolProperties) IsPrimaryKey() bool {
+	return false
+}
 
+// private
+// Section: DbTypeBool
+
+func (t dbTypeBool) onCreateValidateFieldProperties(fieldProperties interface{}) error {
+	//!NotImplemented
+	return nil
+}
+
+// Section: DbTypeBoolProperties
+
+func defaultDbTypeBoolProperties() *DbTypeBoolProperties {
+	return &DbTypeBoolProperties{
+		Nullable: dbtype_props.Nullable{State: dbtype_props.NullableFalseDefault},
+	}
+}
+
+// Section: <dbTypeBoolValueOrFun>
+
+// </dbTypeBoolValueOrFun>
 

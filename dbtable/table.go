@@ -57,9 +57,9 @@ func newTableMain(tableName string) *tableMain {
 	return &t
 }
 
-func (tm *tableMain) getPkType() dbtypes.DbTypeInterface {
+func (tm *tableMain) getPkType() (dbtypes.DbTypeI, dbtypes.DbTypePropertiesI) {
 	// TODO: if pk position is not always zero then change it find pk.
 	// it should be implemented as always zero.
-	pkProperties := tm.TableFieldsMetaData.fieldInternalIdToFieldMetaData[0]
-	return pkProperties.FieldType
+	pkFieldInternal := tm.TableFieldsMetaData.fieldInternalIdToFieldMetaData[0]
+	return pkFieldInternal.FieldType, pkFieldInternal.FieldTypeProps
 }

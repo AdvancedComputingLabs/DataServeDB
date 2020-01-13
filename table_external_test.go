@@ -23,21 +23,15 @@ func TestStarter(t *testing.T) {
 func testCreateTableJSON(t *testing.T) {
 
 	createTableJSON := `{
-  "tableName": "Tbl01",
-  "PrimaryKeyName":"Id",
-  "tableFields": [
-    {
-      "fieldName": "Id",
-      "fieldType": "int32",
-      "primaryKey": true
-    },
-    {
-      "FieldName": "UserName",
-      "FieldType": "string",
-      "PrimaryKey": false
-    }
-  ]
-}`
+	  "TableName": "Tbl01",
+	  "TableFields": [
+		"Id int32 PrimaryKey",
+		"UserName string Length:5..50 !Nullable",
+		"Counter int32 default:Increment(1,1) !Nullable"
+	  ]
+	}`
+
+	//TODO: check why it is not returning counter.
 
 	if tbl01, err := dbtable.CreateTableJSON(createTableJSON); err == nil {
 		fmt.Println(tbl01.DebugPrintInternalFieldsNameMappings())
@@ -45,7 +39,6 @@ func testCreateTableJSON(t *testing.T) {
 	} else {
 		t.Errorf("%v\n", err)
 	}
-
 }
 
 func testInsertRowJSON(tbl *dbtable.DbTable, t *testing.T) {

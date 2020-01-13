@@ -28,10 +28,15 @@ type dbTypeBase struct {
 	DbTypeId    int
 }
 
+type dbTypePropertiesI interface {
+	ValidateDataItem()
+}
+
 type DbTypeInterface interface {
 	ConvertValue(interface{}, bool) (interface{}, error) //Note: bool is weakConversion
 	GetDbTypeDisplayName() string
 	GetDbTypeId() int
+	ValidateAndProcessProperties(string) error
 }
 
 //Rationale: DB server only needs weak or lossless, making it strict makes it too complicated.

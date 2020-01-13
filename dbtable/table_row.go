@@ -26,12 +26,12 @@ func fromLabeledByFieldNames(row TableRow, tbl *tableMain, fieldCasingHandler db
 	rowById := make(tableRowByInternalIds)
 
 	for k, v := range row {
-		if fieldProps, err := meta.getFieldMetadataInternal(k, fieldCasingHandler); err == nil {
+		if field, err := meta.getFieldMetadataInternal(k, fieldCasingHandler); err == nil {
 			//TODO: validation by constraints.
-			if vConverted, errConversion := fieldProps.FieldType.ConvertValue(v, true); errConversion == nil {
-				rowById[fieldProps.FieldInternalId] = vConverted
+			if vConverted, errConversion := field.FieldType.ConvertValue(v, field.FieldTypeProps, true); errConversion == nil {
+				rowById[field.FieldInternalId] = vConverted
 			} else {
-				return nil, errRplRowDataConversion(fieldProps.FieldName, errConversion)
+				return nil, errRplRowDataConversion(field.FieldName, errConversion)
 			}
 		} else {
 			return nil, err

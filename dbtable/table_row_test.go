@@ -38,6 +38,8 @@ External Operations:
 
 func TestAddData_Temp(t *testing.T) {
 
+	//dbtypes.
+
 	dbFieldRule := tableFieldProperties{
 		FieldInternalId: 0,
 		FieldName:       "Id",

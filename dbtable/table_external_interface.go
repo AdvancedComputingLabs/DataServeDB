@@ -19,24 +19,12 @@ import (
 )
 
 //TODO: move it to error messages (single location)
-//TODO: code may need refactoring to better units of code and files
 
 type TableRow map[string]interface{} //it is by field name.
 
-//NOTE: fields need to be public (first letter capital) for json to marshal them.
-type createTableExternalInterfaceFieldInfo struct {
-	FieldName string
-	FieldType string
-}
-
-// This it to convert from json.
-// Convert from map too?
 type createTableExternalInterface struct {
-	//TODO: add field properties like incremental for number types and comparision function for string, etc...
-
 	TableName      string
-	PrimaryKeyName string
-	TableFields    []createTableExternalInterfaceFieldInfo
+	TableFields    []string
 }
 
 type DbTable struct {
@@ -100,8 +88,8 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 }
 
 func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {
-
-	pkValueCasted, e := t.tblMain.getPkType().ConvertValue(pkValue, true)
+	dbType, dbTypeProps := t.tblMain.getPkType()
+	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps,true)
 	if e != nil {
 		return nil, e
 	}
