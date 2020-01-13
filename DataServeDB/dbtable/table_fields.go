@@ -19,7 +19,7 @@ import (
 	"DataServeDB/dbtypes"
 )
 
-type tableFieldProperties struct {
+type tableFieldStruct struct {
 	FieldInternalId int
 	FieldName       string
 	FieldType       dbtypes.DbTypeI
@@ -28,13 +28,18 @@ type tableFieldProperties struct {
 
 type tableFieldsMetadataT struct {
 	mu                             sync.RWMutex
-	fieldInternalIdToFieldMetaData map[int]*tableFieldProperties
+	fieldInternalIdToFieldMetaData map[int]*tableFieldStruct
 	fieldNameToFieldInternalId     map[string]int
+}
+
+type fieldValueAndPropertiesHolder struct {
+	v                  interface{}
+	tableFieldInternal *tableFieldStruct
 }
 
 // private static
 
-func getNewInternalId(m map[int]*tableFieldProperties) int {
+func getNewInternalId(m map[int]*tableFieldStruct) int {
 	i := 0
 	for ; i < len(m); i++ {
 		if _, exists := m[i]; !exists {
@@ -44,8 +49,8 @@ func getNewInternalId(m map[int]*tableFieldProperties) int {
 	return i
 }
 
-func newTableFieldProperties() *tableFieldProperties {
-	fp := tableFieldProperties{FieldInternalId: -1}
+func newTableFieldProperties() *tableFieldStruct {
+	fp := tableFieldStruct{FieldInternalId: -1}
 	return &fp
 }
 
@@ -53,7 +58,7 @@ func newTableFieldProperties() *tableFieldProperties {
 
 // tableFieldsMetadataT
 
-func (t *tableFieldsMetadataT) add(fmd *tableFieldProperties, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) error {
+func (t *tableFieldsMetadataT) add(fmd *tableFieldStruct, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -96,8 +101,10 @@ func (t *tableFieldsMetadataT) getFieldInternalId(fieldName, fieldNameKeyCase st
 	return fieldInternalId, nil
 }
 
+// depricated
+//TODO: only used in field tests; update tests and remove this method.
 //NOTE: named it with internal just in case external interface requires to get field(s) meta data.
-func (t *tableFieldsMetadataT) getFieldMetadataInternal(fieldName string, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) (*tableFieldProperties, error) {
+func (t *tableFieldsMetadataT) getFieldMetadataInternal(fieldName string, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) (*tableFieldStruct, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -111,7 +118,7 @@ func (t *tableFieldsMetadataT) getFieldMetadataInternal(fieldName string, fieldC
 		return nil, existsErr
 	}
 
-	var fieldMetadata *tableFieldProperties
+	var fieldMetadata *tableFieldStruct
 
 	if fieldMetadata, exists = t.fieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
 		//TODO: Log.
@@ -121,6 +128,47 @@ func (t *tableFieldsMetadataT) getFieldMetadataInternal(fieldName string, fieldC
 	}
 
 	return fieldMetadata, nil
+}
+
+func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow TableRow, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) (tableRowByInternalIdsWithFieldProperties, error) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	var fieldInternalId int
+	var exists bool
+	var existsErr error
+
+	rowByRowIdsWVAP := make(tableRowByInternalIdsWithFieldProperties)
+
+	//goes through user provided fields and values
+	for fieldName, v := range userSentRow {
+
+		fieldNameKeyCase := fieldCaseHandler.Convert(fieldName)
+
+		if fieldInternalId, existsErr = t.getFieldInternalId(fieldName, fieldNameKeyCase); existsErr != nil {
+			return nil, existsErr
+		}
+
+		var fieldMetadata *tableFieldStruct
+
+		if fieldMetadata, exists = t.fieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
+			//TODO: Log.
+			//TODO: Test if error or panic operations are atomic.
+			//NOTE: Reason for panic: if this error occurred then there is bug in the code, fix.
+			panic("internal field id exists but field's metadata doesn't (this error shouldn't happen if code is correct)")
+		}
+
+		rowByRowIdsWVAP[fieldInternalId] = fieldValueAndPropertiesHolder{v: v, tableFieldInternal: fieldMetadata}
+	}
+
+	//check and fill missing fields
+	for id, p := range t.fieldInternalIdToFieldMetaData {
+		if _, exists := rowByRowIdsWVAP[id]; !exists {
+			rowByRowIdsWVAP[id] = fieldValueAndPropertiesHolder{v: nil, tableFieldInternal: p}
+		}
+	}
+
+	return rowByRowIdsWVAP, nil
 }
 
 func (t *tableFieldsMetadataT) remove(fieldName string, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) error {
@@ -167,7 +215,7 @@ func (t *tableFieldsMetadataT) updateFieldName(fieldName string, newFieldName st
 	}
 
 	var exists bool
-	var fieldMetadata *tableFieldProperties
+	var fieldMetadata *tableFieldStruct
 
 	if fieldMetadata, exists = t.fieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
 		//TODO: Log.
@@ -183,4 +231,4 @@ func (t *tableFieldsMetadataT) updateFieldName(fieldName string, newFieldName st
 	return nil
 }
 
-// tableFieldProperties
+// tableFieldStruct

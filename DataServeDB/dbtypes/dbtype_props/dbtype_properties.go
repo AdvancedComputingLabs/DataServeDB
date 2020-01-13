@@ -17,6 +17,7 @@ import (
 	"strconv"
 
 	"DataServeDB/parsers"
+	"DataServeDB/utils/convert"
 )
 
 // Section: Interfaces & General Types
@@ -43,7 +44,6 @@ func PrimaryKeyConstraintCheck(n Nullable, i Indexing) error {
 	return nil
 }
 
-// private
 func GetDbTypePropertyWithParser(i interface{}) DbTypePropertyWithParser {
 	if t, ok := i.(DbTypePropertyWithParser); ok {
 		return t
@@ -69,6 +69,36 @@ func SetNullableFlag(t interface{}, f nullableFlag) error {
 		return nil
 	}
 	return errors.New("coding error shouldn't happen (please report)")
+}
+
+// Section: Conversion
+// ConversionClass: Weak | Lossless
+
+//Rationale: DB server only needs weak or lossless, making it strict makes it too complicated.
+//However, utils/convert package needs all three rules as it is general purpose package. -HY
+
+type dbConversionClass int
+
+const (
+	ConversionNotSpecified = iota
+	WeakConversion
+	LosslessConversion
+)
+
+type Conversion struct {
+	Class dbConversionClass
+}
+
+func (t *Conversion) ToSystemConversionClass() convert.ConversionClass {
+	// NotSpecified/Default is Lossless
+	if t.Class == WeakConversion {
+		return convert.Weak
+	}
+	return convert.Lossless
+}
+
+func NewConversion() Conversion {
+	return Conversion{Class: ConversionNotSpecified}
 }
 
 // Section: Indexing
@@ -161,6 +191,7 @@ func (t *TypeLength) Parse(tokens []parsers.Token, i int) (int, error) {
 			continue
 		}
 
+		//TODO: use db's conversion utils when conversion for uint is available.
 		num, e := strconv.ParseUint(tokens[i].Word, 10, 64)
 		if e != nil {
 			if firstNum {

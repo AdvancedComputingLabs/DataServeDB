@@ -213,7 +213,8 @@ func parseAndProcess(tokens []parsers.Token) (fieldName string, dbType DbTypeI, 
 		parserItemPtr, parserItemOk := isValidParserItem(token.Word)
 		if !parserItemOk {
 			//TODO: make this error more user friendly like show the wrong word and its location.
-			e = errors.New("bad character or keyword")
+			fmt.Println("Keyword:", token.Word)
+			e = fmt.Errorf("bad character or keyword")
 			return
 		}
 

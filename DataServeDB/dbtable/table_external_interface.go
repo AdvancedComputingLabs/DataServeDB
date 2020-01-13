@@ -89,7 +89,7 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 
 func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {
 	dbType, dbTypeProps := t.tblMain.getPkType()
-	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps,true)
+	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps)
 	if e != nil {
 		return nil, e
 	}

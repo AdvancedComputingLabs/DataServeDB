@@ -40,13 +40,13 @@ func TestAddData_Temp(t *testing.T) {
 
 	//dbtypes.
 
-	dbFieldRule := tableFieldProperties{
+	dbFieldRule := tableFieldStruct{
 		FieldInternalId: 0,
 		FieldName:       "Id",
 		FieldType:       dbtypes.Int32,
 	}
 
-	dbFieldRule2 := tableFieldProperties{
+	dbFieldRule2 := tableFieldStruct{
 		FieldInternalId: 1,
 		FieldName:       "IsTrue",
 		FieldType:       dbtypes.Bool,

@@ -39,13 +39,13 @@ import (
 //1.a
 func TestAddFieldsName_Normal(t *testing.T) {
 
-	dbFieldRule := tableFieldProperties{
+	dbFieldRule := tableFieldStruct{
 		FieldInternalId: 0,
 		FieldName:       "Id",
 		FieldType:       dbtypes.Int32,
 	}
 
-	dbFieldRule2 := tableFieldProperties{
+	dbFieldRule2 := tableFieldStruct{
 		FieldInternalId: 1,
 		FieldName:       "IsTrue",
 		FieldType:       dbtypes.Bool,
@@ -65,13 +65,13 @@ func TestAddFieldsName_Normal(t *testing.T) {
 //1.b
 func TestAddFieldsName_SameFieldNameMorethanOnce(t *testing.T) {
 
-	dbFieldRule := tableFieldProperties{
+	dbFieldRule := tableFieldStruct{
 		FieldInternalId: 0,
 		FieldName:       "Id",
 		FieldType:       dbtypes.Int32,
 	}
 
-	dbFieldRule2 := tableFieldProperties{
+	dbFieldRule2 := tableFieldStruct{
 		FieldInternalId: 1,
 		FieldName:       "Id",
 		FieldType:       dbtypes.Bool,
@@ -90,13 +90,13 @@ func TestAddFieldsName_SameFieldNameMorethanOnce(t *testing.T) {
 
 //2.a
 func TestAddFieldsIds_Normal(t *testing.T) {
-	dbFieldRule := tableFieldProperties{
+	dbFieldRule := tableFieldStruct{
 		FieldInternalId: 0,
 		FieldName:       "Id",
 		FieldType:       dbtypes.Int32,
 	}
 
-	dbFieldRule2 := tableFieldProperties{
+	dbFieldRule2 := tableFieldStruct{
 		FieldInternalId: 1,
 		FieldName:       "IsTrue",
 		FieldType:       dbtypes.Bool,
@@ -115,13 +115,13 @@ func TestAddFieldsIds_Normal(t *testing.T) {
 
 //2.b
 func TestAddFieldsIds_SameIds(t *testing.T) {
-	dbFieldRule := tableFieldProperties{
+	dbFieldRule := tableFieldStruct{
 		FieldInternalId: 0,
 		FieldName:       "Id",
 		FieldType:       dbtypes.Int32,
 	}
 
-	dbFieldRule2 := tableFieldProperties{
+	dbFieldRule2 := tableFieldStruct{
 		FieldInternalId: 0,
 		FieldName:       "IsTrue",
 		FieldType:       dbtypes.Bool,
@@ -146,13 +146,13 @@ func TestAddFieldsIds_SameIds(t *testing.T) {
 
 //2.c
 func TestAddFieldsIds_InternalIds(t *testing.T) {
-	dbFieldRule := tableFieldProperties{
+	dbFieldRule := tableFieldStruct{
 		FieldInternalId: -1,
 		FieldName:       "Id",
 		FieldType:       dbtypes.Int32,
 	}
 
-	dbFieldRule2 := tableFieldProperties{
+	dbFieldRule2 := tableFieldStruct{
 		FieldInternalId: -1,
 		FieldName:       "IsTrue",
 		FieldType:       dbtypes.Bool,
@@ -180,14 +180,14 @@ func TestGetFieldMeta_FieldNonExistent(t *testing.T) {
 
 //3.b
 func TestGetFieldMeta_Normal(t *testing.T) {
-	dbFieldRule := tableFieldProperties{
+	dbFieldRule := tableFieldStruct{
 		FieldInternalId: -1,
 		FieldName:       "Id",
 		FieldType:       dbtypes.Int32,
 		//IsPk: true, //TODO: this part changed, need to redo the test with Pk.
 	}
 
-	dbFieldRule2 := tableFieldProperties{
+	dbFieldRule2 := tableFieldStruct{
 		FieldInternalId: -1,
 		FieldName:       "IsTrue",
 		FieldType:       dbtypes.Bool,
@@ -214,14 +214,14 @@ func TestGetFieldMeta_Normal(t *testing.T) {
 func TestRemoveFieldMeta_Normal(t *testing.T) {
 	//Deletes existing field metadata.
 
-	dbFieldRule := tableFieldProperties{
+	dbFieldRule := tableFieldStruct{
 		FieldInternalId: -1,
 		FieldName:       "Id",
 		FieldType:       dbtypes.Int32,
 		//IsPk: true, //TODO: this part changed, need to redo the test with Pk.
 	}
 
-	dbFieldRule2 := tableFieldProperties{
+	dbFieldRule2 := tableFieldStruct{
 		FieldInternalId: -1,
 		FieldName:       "IsTrue",
 		FieldType:       dbtypes.Bool,
@@ -262,14 +262,14 @@ func TestRemoveFieldMeta_NonExistant(t *testing.T) {
 }
 
 func TestUpdateFieldMeta_Normal(t *testing.T) {
-	dbFieldRule := tableFieldProperties{
+	dbFieldRule := tableFieldStruct{
 		FieldInternalId: -1,
 		FieldName:       "Id",
 		FieldType:       dbtypes.Int32,
 		//IsPk: true, //TODO: this part changed, need to redo the test with Pk.
 	}
 
-	dbFieldRule2 := tableFieldProperties{
+	dbFieldRule2 := tableFieldStruct{
 		FieldInternalId: -1,
 		FieldName:       "IsTrue",
 		FieldType:       dbtypes.Bool,

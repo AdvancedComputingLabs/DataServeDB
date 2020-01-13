@@ -51,6 +51,32 @@ func capInt32(f float64) int32 {
 	return int32(capByLimits(f, math.MinInt32, math.MaxInt32))
 }
 
+func isConversionToInt32Lossless(v interface{}) (int32, bool) {
+	//json conversion comes in float64 for any number in golang
+
+	//TODO: check if it has edge cases
+	//TODO: check if first conversion to float64 can be used to cover all cases of lossless.
+
+	switch vCasted := v.(type) {
+
+	case float64:
+		i32 := int32(vCasted)
+		if vCasted == float64(i32) {
+			return i32, true
+		}
+
+	case string:
+		if f64, e := strconv.ParseFloat(vCasted, 64); e == nil {
+			i32 := int32(f64)
+			if f64 == float64(i32) {
+				return i32, true
+			}
+		}
+	}
+
+	return 0, false
+}
+
 func strictError(cc ConversionClass, i interface{}, toTypeName string) error {
 	if cc == Strict {
 		return fmt.Errorf("could not convert value '%#v' of type '%T' to type '%v' due to strict type conversion rule", i, i, toTypeName)
@@ -182,6 +208,11 @@ func ToInt32(i interface{}, conversionType ConversionClass) (int32, error) {
 		return int32(t), nil
 	}
 
+	// it is not used before because json conversion gives float64, but i may not always be float64 and above type checks in those cases are needed.
+	if result, ok := isConversionToInt32Lossless(i); ok {
+		return result, nil
+	}
+
 	if e := losslessError(conversionType, i, toTypeName); e != nil {
 		return 0, e //zero is default
 	}
@@ -189,7 +220,7 @@ func ToInt32(i interface{}, conversionType ConversionClass) (int32, error) {
 	//weak conversions
 	switch t := i.(type) {
 	case nil:
-		return int32(0), nil
+		return int32(0), nil //QUESTION: are nil/dbnull lossless?
 	case int:
 		return capInt32(float64(t)), nil
 	case uint:

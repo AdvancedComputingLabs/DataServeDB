@@ -36,6 +36,7 @@ type dbTypeStringValueOrFun struct {
 }
 
 type dbTypeStringProperties struct {
+	dbtype_props.Conversion
 	dbtype_props.PrimaryKeyable
 	dbtype_props.Nullable
 	dbtype_props.Indexing
@@ -53,7 +54,7 @@ var String = dbTypeString{
 	},
 }
 
-func (t dbTypeString) ConvertValue(v interface{}, dbTypeProperties interface{}, weakConversion bool) (interface{}, error) {
+func (t dbTypeString) ConvertValue(v interface{}, dbTypeProperties interface{}) (interface{}, error) {
 
 	//NOTE#1: auto and default are validated during property setting, but function returned values are not
 	//	guaranteed so these result values are still validated here.
@@ -89,7 +90,7 @@ func (t dbTypeString) ConvertValue(v interface{}, dbTypeProperties interface{}, 
 		}
 	}
 
-	s, e = convert.ToString(v, weakConversionFlagToRule(weakConversion))
+	s, e = convert.ToString(v, p.ToSystemConversionClass())
 	if e != nil {
 		return nil, e
 	}
@@ -143,9 +144,10 @@ func (t dbTypeString) onCreateValidateFieldProperties(fieldProperties interface{
 
 func defaultDbTypeStringProperties() *dbTypeStringProperties {
 	return &dbTypeStringProperties{
+		Conversion:     dbtype_props.NewConversion(),
 		PrimaryKeyable: dbtype_props.PrimaryKeyable{IsPrimarykey: false},
 		Nullable:       dbtype_props.Nullable{State: dbtype_props.NullableFalseDefault},
-		Indexing:       dbtype_props.Indexing{IndexType:dbtype_props.IndexingNone, Supports: dbtype_props.UniqueIndex | dbtype_props.SequentialUniqueIndex},
+		Indexing:       dbtype_props.Indexing{IndexType: dbtype_props.IndexingNone, Supports: dbtype_props.UniqueIndex | dbtype_props.SequentialUniqueIndex},
 		TypeLength:     dbtype_props.NewTypeLength(0, 4000),
 		Auto:           dbTypeStringValueOrFun{},
 		Default:        dbTypeStringValueOrFun{},
@@ -203,6 +205,8 @@ func (t *dbTypeStringValueOrFun) NotNil() bool {
 func (t *dbTypeStringValueOrFun) Parse(tokens []parsers.Token, i int) (int, error) {
 
 	if tokens == nil {
+		//TODO: log.
+		//TODO: update with location of the code.
 		panic("coding error, shouldn't happen")
 	}
 
@@ -214,6 +218,8 @@ func (t *dbTypeStringValueOrFun) Parse(tokens []parsers.Token, i int) (int, erro
 	}
 
 	if i > l {
+		//TODO: log.
+		//TODO: update with location of the code.
 		panic("coding error, shouldn't happen")
 	}
 
@@ -239,24 +245,27 @@ func (t *dbTypeStringValueOrFun) Parse(tokens []parsers.Token, i int) (int, erro
 				break
 			} else {
 				text := tokens[i].Word[1 : textLen-1]
-				t.text = &text //TODO: is this copy? references for this token shouldn't stay in memory.
+				t.text = &text //TODO: check is this copy? references for this token shouldn't stay in memory.
 				break
 			}
 		} else {
 			//TODO: check if function name is valid.
 
 			if l <= i+2 {
-				return failReturnPos, errors.New("bad function name") //-1 due sending last token back to parent parser.
+				//TODO: make this error more user friendly?
+				return failReturnPos, errors.New("bad fun name") //-1 due sending last token back to parent parser.
 			}
 
 			if !(tokens[i+1].Word == "(" || tokens[i+2].Word == ")") {
-				return failReturnPos, errors.New("bad function name")
+				//TODO: make this error more user friendly?
+				return failReturnPos, errors.New("bad fun name")
 			}
 
 			fun := getDbStringFun(tokens[i].Word)
 			if fun == nil {
 				//TODO: test return position is correct.
-				return i + 2, errors.New("function not found") //NOTE: i-1 is not correct here; function not found, then move to next item. i+2 for ()
+				//TODO: make this error more user friendly?
+				return i + 2, errors.New("fun not found") //NOTE: i-1 is not correct here; function not found, then move to next item. i+2 for ()
 			}
 
 			t.fun = fun
@@ -270,6 +279,7 @@ func (t *dbTypeStringValueOrFun) Parse(tokens []parsers.Token, i int) (int, erro
 	//TODO: return from word before possible fun name word position.
 	//both of them cannot be nil
 	if t.text == nil && t.fun == nil {
+		//TODO: better error message
 		return i, errors.New("malformed Default property")
 	}
 

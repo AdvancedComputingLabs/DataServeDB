@@ -48,7 +48,7 @@ func newTableMain(tableName string) *tableMain {
 		TableName: tableName,
 		TableFieldsMetaData: tableFieldsMetadataT{
 			mu:                             sync.RWMutex{},
-			fieldInternalIdToFieldMetaData: make(map[int]*tableFieldProperties),
+			fieldInternalIdToFieldMetaData: make(map[int]*tableFieldStruct),
 			fieldNameToFieldInternalId:     make(map[string]int),
 		},
 		//TableStringComparer: simpleFold,

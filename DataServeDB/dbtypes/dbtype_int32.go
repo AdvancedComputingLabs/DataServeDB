@@ -14,14 +14,11 @@ package dbtypes
 
 import (
 	"DataServeDB/dbsystem/builtinfuns"
-	"errors"
-	"fmt"
-	"math"
-	"strconv"
-
 	"DataServeDB/dbtypes/dbtype_props"
 	"DataServeDB/parsers"
 	"DataServeDB/utils/convert"
+	"errors"
+	"math"
 )
 
 // section: declarations
@@ -40,6 +37,7 @@ type dbTypeInt32ValueOrFun struct {
 }
 
 type dbTypeInt32Properties struct {
+	dbtype_props.Conversion
 	dbtype_props.PrimaryKeyable
 	dbtype_props.Nullable
 	dbtype_props.Indexing
@@ -57,20 +55,25 @@ var Int32 = dbTypeInt32{
 	},
 }
 
-func (t dbTypeInt32) ConvertValue(v interface{}, dbTypeProperties interface{}, weakConversion bool) (interface{}, error) {
+func (t dbTypeInt32) ConvertValue(v interface{}, dbTypeProperties interface{}) (interface{}, error) {
 
 	//NOTE#1: auto and default are validated during property setting, but function returned values are not
 	//	guaranteed so these result values are still validated here.
 
-	var intval int32 //use intval because i is normally used for index
+	var intval int32 //used intval because i is normally used for index
 	var e error
 
 	if v == nil {
 		v = DbNull{}
 	}
 
-	//TODO: panic if properties are nil, coding error.
 	p := getDbTypeInt32PropertiesIndirect(dbTypeProperties)
+
+	if p == nil {
+		//TODO: log.
+		//TODO: update with location of the code.
+		panic("coding error!")
+	}
 
 	if p.Auto.NotNil() {
 		// See note#1
@@ -87,13 +90,14 @@ func (t dbTypeInt32) ConvertValue(v interface{}, dbTypeProperties interface{}, w
 		}
 
 		if !p.Nullable.True() {
+			//TODO: change %s to named tag
 			return nil, errors.New("value for this field %s cannot be null")
 		} else {
 			return v, nil
 		}
 	}
 
-	intval, e = convert.ToInt32(v, weakConversionFlagToRule(weakConversion))
+	intval, e = convert.ToInt32(v, p.ToSystemConversionClass())
 	if e != nil {
 		return nil, e
 	}
@@ -148,8 +152,9 @@ func (t dbTypeInt32) onCreateValidateFieldProperties(fieldProperties interface{}
 
 func defaultDbTypeInt32Properties() *dbTypeInt32Properties {
 	return &dbTypeInt32Properties{
+		Conversion:     dbtype_props.NewConversion(),
 		PrimaryKeyable: dbtype_props.PrimaryKeyable{IsPrimarykey: false},
-		Nullable:       dbtype_props.Nullable{ State: dbtype_props.NullableFalseDefault},
+		Nullable:       dbtype_props.Nullable{State: dbtype_props.NullableFalseDefault},
 		Indexing:       dbtype_props.Indexing{IndexType: dbtype_props.IndexingNone, Supports: dbtype_props.UniqueIndex | dbtype_props.SequentialUniqueIndex},
 		NumberRange:    dbtype_props.NewNumberRange(math.MinInt32, math.MaxInt32),
 		Auto:           dbTypeInt32ValueOrFun{},
@@ -192,7 +197,7 @@ func getDbInt32Fun(funName string, params ...int32) dbTypeInt32Fp {
 
 	case "Increment":
 		if len(params) == 2 {
-			return builtinfuns.IncrementInt32(params[0], params[1]) //TODO: later
+			return builtinfuns.IncrementInt32(params[0], params[1])
 		}
 
 	}
@@ -210,6 +215,8 @@ func (t *dbTypeInt32ValueOrFun) NotNil() bool {
 func (t *dbTypeInt32ValueOrFun) Parse(tokens []parsers.Token, i int) (int, error) {
 
 	if tokens == nil {
+		//TODO: log.
+		//TODO: update with location of the code.
 		panic("coding error, shouldn't happen")
 	}
 
@@ -221,6 +228,8 @@ func (t *dbTypeInt32ValueOrFun) Parse(tokens []parsers.Token, i int) (int, error
 	}
 
 	if i > l {
+		//TODO: log.
+		//TODO: update with location of the code.
 		panic("coding error, shouldn't happen")
 	}
 
@@ -235,28 +244,26 @@ func (t *dbTypeInt32ValueOrFun) Parse(tokens []parsers.Token, i int) (int, error
 		}
 
 		//could be number or function, function doesn't start with digit.
-
-		num, e := strconv.ParseUint(tokens[i].Word, 10, 64)
+		num, e := convert.ToInt32(tokens[i].Word, convert.Lossless)
 		if e == nil {
 			// it is number
-			// TODO: what if number is greater than int?
-			// TODO: test
-			num := int32(num)
 			t.number = &num
 			break
 		}
 
-		//it could be function
+		//conversion failed, but it could be fun
 
 		//store i-1 to return in case of failure.
 		failReturnPos = i - 1
 
 		if l <= i+2 {
-			return failReturnPos, errors.New("bad function name") //-1 due sending last token back to parent parser.
+			//TODO: make this error more user friendly?
+			return failReturnPos, errors.New("bad fun name") //-1 due sending last token back to parent parser.
 		}
 
 		if tokens[i+1].Word != "(" {
-			return failReturnPos, errors.New("bad function name")
+			//TODO: make this error more user friendly?
+			return failReturnPos, errors.New("bad fun name")
 		}
 
 		funName := tokens[i].Word
@@ -275,19 +282,23 @@ func (t *dbTypeInt32ValueOrFun) Parse(tokens []parsers.Token, i int) (int, error
 				continue
 			}
 
-			num, e := strconv.ParseUint(tokens[i].Word, 10, 64)
+			//this is function parameter, must be number. so on error fail
+			//TODO: should only accept number, lossless can also accept string which converts to number properly like "1"
+			//NOTE (for above): tested it is not accepting '1' or "1", which is good but need to see why as lossless will accept this.
+			num, e := convert.ToInt32(tokens[i].Word, convert.Lossless)
 			if e == nil {
 				// it is number
-				// TODO: what if number is greater than int?
-				// TODO: check how append is giving type error?
-				intParams = append(intParams, int32(num))
+				// TODO: check how append is giving type error? Note: don't remember why i wrote this but keeping it here.
+				intParams = append(intParams, num)
 			} else {
 				// error in int fun call
-				return failReturnPos, errors.New("bad function name")
+				//TODO: make this error more user friendly?
+				return failReturnPos, errors.New("bad fun code")
 			}
 		}
 
 		if tokens[i-1].Word != ")" {
+			//TODO: make this error more user friendly?
 			return failReturnPos, errors.New("bad function name")
 		}
 
@@ -304,10 +315,9 @@ func (t *dbTypeInt32ValueOrFun) Parse(tokens []parsers.Token, i int) (int, error
 
 	//both of them cannot be nil
 	if t.number == nil && t.fun == nil {
+		//TODO: better error message
 		return failReturnPos, errors.New("malformed Default/Auto property") //failReturnPos returns position of function name token for next parsing word, which is correct.
 	}
-
-	fmt.Println(i+1, tokens[i+1])
 
 	return i, nil
 }

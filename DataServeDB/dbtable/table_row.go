@@ -14,28 +14,27 @@ package dbtable
 
 import "DataServeDB/dbstrcmp_base"
 
+type tableRowByInternalIdsWithFieldProperties = map[int]fieldValueAndPropertiesHolder
 type tableRowByInternalIds = map[int]interface{}
 
 func fromLabeledByFieldNames(row TableRow, tbl *tableMain, fieldCasingHandler dbstrcmp_base.DbStrCmpInterface) (tableRowByInternalIds, error) {
-	//TODO: Primary key should be first.
-
-	//- check if field exists; covered.
-	//- check if missing field; not covered.
+	//TODO: Primary key should be first. Or do this rearrangement on client side?
 
 	var meta = &tbl.TableFieldsMetaData
 	rowById := make(tableRowByInternalIds)
 
-	for k, v := range row {
-		if field, err := meta.getFieldMetadataInternal(k, fieldCasingHandler); err == nil {
-			//TODO: validation by constraints.
-			if vConverted, errConversion := field.FieldType.ConvertValue(v, field.FieldTypeProps, true); errConversion == nil {
-				rowById[field.FieldInternalId] = vConverted
-			} else {
-				return nil, errRplRowDataConversion(field.FieldName, errConversion)
-			}
-		} else {
-			return nil, err
-		}
+	tmp, e := meta.getRowWithFieldMetadataInternal(row, fieldCasingHandler);
+	if e != nil {
+		return nil, e
+	}
+
+	//execute
+	for Id, holder := range tmp {
+				if vConverted, errConversion := holder.tableFieldInternal.FieldType.ConvertValue(holder.v, holder.tableFieldInternal.FieldTypeProps); errConversion == nil {
+					rowById[Id] = vConverted
+				} else {
+					return nil, errRplRowDataConversion(holder.tableFieldInternal.FieldName, errConversion)
+				}
 	}
 
 	return rowById, nil

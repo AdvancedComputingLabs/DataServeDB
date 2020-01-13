@@ -34,7 +34,7 @@ func validateTableName(tableName string) error {
 	return nil
 }
 
-func validateFieldMetaData(fieldCreationText string, pkIsSet *bool) (*tableFieldProperties, error) {
+func validateFieldMetaData(fieldCreationText string, pkIsSet *bool) (*tableFieldStruct, error) {
 
 	fp := newTableFieldProperties()
 
@@ -77,7 +77,7 @@ func validateCreateTableMetaData(createTableData *createTableExternalInterface) 
 	for _, fieldCreationText := range createTableData.TableFields {
 		//_ = i
 
-		var fp *tableFieldProperties
+		var fp *tableFieldStruct
 		var e error
 
 		if fp, e = validateFieldMetaData(fieldCreationText, &pkIsSet); e != nil {

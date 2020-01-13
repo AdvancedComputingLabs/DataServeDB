@@ -22,13 +22,13 @@ import (
 
 func TestAddData_Normal(t *testing.T) {
 
-	dbFieldRule := tableFieldProperties{
+	dbFieldRule := tableFieldStruct{
 		FieldInternalId: 0,
 		FieldName:       "Id",
 		FieldType:       dbtypes.Int32,
 	}
 
-	dbFieldRule2 := tableFieldProperties{
+	dbFieldRule2 := tableFieldStruct{
 		FieldInternalId: 1,
 		FieldName:       "IsTrue",
 		FieldType:       dbtypes.Bool,

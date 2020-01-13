@@ -3,6 +3,10 @@ package main
 import (
 	"fmt"
 )
+//TODO:
+// 1) use db's own conversion functions [done; sort of, see note], note: for UInt conversion in Length parsing db's convert package is not used as UInt conversion function is not there.
+// 2) add weakconversion to field properties [done]
+// 3) DbNull conversion test
 
 //Table Requirements:
 // - Fields should have internal ids, it will help changing name of the field.
@@ -27,7 +31,7 @@ import (
 //weak conversion will convert to close result between different types or values e.g. 1 = true, 0 = false, "TRUE" = true.
 //Strong conversion will require strong typing, "true" will not convert to true.
 
-//TODO: write docs state 'Zen of Dataserve'; inspired from https://en.wikipedia.org/wiki/Zen_of_Python
+//TODO: write docs state 'Zen of DataserveDB'; inspired from https://en.wikipedia.org/wiki/Zen_of_Python
 //1. KISS principle:
 //1.a. Few types to keep data design simple. Some will take more memory (e.g. int32 than int8) but there is more RAM and disk space these days.
 

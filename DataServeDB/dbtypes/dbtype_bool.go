@@ -25,6 +25,7 @@ type dbTypeBool struct {
 }
 
 type DbTypeBoolProperties struct {
+	dbtype_props.Conversion
 	dbtype_props.Nullable
 }
 
@@ -37,8 +38,16 @@ var Bool = dbTypeBool{
 	},
 }
 
-func (t dbTypeBool) ConvertValue(v interface{}, dbTypeProperties interface{}, weakConversion bool) (interface{}, error) {
-	return convert.ToBool(v, weakConversionFlagToRule(weakConversion))
+func (t dbTypeBool) ConvertValue(v interface{}, dbTypeProperties interface{}) (interface{}, error) {
+	p := getDbTypeBoolPropertiesIndirect(dbTypeProperties)
+
+	if p == nil {
+		//TODO: log.
+		//TODO: update with location of the code.
+		panic("coding error!")
+	}
+
+	return convert.ToBool(v, p.ToSystemConversionClass())
 }
 
 func (t dbTypeBool) GetDbTypeDisplayName() string {
@@ -73,6 +82,20 @@ func defaultDbTypeBoolProperties() *DbTypeBoolProperties {
 	return &DbTypeBoolProperties{
 		Nullable: dbtype_props.Nullable{State: dbtype_props.NullableFalseDefault},
 	}
+}
+
+func getDbTypeBoolPropertiesIndirect(p interface{}) *DbTypeBoolProperties {
+
+	switch p := p.(type) {
+	case DbTypeBoolProperties:
+		return &p
+	case *DbTypeBoolProperties:
+		return p
+	}
+
+	//TODO: log
+	//TODO: panic with code location.
+	panic("Coding error, this should not happen!")
 }
 
 // Section: <dbTypeBoolValueOrFun>

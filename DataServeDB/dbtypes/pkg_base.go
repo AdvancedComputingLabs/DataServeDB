@@ -12,10 +12,6 @@
 
 package dbtypes
 
-import (
-	"DataServeDB/utils/convert"
-)
-
 /*
 DbType Properties Concept (and rationale for keeping type properties under this package):
 - Keeps property tied to the db type rather than the field. What keywords a table field can support depends on its db type.
@@ -45,7 +41,7 @@ type dbTypeBase struct {
 }
 
 type DbTypeI interface {
-	ConvertValue(value interface{}, dbTypeProperties interface{}, weakConversion bool) (interface{}, error) //Note: named for clarity
+	ConvertValue(value interface{}, dbTypeProperties interface{}) (interface{}, error) //Note: named for clarity
 	GetDbTypeDisplayName() string
 	GetDbTypeId() int
 
@@ -56,13 +52,4 @@ type DbTypeI interface {
 
 type DbTypePropertiesI interface {
 	IsPrimaryKey() bool
-}
-
-//Rationale: DB server only needs weak or lossless, making it strict makes it too complicated.
-//However, utils/convert package needs all three rules as it is general purpose package. -HY
-func weakConversionFlagToRule(weakConversion bool) convert.ConversionClass {
-	if weakConversion {
-		return convert.Weak
-	}
-	return convert.Lossless
 }
