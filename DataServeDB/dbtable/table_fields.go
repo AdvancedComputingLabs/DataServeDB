@@ -13,6 +13,7 @@
 package dbtable
 
 import (
+	"errors"
 	"sync"
 
 	"DataServeDB/dbstrcmp_base"
@@ -87,6 +88,20 @@ func (t *tableFieldsMetadataT) add(fmd *tableFieldStruct, fieldCaseHandler dbstr
 	t.fieldNameToFieldInternalId[fieldNameKeyCase] = fmd.FieldInternalId
 
 	return nil
+}
+
+// for future use, done for loading table but easier was to just store json creation text for now.
+func (t *tableFieldsMetadataT) getCopyOfFieldsMetadataSafe() []tableFieldStruct {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	var result []tableFieldStruct
+
+	for _, v := range t.fieldInternalIdToFieldMetaData {
+		result = append(result, *v)
+	}
+
+	return result
 }
 
 func (t *tableFieldsMetadataT) getFieldInternalId(fieldName, fieldNameKeyCase string) (int, error) {
@@ -169,6 +184,24 @@ func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow Table
 	}
 
 	return rowByRowIdsWVAP, nil
+}
+
+// for future use, done for loading table but easier was to just store json creation text for now.
+func (t *tableFieldsMetadataT) loadFieldsMetadataSafe(fields []tableFieldStruct) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if len(t.fieldInternalIdToFieldMetaData) > 0 || len(t.fieldNameToFieldInternalId) > 0 {
+		//should be empty, if not error
+		return errors.New("fields data is already loaded, it should be loaded once only")
+	}
+
+	for _, v := range fields {
+		t.fieldNameToFieldInternalId[v.FieldName] = v.FieldInternalId
+		t.fieldInternalIdToFieldMetaData[v.FieldInternalId] = &v
+	}
+
+	return nil
 }
 
 func (t *tableFieldsMetadataT) remove(fieldName string, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) error {

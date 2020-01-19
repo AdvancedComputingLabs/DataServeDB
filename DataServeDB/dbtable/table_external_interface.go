@@ -22,7 +22,7 @@ import (
 
 type TableRow map[string]interface{} //it is by field name.
 
-type createTableExternalInterface struct {
+type createTableExternalStruct struct {
 	TableName      string
 	TableFields    []string
 }
@@ -30,29 +30,42 @@ type createTableExternalInterface struct {
 type DbTable struct {
 	tblMain *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
 	tblData *tableDataContainer
+	createTableStructure createTableExternalStruct
 }
 
 func CreateTableJSON(jsonStr string) (*DbTable, error) {
 
-	var createTableData createTableExternalInterface
+	var createTableData createTableExternalStruct
 	if err := json.Unmarshal([]byte(jsonStr), &createTableData); err != nil {
 		//log error for system auditing. This error logging message can be technical.
 		//TODO: make error result more user friendly.
 		return nil, errors.New("error found in table creation json")
 	}
 
-	tbl := DbTable{}
-
-	if tblMain, err := validateCreateTableMetaData(&createTableData); err != nil {
-		return nil, err
-	} else {
-		tbl.tblMain = tblMain
-	}
-
-	tbl.tblData = &tableDataContainer{
+	tdc := &tableDataContainer{
 		Rows:          nil,
 		PkToRowMapper: map[interface{}]int64{},
 	}
+
+	//TODO: use globabl const, better practice
+	return createTable(-1, &createTableData, tdc)
+}
+
+func createTable(tableInternalId int, createTableData *createTableExternalStruct, tblDataContainer *tableDataContainer) (*DbTable, error) {
+	// I think it better belongs here than table.go as it is creating DbTable
+
+	tbl := DbTable{}
+
+	if tblMain, err := validateCreateTableMetaData(tableInternalId, createTableData); err != nil {
+		return nil, err
+	} else {
+		tbl.tblMain = tblMain
+
+	}
+
+	tbl.tblData = tblDataContainer
+
+	tbl.createTableStructure = *createTableData
 
 	return &tbl, nil
 }

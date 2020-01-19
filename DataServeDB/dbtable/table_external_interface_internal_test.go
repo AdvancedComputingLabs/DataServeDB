@@ -43,13 +43,13 @@ func TestCreateTableToAndFromJsonConversions(t *testing.T) {
 //  ]
 //}`
 //
-//	var createTableObj2 createTableExternalInterface
+//	var createTableObj2 createTableExternalStruct
 //	if err := json.Unmarshal([]byte(createTableObj2JSON), &createTableObj2); err != nil {
 //		t.Error(err)
 //	}
 //	fmt.Println(createTableObj2)
 //
-//	createTableObj2Matcher := createTableExternalInterface{
+//	createTableObj2Matcher := createTableExternalStruct{
 //		TableName: "Tbl02",
 //		PrimaryKeyName: "Id",
 //		TableFields: []createTableExternalInterfaceFieldInfo{

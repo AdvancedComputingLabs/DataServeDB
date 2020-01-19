@@ -21,6 +21,7 @@ DbType Properties Concept (and rationale for keeping type properties under this 
 const (
 	dbNullInternalId = iota //if ever used, DbNull is special type
 	dbBool
+	dbDateTime
 	dbInt32
 	dbString
 )

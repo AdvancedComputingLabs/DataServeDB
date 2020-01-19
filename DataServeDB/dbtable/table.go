@@ -41,10 +41,16 @@ type tablesMapper struct {
 }
 
 //Only creates table object, kept this way for unit testing.
-func newTableMain(tableName string) *tableMain {
+func newTableMain(tableInternalId int, tableName string) *tableMain {
+
+	if tableInternalId <= -1 {
+		//TODO: table id needs to be done.
+		//TODO: validation of tableid or/and auto generation of correct one
+		tableInternalId = 0
+	}
 
 	t := tableMain{
-		TableId:   0,
+		TableId:   tableInternalId,
 		TableName: tableName,
 		TableFieldsMetaData: tableFieldsMetadataT{
 			mu:                             sync.RWMutex{},
