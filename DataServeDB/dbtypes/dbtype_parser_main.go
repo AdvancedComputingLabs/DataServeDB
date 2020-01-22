@@ -133,7 +133,7 @@ func IsNumeric(s string) bool {
 }
 
 func lex(s string) []parsers.Token {
-	lexerRe := regexp.MustCompile(`\.\.|!|:|\(|,|\)|\b(?:string|int|PrimaryKey|UniqueIndex|SequentialUniqueIndex|Nullable|Length|NumberRange|EmptyString|default|auto|[a-zA-Z][a-zA-Z0-9_]+|[0-9_]+)\b|(?:['].*[']|["].*["])|[^ ;]+`)
+	lexerRe := regexp.MustCompile(`\.\.|!|:|\(|,|\)|\b(?:string|int32|datetime|PrimaryKey|UniqueIndex|SequentialUniqueIndex|Nullable|Length|NumberRange|EmptyString|default|auto|[a-zA-Z][a-zA-Z0-9_]+|[0-9_]+)\b|(?:['].*[']|["].*["])|[^ ;]+`)
 	matchIndexes := lexerRe.FindAllStringIndex(s, -1)
 	l := len(matchIndexes)
 	var tokens []parsers.Token

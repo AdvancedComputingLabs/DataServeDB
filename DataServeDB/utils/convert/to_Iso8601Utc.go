@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Advanced Computing Labs DMCC
+// Copyright (c) 2020 Advanced Computing Labs DMCC
 
 /*
 	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -12,16 +12,12 @@
 
 package convert
 
-//private type decl
-
-
-
-//private section
-
-
-
-
+import "time"
 
 //public section
 
+func ToIso8601Utc(v interface{}, conversionType ConversionClass) (time.Time, error) {
+	const toTypeName = "Iso8601UtcDateTime"
 
+	return time.Time{}, nil
+}

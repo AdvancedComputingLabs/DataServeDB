@@ -52,7 +52,7 @@
       <recent name="D:\ImpWork\Software\NBStoreRootDir\DataServe2\utls" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Test.TestStarter in DataServeDB">
+  <component name="RunManager" selected="Go Test.go test DataServeDB/dbsystem/systypes/dtIso8601Utc">
     <configuration default="true" type="GoApplicationRunConfiguration" factoryName="Go Application">
       <module name="DataServeDB" />
       <working_directory value="$PROJECT_DIR$/" />
@@ -72,6 +72,28 @@
       <package value="DataServeDB" />
       <directory value="$PROJECT_DIR$/" />
       <output_directory value="$PROJECT_DIR$/bin" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestIso8601UtcFromString in DataServeDB/dbsystem/systypes/dtIso8601Utc" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="DataServeDB" />
+      <working_directory value="$PROJECT_DIR$/dbsystem/systypes/dtIso8601Utc" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="DataServeDB/dbsystem/systypes/dtIso8601Utc" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestIso8601UtcFromString$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestSaveTableMetadata in DataServeDB" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="DataServeDB" />
+      <working_directory value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="DataServeDB" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestSaveTableMetadata$" />
       <method v="2" />
     </configuration>
     <configuration name="TestStarter in DataServeDB" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
@@ -96,6 +118,16 @@
       <filePath value="$PROJECT_DIR$/" />
       <method v="2" />
     </configuration>
+    <configuration name="go test DataServeDB/dbsystem/systypes/dtIso8601Utc" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="DataServeDB" />
+      <working_directory value="$PROJECT_DIR$/dbsystem/systypes/dtIso8601Utc" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="DataServeDB/dbsystem/systypes/dtIso8601Utc" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <method v="2" />
+    </configuration>
     <configuration name="go test DataServeDB/dbtable" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="DataServeDB" />
       <working_directory value="$PROJECT_DIR$/dbtable" />
@@ -110,9 +142,15 @@
       <item itemvalue="Go Build.go build DataServe2" />
       <item itemvalue="Go Test.TestStarter in DataServeDB" />
       <item itemvalue="Go Test.go test DataServeDB/dbtable" />
+      <item itemvalue="Go Test.TestSaveTableMetadata in DataServeDB" />
+      <item itemvalue="Go Test.TestIso8601UtcFromString in DataServeDB/dbsystem/systypes/dtIso8601Utc" />
+      <item itemvalue="Go Test.go test DataServeDB/dbsystem/systypes/dtIso8601Utc" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Test.go test DataServeDB/dbsystem/systypes/dtIso8601Utc" />
+        <item itemvalue="Go Test.TestIso8601UtcFromString in DataServeDB/dbsystem/systypes/dtIso8601Utc" />
+        <item itemvalue="Go Test.TestSaveTableMetadata in DataServeDB" />
         <item itemvalue="Go Test.TestStarter in DataServeDB" />
         <item itemvalue="Go Test.go test DataServeDB/dbtable" />
       </list>
@@ -163,26 +201,26 @@
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="955" y="299" key="#go_build_DataServe2/0.0.2560.1400@0.0.2560.1400" timestamp="1577553540446" />
-    <state width="2505" height="455" key="GridCell.Tab.0.bottom" timestamp="1578949637396">
+    <state width="2505" height="421" key="GridCell.Tab.0.bottom" timestamp="1579689046525">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
-    <state width="2505" height="388" key="GridCell.Tab.0.bottom/0.0.2560.1040@0.0.2560.1040" timestamp="1577608808628" />
-    <state width="2505" height="455" key="GridCell.Tab.0.bottom/0.0.2560.1400@0.0.2560.1400" timestamp="1578949637396" />
-    <state width="2505" height="455" key="GridCell.Tab.0.center" timestamp="1578949637396">
+    <state width="2505" height="267" key="GridCell.Tab.0.bottom/0.0.2560.1040@0.0.2560.1040" timestamp="1579440607965" />
+    <state width="2505" height="421" key="GridCell.Tab.0.bottom/0.0.2560.1400@0.0.2560.1400" timestamp="1579689046525" />
+    <state width="2505" height="421" key="GridCell.Tab.0.center" timestamp="1579689046525">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
-    <state width="2505" height="388" key="GridCell.Tab.0.center/0.0.2560.1040@0.0.2560.1040" timestamp="1577608808628" />
-    <state width="2505" height="455" key="GridCell.Tab.0.center/0.0.2560.1400@0.0.2560.1400" timestamp="1578949637396" />
-    <state width="2505" height="455" key="GridCell.Tab.0.left" timestamp="1578949637396">
+    <state width="2505" height="267" key="GridCell.Tab.0.center/0.0.2560.1040@0.0.2560.1040" timestamp="1579440607965" />
+    <state width="2505" height="421" key="GridCell.Tab.0.center/0.0.2560.1400@0.0.2560.1400" timestamp="1579689046525" />
+    <state width="2505" height="421" key="GridCell.Tab.0.left" timestamp="1579689046525">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
-    <state width="2505" height="388" key="GridCell.Tab.0.left/0.0.2560.1040@0.0.2560.1040" timestamp="1577608808628" />
-    <state width="2505" height="455" key="GridCell.Tab.0.left/0.0.2560.1400@0.0.2560.1400" timestamp="1578949637396" />
-    <state width="2505" height="455" key="GridCell.Tab.0.right" timestamp="1578949637396">
+    <state width="2505" height="267" key="GridCell.Tab.0.left/0.0.2560.1040@0.0.2560.1040" timestamp="1579440607965" />
+    <state width="2505" height="421" key="GridCell.Tab.0.left/0.0.2560.1400@0.0.2560.1400" timestamp="1579689046525" />
+    <state width="2505" height="421" key="GridCell.Tab.0.right" timestamp="1579689046525">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
-    <state width="2505" height="388" key="GridCell.Tab.0.right/0.0.2560.1040@0.0.2560.1040" timestamp="1577608808628" />
-    <state width="2505" height="455" key="GridCell.Tab.0.right/0.0.2560.1400@0.0.2560.1400" timestamp="1578949637396" />
+    <state width="2505" height="267" key="GridCell.Tab.0.right/0.0.2560.1040@0.0.2560.1040" timestamp="1579440607965" />
+    <state width="2505" height="421" key="GridCell.Tab.0.right/0.0.2560.1400@0.0.2560.1400" timestamp="1579689046525" />
     <state width="2505" height="472" key="GridCell.Tab.1.bottom" timestamp="1578939317935">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
@@ -208,9 +246,10 @@
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="1047" y="358" key="com.goide.refactor.move.GoMoveDeclarationDialog/0.0.2560.1400@0.0.2560.1400" timestamp="1577525456148" />
-    <state x="859" y="5" width="840" height="1034" key="search.everywhere.popup" timestamp="1577102269588">
-      <screen x="0" y="0" width="2560" height="1040" />
+    <state x="859" y="7" width="840" height="1392" key="search.everywhere.popup" timestamp="1579115343137">
+      <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="859" y="5" width="840" height="1034" key="search.everywhere.popup/0.0.2560.1040@0.0.2560.1040" timestamp="1577102269588" />
+    <state x="859" y="7" width="840" height="1392" key="search.everywhere.popup/0.0.2560.1400@0.0.2560.1400" timestamp="1579115343137" />
   </component>
 </project>

@@ -27,6 +27,7 @@ func getDbType(dbtype_name string) (DbTypeI, error) {
 
 func init() {
 	addDbTypeToMap(Bool)
+	addDbTypeToMap(DateTime)
 	addDbTypeToMap(Int32)
 	addDbTypeToMap(String)
 }

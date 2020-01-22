@@ -62,7 +62,7 @@ func validateFieldMetaData(fieldCreationText string, pkIsSet *bool) (*tableField
 //1) better code, since adding fields automatically checks certain constraints.
 //2) optimization, since most of the time validation is followed by creation.
 //- HY 26-Dec-2019
-func validateCreateTableMetaData(createTableData *createTableExternalInterface) (*tableMain, error) {
+func validateCreateTableMetaData(tableInternalId int, createTableData *createTableExternalStruct) (*tableMain, error) {
 	//first quick checks
 
 	if e := validateTableName(createTableData.TableName); e != nil {
@@ -72,7 +72,7 @@ func validateCreateTableMetaData(createTableData *createTableExternalInterface) 
 	//quick checks end
 
 	pkIsSet := false
-	dbTbl := newTableMain(createTableData.TableName)
+	dbTbl := newTableMain(tableInternalId, createTableData.TableName)
 
 	for _, fieldCreationText := range createTableData.TableFields {
 		//_ = i
