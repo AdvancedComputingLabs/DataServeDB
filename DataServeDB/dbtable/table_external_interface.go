@@ -16,49 +16,63 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	storage "DataServeDB/dbsystem/dbstorage"
 )
 
 //TODO: move it to error messages (single location)
 
 type TableRow map[string]interface{} //it is by field name.
 
-type createTableExternalInterface struct {
-	TableName      string
-	TableFields    []string
+type createTableExternalStruct struct {
+	TableName   string
+	TableFields []string
 }
 
 type DbTable struct {
-	tblMain *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
-	tblData *tableDataContainer
+	tblMain              *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
+	tblData              *tableDataContainer
+	createTableStructure createTableExternalStruct
 }
 
 func CreateTableJSON(jsonStr string) (*DbTable, error) {
 
-	var createTableData createTableExternalInterface
+	var createTableData createTableExternalStruct
 	if err := json.Unmarshal([]byte(jsonStr), &createTableData); err != nil {
 		//log error for system auditing. This error logging message can be technical.
 		//TODO: make error result more user friendly.
 		return nil, errors.New("error found in table creation json")
 	}
 
-	tbl := DbTable{}
-
-	if tblMain, err := validateCreateTableMetaData(&createTableData); err != nil {
-		return nil, err
-	} else {
-		tbl.tblMain = tblMain
-	}
-
-	tbl.tblData = &tableDataContainer{
+	tdc := &tableDataContainer{
 		Rows:          nil,
 		PkToRowMapper: map[interface{}]int64{},
 	}
 
+	//TODO: use globabl const, better practice
+	return createTable(-1, &createTableData, tdc)
+}
+
+func createTable(tableInternalId int, createTableData *createTableExternalStruct, tblDataContainer *tableDataContainer) (*DbTable, error) {
+	// I think it better belongs here than table.go as it is creating DbTable
+
+	tbl := DbTable{}
+
+	if tblMain, err := validateCreateTableMetaData(tableInternalId, createTableData); err != nil {
+		return nil, err
+	} else {
+		tbl.tblMain = tblMain
+
+	}
+
+	tbl.tblData = tblDataContainer
+
+	tbl.createTableStructure = *createTableData
 	return &tbl, nil
 }
 
 func (t *DbTable) DebugPrintInternalFieldsNameMappings() string {
-	return fmt.Sprintf("%#v", t.tblMain.TableFieldsMetaData.fieldNameToFieldInternalId)
+	return fmt.Sprintf("%#v", t.tblMain.TableFieldsMetaData.FieldNameToFieldInternalId)
 }
 
 func (t *DbTable) InsertRowJSON(jsonStr string) error {
@@ -70,12 +84,14 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		//TODO: make error result more user friendly.
 		return errors.New("error occured in parsing row json")
 	}
+	fmt.Printf("row--> %t\n", rowDataUnmarshalled)
 
 	rowProperTyped, rowInternalIds, e := validateRowData(t.tblMain, rowDataUnmarshalled)
 	if e != nil {
 		return e
 	}
 
+	fmt.Printf("table--> %t\n", rowInternalIds)
 	_ = rowProperTyped // reminds me why it is used.
 
 	{
@@ -83,12 +99,26 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		t.tblData.Rows = append(t.tblData.Rows, rowInternalIds)
 		t.tblData.PkToRowMapper[rowInternalIds[0]] = numOfRows // TODO: should get pk or other secondary keys here properly
 	}
+	fmt.Printf("mapper -> %t \n", t.tblData.PkToRowMapper)
+	tb1, err := json.Marshal(t.tblData.PkToRowMapper[2])
+	if err != nil {
+		return err
+	}
+	println("pk string-->> ", string(tb1))
+
+	tb, err := json.Marshal(t.tblData.Rows)
+	if err != nil {
+		return err
+	}
+	println(string(tb))
+	storage.SaveToTable(t.tblMain.TableId, tb)
 
 	return nil
 }
 
 func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {
 	dbType, dbTypeProps := t.tblMain.getPkType()
+
 	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps)
 	if e != nil {
 		return nil, e
@@ -108,6 +138,7 @@ func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {
 }
 
 func (t *DbTable) GetRowByPrimaryKeyReturnsJSON(pkValue interface{}) (string, error) {
+	// fmt.Printf("here %v\n", t.tblData.Rows)
 	row, e := t.GetRowByPrimaryKey(pkValue)
 	if e != nil {
 		return "", e

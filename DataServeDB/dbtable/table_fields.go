@@ -13,6 +13,7 @@
 package dbtable
 
 import (
+	"errors"
 	"sync"
 
 	"DataServeDB/dbstrcmp_base"
@@ -28,8 +29,8 @@ type tableFieldStruct struct {
 
 type tableFieldsMetadataT struct {
 	mu                             sync.RWMutex
-	fieldInternalIdToFieldMetaData map[int]*tableFieldStruct
-	fieldNameToFieldInternalId     map[string]int
+	FieldInternalIdToFieldMetaData map[int]*tableFieldStruct
+	FieldNameToFieldInternalId     map[string]int
 }
 
 type fieldValueAndPropertiesHolder struct {
@@ -65,17 +66,17 @@ func (t *tableFieldsMetadataT) add(fmd *tableFieldStruct, fieldCaseHandler dbstr
 	fieldNameKeyCase := fieldCaseHandler.Convert(fmd.FieldName)
 
 	//check if field name exits
-	if _, exists := t.fieldNameToFieldInternalId[fieldNameKeyCase]; exists {
+	if _, exists := t.FieldNameToFieldInternalId[fieldNameKeyCase]; exists {
 		return errRplFieldNameAlreadyExist(fmd.FieldName)
 	}
 
 	//set internal id if it is -1
 	if fmd.FieldInternalId == -1 {
-		fmd.FieldInternalId = getNewInternalId(t.fieldInternalIdToFieldMetaData)
+		fmd.FieldInternalId = getNewInternalId(t.FieldInternalIdToFieldMetaData)
 	}
 
 	//check if internal id exits
-	if _, exists := t.fieldInternalIdToFieldMetaData[fmd.FieldInternalId]; exists {
+	if _, exists := t.FieldInternalIdToFieldMetaData[fmd.FieldInternalId]; exists {
 		//TODO: Log.
 		//TODO: Test if error or panic operations are atomic.
 		//NOTE: Reason for panic: if this error occurred then there is bug in the code, fix.
@@ -83,10 +84,24 @@ func (t *tableFieldsMetadataT) add(fmd *tableFieldStruct, fieldCaseHandler dbstr
 	}
 
 	//add to both maps
-	t.fieldInternalIdToFieldMetaData[fmd.FieldInternalId] = fmd
-	t.fieldNameToFieldInternalId[fieldNameKeyCase] = fmd.FieldInternalId
+	t.FieldInternalIdToFieldMetaData[fmd.FieldInternalId] = fmd
+	t.FieldNameToFieldInternalId[fieldNameKeyCase] = fmd.FieldInternalId
 
 	return nil
+}
+
+// for future use, done for loading table but easier was to just store json creation text for now.
+func (t *tableFieldsMetadataT) getCopyOfFieldsMetadataSafe() []tableFieldStruct {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	var result []tableFieldStruct
+
+	for _, v := range t.FieldInternalIdToFieldMetaData {
+		result = append(result, *v)
+	}
+
+	return result
 }
 
 func (t *tableFieldsMetadataT) getFieldInternalId(fieldName, fieldNameKeyCase string) (int, error) {
@@ -94,7 +109,7 @@ func (t *tableFieldsMetadataT) getFieldInternalId(fieldName, fieldNameKeyCase st
 	var exists bool
 
 	//check if field name exits
-	if fieldInternalId, exists = t.fieldNameToFieldInternalId[fieldNameKeyCase]; !exists {
+	if fieldInternalId, exists = t.FieldNameToFieldInternalId[fieldNameKeyCase]; !exists {
 		return -1, errRplFieldDoesNotExist(fieldName)
 	}
 
@@ -120,7 +135,7 @@ func (t *tableFieldsMetadataT) getFieldMetadataInternal(fieldName string, fieldC
 
 	var fieldMetadata *tableFieldStruct
 
-	if fieldMetadata, exists = t.fieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
+	if fieldMetadata, exists = t.FieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
 		//TODO: Log.
 		//TODO: Test if error or panic operations are atomic.
 		//NOTE: Reason for panic: if this error occurred then there is bug in the code, fix.
@@ -151,7 +166,7 @@ func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow Table
 
 		var fieldMetadata *tableFieldStruct
 
-		if fieldMetadata, exists = t.fieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
+		if fieldMetadata, exists = t.FieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
 			//TODO: Log.
 			//TODO: Test if error or panic operations are atomic.
 			//NOTE: Reason for panic: if this error occurred then there is bug in the code, fix.
@@ -162,13 +177,31 @@ func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow Table
 	}
 
 	//check and fill missing fields
-	for id, p := range t.fieldInternalIdToFieldMetaData {
+	for id, p := range t.FieldInternalIdToFieldMetaData {
 		if _, exists := rowByRowIdsWVAP[id]; !exists {
 			rowByRowIdsWVAP[id] = fieldValueAndPropertiesHolder{v: nil, tableFieldInternal: p}
 		}
 	}
 
 	return rowByRowIdsWVAP, nil
+}
+
+// for future use, done for loading table but easier was to just store json creation text for now.
+func (t *tableFieldsMetadataT) loadFieldsMetadataSafe(fields []tableFieldStruct) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if len(t.FieldInternalIdToFieldMetaData) > 0 || len(t.FieldNameToFieldInternalId) > 0 {
+		//should be empty, if not error
+		return errors.New("fields data is already loaded, it should be loaded once only")
+	}
+
+	for _, v := range fields {
+		t.FieldNameToFieldInternalId[v.FieldName] = v.FieldInternalId
+		t.FieldInternalIdToFieldMetaData[v.FieldInternalId] = &v
+	}
+
+	return nil
 }
 
 func (t *tableFieldsMetadataT) remove(fieldName string, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) error {
@@ -182,7 +215,7 @@ func (t *tableFieldsMetadataT) remove(fieldName string, fieldCaseHandler dbstrcm
 		return existsErr
 	}
 
-	if _, exists := t.fieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
+	if _, exists := t.FieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
 		//TODO: Log.
 		//TODO: Test if error or panic operations are atomic.
 		//NOTE: Reason for panic: if this error occurred then there is bug in the code, fix.
@@ -190,8 +223,8 @@ func (t *tableFieldsMetadataT) remove(fieldName string, fieldCaseHandler dbstrcm
 	}
 
 	//delete both keys
-	delete(t.fieldNameToFieldInternalId, fieldNameKeyCase)
-	delete(t.fieldInternalIdToFieldMetaData, fieldInternalId)
+	delete(t.FieldNameToFieldInternalId, fieldNameKeyCase)
+	delete(t.FieldInternalIdToFieldMetaData, fieldInternalId)
 
 	return nil
 }
@@ -217,7 +250,7 @@ func (t *tableFieldsMetadataT) updateFieldName(fieldName string, newFieldName st
 	var exists bool
 	var fieldMetadata *tableFieldStruct
 
-	if fieldMetadata, exists = t.fieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
+	if fieldMetadata, exists = t.FieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
 		//TODO: Log.
 		//TODO: Test if error or panic operations are atomic.
 		//NOTE: Reason for panic: if this error occurred then there is bug in the code, fix.
@@ -225,8 +258,8 @@ func (t *tableFieldsMetadataT) updateFieldName(fieldName string, newFieldName st
 	}
 
 	fieldMetadata.FieldName = newFieldName
-	t.fieldNameToFieldInternalId[newFieldNameKeyCase] = fieldInternalId
-	delete(t.fieldNameToFieldInternalId, fieldNameKeyCase)
+	t.FieldNameToFieldInternalId[newFieldNameKeyCase] = fieldInternalId
+	delete(t.FieldNameToFieldInternalId, fieldNameKeyCase)
 
 	return nil
 }

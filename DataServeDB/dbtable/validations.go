@@ -62,7 +62,7 @@ func validateFieldMetaData(fieldCreationText string, pkIsSet *bool) (*tableField
 //1) better code, since adding fields automatically checks certain constraints.
 //2) optimization, since most of the time validation is followed by creation.
 //- HY 26-Dec-2019
-func validateCreateTableMetaData(createTableData *createTableExternalInterface) (*tableMain, error) {
+func validateCreateTableMetaData(tableInternalId int, createTableData *createTableExternalStruct) (*tableMain, error) {
 	//first quick checks
 
 	if e := validateTableName(createTableData.TableName); e != nil {
@@ -72,7 +72,7 @@ func validateCreateTableMetaData(createTableData *createTableExternalInterface) 
 	//quick checks end
 
 	pkIsSet := false
-	dbTbl := newTableMain(createTableData.TableName)
+	dbTbl := newTableMain(tableInternalId, createTableData.TableName)
 
 	for _, fieldCreationText := range createTableData.TableFields {
 		//_ = i
@@ -90,6 +90,7 @@ func validateCreateTableMetaData(createTableData *createTableExternalInterface) 
 
 		//NOTE: db type property validation is done during parsing.
 	}
+	fmt.Printf("  %v\n", dbTbl)
 
 	if !pkIsSet {
 		return nil, errors.New("table must have primary key")
@@ -100,7 +101,7 @@ func validateCreateTableMetaData(createTableData *createTableExternalInterface) 
 
 // NOTE: TableRow is a map, so no need to pass it as pointer
 // WARNING: TableRow (by field name) is not returned unless function succeeds. So don't override r in calling function.
-func validateRowData(t *tableMain, r TableRow) (TableRow, tableRowByInternalIds, error)  {
+func validateRowData(t *tableMain, r TableRow) (TableRow, tableRowByInternalIds, error) {
 	rowByInternalId, e := fromLabeledByFieldNames(r, t, dbsystem.SystemCasingHandler)
 	if e != nil {
 		return nil, nil, e
@@ -113,4 +114,3 @@ func validateRowData(t *tableMain, r TableRow) (TableRow, tableRowByInternalIds,
 
 	return rowConvertedWithCorrectTypes, rowByInternalId, nil
 }
-
