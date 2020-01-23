@@ -13,6 +13,7 @@
 package dtIso8601Utc
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -20,7 +21,7 @@ import (
 // ## Delcarations
 
 const iso8601UtcForm = `2006-01-02T15:04:05.9999999Z`
-const iso8601UtcUnMarshalJSON = `"2006-01-02T15:04:05.9999999Z"`
+const iso8601UtcFormInStrQuotes = `"2006-01-02T15:04:05.9999999Z"`
 
 // no need to use date time in the Utc is the give away that is datetime only
 type Iso8601Utc time.Time
@@ -56,6 +57,8 @@ func (t Iso8601Utc) String() string {
 }
 
 func (t Iso8601Utc) MarshalJSON() ([]byte, error) {
+	//Note: Doesn't need to be pointer since it is not changing its state. -hy
+
 	var s string
 	//var e error //for later use
 
@@ -63,4 +66,23 @@ func (t Iso8601Utc) MarshalJSON() ([]byte, error) {
 	s = fmt.Sprintf(`"%s"`, dt_gonative.Format(iso8601UtcForm))
 
 	return []byte(s), nil
+}
+
+func (t *Iso8601Utc) UnmarshalJSON(data []byte) error {
+	//Note: changes state hence used pointer to itself. -hy
+
+	var s string
+
+	s = string(data)
+
+	//for json, date must be quoted as string
+	dt_gonative, e := time.Parse(iso8601UtcFormInStrQuotes, s)
+	if e != nil {
+		//TODO: log error? is it needed?
+		fmt.Println(e)
+		return errors.New("date/time is not in ISO 8601 UTC format")
+	}
+
+	*t = Iso8601Utc(dt_gonative)
+	return nil
 }

@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Advanced Computing Labs DMCC
+
 /*
 	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -104,6 +106,19 @@ func TestIso8601UseCases(t *testing.T) {
 			testerJson, e := json.Marshal(tester)
 			if e == nil {
 				fmt.Println(string(testerJson)) //gives null; it never reaches marshaljson method even with 't *Iso8601Utc'
+			}
+		}
+
+		{ // nil unmarshal case
+			sJson := `{"Title":"unmarshal case #0", "MyDateTime":"0900-01-01T00:00:00Z"}`
+
+			var tester DtTesterPointerVer
+
+			e := json.Unmarshal([]byte(sJson), &tester)
+			if e == nil {
+				fmt.Println("nil unmarshal case:", tester)
+			} else {
+				fmt.Println(e)
 			}
 		}
 

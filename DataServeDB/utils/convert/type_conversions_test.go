@@ -451,3 +451,12 @@ func TestToStringFunction(t *testing.T) {
 		t.Error("Should not have error.")
 	}
 }
+
+func TestToIso8601Utc(t *testing.T) {
+	dtIso, e := ToIso8601Utc("0900-01-01", Lossless)
+	if e == nil {
+		fmt.Println(dtIso)
+	} else {
+		fmt.Println(e)
+	}
+}

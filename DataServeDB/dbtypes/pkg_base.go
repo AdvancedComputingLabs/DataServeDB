@@ -18,10 +18,13 @@ DbType Properties Concept (and rationale for keeping type properties under this 
 - PrimaryKeyable keeps true value if field is primary key or not, it is for convenience.
  */
 
+// !WARNING: db type id can change between different compilations.
+// !IMPORTANT: saving to disk use moniker 'dbBool' instead of underlying int value.
 const (
 	dbNullInternalId = iota //if ever used, DbNull is special type
 	dbBool
 	dbDateTime
+	dbGuid
 	dbInt32
 	dbString
 )
