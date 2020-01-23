@@ -32,6 +32,7 @@ func ToIso8601Utc(v interface{}, conversionType ConversionClass) (dtIso8601Utc.I
 	case dtIso8601Utc.Iso8601Utc:
 		return t, nil
 	case *dtIso8601Utc.Iso8601Utc:
+		//TODO: if *t is nil?
 		return *t, nil
 	}
 
@@ -42,6 +43,8 @@ func ToIso8601Utc(v interface{}, conversionType ConversionClass) (dtIso8601Utc.I
 	//lossless conversions
 
 	//NOTE: couldn't check with time.Time if it was set in UTC. Lossing UTC is not lossless, hence, time.Time is in weak conversion.
+
+	//TODO: what about nil?
 
 	switch t := v.(type) {
 	case string:

@@ -71,8 +71,6 @@ func (t Iso8601Utc) MarshalJSON() ([]byte, error) {
 func (t *Iso8601Utc) UnmarshalJSON(data []byte) error {
 	//Note: changes state hence used pointer to itself. -hy
 
-	fmt.Println("#(t *Iso8601Utc) UnmarshalJSON")
-
 	var s string
 
 	s = string(data)
