@@ -65,8 +65,11 @@ func TestSaveTableMetadata(t *testing.T) {
 func testLoadTableMetadata(dbtbl *dbtable.DbTable, t *testing.T) {
 	if tbl, err := dbtable.LoadFromJson(dbtbl); err == nil {
 		fmt.Printf("table loaded :- %v\n", tbl)
-		// testInsertRowJSON(tbl, t)
-		testByPk(tbl, t)
+		if false {
+			testInsertRowJSON(tbl, t)
+		} else {
+			testByPk(tbl, t)
+		}
 	} else {
 		t.Errorf("%v\n", err)
 	}
@@ -96,17 +99,17 @@ func testCreateTableJSON(t *testing.T) {
 	}
 }
 func testByPk(tbl *dbtable.DbTable, t *testing.T) {
-	for i := 0; i < 4; i++ {
+	for i := 0; i < tbl.GetLength(); i++ {
 		testGetRowByPk(tbl, t, i)
 	}
 }
 
 func testInsertRowJSON(tbl *dbtable.DbTable, t *testing.T) {
-	items := [4]string{"captain Marvel", "wanda maximoff", "harry poter", "peter Parker"}
-
+	items := [4]string{"captain america", "IRO MAN", "professor HULk", "peter Parker"}
+	length := tbl.GetLength()
 	for i, item := range items {
 		row01 := row{
-			Id:       i,
+			Id:       i + length,
 			UserName: item,
 		}
 		row01Json, err := json.Marshal(row01)
@@ -115,7 +118,7 @@ func testInsertRowJSON(tbl *dbtable.DbTable, t *testing.T) {
 		} else {
 			if e := tbl.InsertRowJSON(string(row01Json)); e == nil {
 				fmt.Println("Insert Test Successful")
-				testGetRowByPk(tbl, t, i)
+				testGetRowByPk(tbl, t, row01.Id)
 			} else {
 				t.Errorf("%v\n", e)
 			}

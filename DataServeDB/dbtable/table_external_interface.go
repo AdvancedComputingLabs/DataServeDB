@@ -13,9 +13,12 @@
 package dbtable
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 
 	storage "DataServeDB/dbsystem/dbstorage"
 )
@@ -84,14 +87,15 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		//TODO: make error result more user friendly.
 		return errors.New("error occured in parsing row json")
 	}
-	fmt.Printf("row--> %t\n", rowDataUnmarshalled)
 
 	rowProperTyped, rowInternalIds, e := validateRowData(t.tblMain, rowDataUnmarshalled)
 	if e != nil {
 		return e
 	}
-
-	fmt.Printf("table--> %t\n", rowInternalIds)
+	//TODO:- should check the duplicate primary key before insert
+	if _, ok := t.tblData.PkToRowMapper[rowInternalIds[0]]; ok {
+		return errors.New("Duplicate Found for Primary Key")
+	}
 	_ = rowProperTyped // reminds me why it is used.
 
 	{
@@ -99,21 +103,25 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		t.tblData.Rows = append(t.tblData.Rows, rowInternalIds)
 		t.tblData.PkToRowMapper[rowInternalIds[0]] = numOfRows // TODO: should get pk or other secondary keys here properly
 	}
-	fmt.Printf("mapper -> %t \n", t.tblData.PkToRowMapper)
-	tb1, err := json.Marshal(t.tblData.PkToRowMapper[2])
+	/* METOD gob ENCODING */
+	var network bytes.Buffer        // Stand-in for a network connection
+	enc := gob.NewEncoder(&network) // Will write to network.
+	err := enc.Encode(t.tblData)
 	if err != nil {
-		return err
+		log.Fatal("encode error:", err)
 	}
-	println("pk string-->> ", string(tb1))
-
-	tb, err := json.Marshal(t.tblData.Rows)
-	if err != nil {
-		return err
-	}
-	println(string(tb))
-	storage.SaveToTable(t.tblMain.TableId, tb)
+	/*  METHOD JSON ENCODING
+	// tb, err := json.Marshal(t.tblData.Rows)
+	// if err != nil {
+	// 	return err
+	// }
+	*/
+	storage.SaveToTable(t.tblMain.TableId, network.Bytes())
 
 	return nil
+}
+func (t *DbTable) GetLength() int {
+	return int(int64(len(t.tblData.Rows)))
 }
 
 func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {

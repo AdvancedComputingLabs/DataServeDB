@@ -2,9 +2,11 @@ package dbtable
 
 import (
 	storage "DataServeDB/dbsystem/dbstorage"
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"log"
 )
 
 // Description: dbtable package saving and loading file.
@@ -38,38 +40,51 @@ func LoadFromJson(dbtbl *DbTable) (*DbTable, error) {
 		return nil, err
 	}
 
-	var rowDataUnmarshalled []map[int]interface{}
-	if e := json.Unmarshal(row, &rowDataUnmarshalled); e != nil {
-		_ = e
-		//log error for system auditing. This error logging message can be technical.
-		//TODO: make error result more user friendly.
-		return nil, e
+	/**** BY METHOD ON gob ENCODE  *****************/
+	network := bytes.NewReader(row) // Stand-in for a network connection
+	dec := gob.NewDecoder(network)  // Will read from network.
+	var rowDataUnmarshalled tableDataContainer
+	err = dec.Decode(&rowDataUnmarshalled)
+	if err != nil {
+		log.Fatal("decode error 1:", err)
 	}
+	dbtbl.tblData.Rows = rowDataUnmarshalled.Rows
+	dbtbl.tblData.PkToRowMapper = rowDataUnmarshalled.PkToRowMapper
 
-	fmt.Printf("table --> %v\n", dbtbl)
-	for _, rowData := range rowDataUnmarshalled {
-		// fmt.Printf("table --> %t\n", rowData)
-		var row = TableRow{}
-		for i, data := range rowData {
-			row[dbtbl.tblMain.TableFieldsMetaData.FieldInternalIdToFieldMetaData[i].FieldName] = data
-		}
-		_, rowInternalIds, e := validateRowData(dbtbl.tblMain, row)
-		if e != nil {
-			println(e.Error())
-			return nil, e
-		}
+	/*
+		// METHOD BY DOING JSON ENCODE ROWS AND VALIDATE PK
+		// var rowDataUnmarshalled []map[int]interface{}
+		// if e := json.Unmarshal(row, &rowDataUnmarshalled); e != nil {
+		// 	_ = e
+		// 	//log error for system auditing. This error logging message can be technical.
+		// 	//TODO: make error result more user friendly.
+		// 	return nil, e
+		// }
+		// fmt.Printf("table --> %v\n", dbtbl)
+		// for _, rowData := range rowDataUnmarshalled {
+		// 	// fmt.Printf("table --> %t\n", rowData)
+		// 	var row = TableRow{}
+		// 	for i, data := range rowData {
+		// 		row[dbtbl.tblMain.TableFieldsMetaData.FieldInternalIdToFieldMetaData[i].FieldName] = data
+		// 	}
+		// 	_, rowInternalIds, e := validateRowData(dbtbl.tblMain, row)
+		// 	if e != nil {
+		// 		println(e.Error())
+		// 		return nil, e
+		// 	}
 
-		numOfRows := int64(len(dbtbl.tblData.Rows))
-		dbtbl.tblData.Rows = append(dbtbl.tblData.Rows, rowInternalIds)
-		dbtbl.tblData.PkToRowMapper[rowInternalIds[0]] = numOfRows
-	}
+		// 	numOfRows := int64(len(dbtbl.tblData.Rows))
+		// 	dbtbl.tblData.Rows = append(dbtbl.tblData.Rows, rowInternalIds)
+		// 	dbtbl.tblData.PkToRowMapper[rowInternalIds[0]] = numOfRows
+		// }
 
-	// fmt.Printf("Rows ->> %v\n", dbtbl.tblData.Rows)
-	// fmt.Printf("index ->> %t\n", dbtbl.tblData.PkToRowMapper)
-	// dbtbl, e := createTable(slStruct.TableInternalId, &slStruct.CreationStructure, tdc)
-	// if e != nil {
-	// 	return nil, e
-	// }
+		// fmt.Printf("Rows ->> %v\n", dbtbl.tblData.Rows)
+		// fmt.Printf("index ->> %t\n", dbtbl.tblData.PkToRowMapper)
+		// dbtbl, e := createTable(slStruct.TableInternalId, &slStruct.CreationStructure, tdc)
+		// if e != nil {
+		// 	return nil, e
+		// }
+	*/
 
 	return dbtbl, nil
 }
