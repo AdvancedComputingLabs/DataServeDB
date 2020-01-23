@@ -75,7 +75,8 @@ func testCreateTableJSON(t *testing.T) {
 		"Id int32 PrimaryKey",
 		"UserName string Length:5..50 !Nullable",
 		"Counter int32 default:Increment(1,1) !Nullable",
-		"DateAdded datetime default:Now() !Nullable"
+		"DateAdded datetime default:Now() !Nullable",
+		"GlobalId guid default:NewGuid() !Nullable"
 	  ]
 	}`
 

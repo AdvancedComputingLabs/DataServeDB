@@ -13,12 +13,13 @@
 package dbtypes
 
 import (
+	"errors"
+	"math"
+
 	"DataServeDB/dbsystem/builtinfuns"
 	"DataServeDB/dbtypes/dbtype_props"
 	"DataServeDB/parsers"
 	"DataServeDB/utils/convert"
-	"errors"
-	"math"
 )
 
 // section: declarations
