@@ -13,6 +13,7 @@
 package db_system_rules
 
 import (
+	"fmt"
 	"regexp"
 
 	"DataServeDB/dbsystem"
@@ -29,6 +30,11 @@ type zeroMem struct{}
 //It will take a little more memory and cpu cycle, but the convience worth it.
 var syscasing = dbsystem.SystemCasingHandler.Convert
 
+// Database naming rules
+// -
+
+const DbNameValidatorRuleReStrBasic = "[A-Za-z][_0-9A-Za-z]{2,49}"
+
 // Table naming rules:
 // - Len: 3 .. 50; Conservative length for now, might increase in future.
 // - Casing: insensitive
@@ -36,13 +42,16 @@ var syscasing = dbsystem.SystemCasingHandler.Convert
 // - Regex: "^[A-Za-z][0-9A-Za-z]{2,49}$"
 // - Reserved Words: table, tables
 
+const TableNameValidatorRuleReStrBasic = "[A-Za-z][0-9A-Za-z]{2,49}"
+var tblNameValidatorRe = regexp.MustCompile(fmt.Sprintf("^%s$", TableNameValidatorRuleReStrBasic))
+
 var tableNameReservedWords = map[string]zeroMem{
 	syscasing("table"): {},
 	syscasing("tables"): {},
 }
 
 func TableNameRulesCheck(s string) bool {
-	if !regexp.MustCompile("^[A-Za-z][0-9A-Za-z]{2,49}$").MatchString(s) {
+	if !tblNameValidatorRe.MatchString(s) {
 		return false
 	}
 	if _, reserved := tableNameReservedWords[syscasing(s)]; reserved {
