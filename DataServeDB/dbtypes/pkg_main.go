@@ -22,12 +22,13 @@ func getDbType(dbtype_name string) (DbTypeI, error) {
 	if dt, ok := dbtypes_map[cased_type_name]; ok {
 		return dt, nil
 	}
-
 	return nil, fmt.Errorf("variable type '%s' doesn't exist", dbtype_name)
 }
 
 func init() {
 	addDbTypeToMap(Bool)
+	addDbTypeToMap(DateTime)
+	addDbTypeToMap(Guid)
 	addDbTypeToMap(Int32)
 	addDbTypeToMap(String)
 }

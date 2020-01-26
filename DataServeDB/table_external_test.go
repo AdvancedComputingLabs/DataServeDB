@@ -26,8 +26,9 @@ import (
 //Note: did the tests this way because testing needs to chained, maybe there is better built in way to do this.
 
 type row struct {
-	Id       int
-	UserName string
+	Id        int
+	UserName  string
+	DateAdded string
 }
 
 func TestStarter(t *testing.T) {
@@ -46,7 +47,9 @@ func TestSaveTableMetadata(t *testing.T) {
 	  "TableFields": [
 		"Id int32 PrimaryKey",
 		"UserName string Length:5..50 !Nullable",
-		"Counter int32 default:Increment(1,1) !Nullable"
+		"Counter int32 default:Increment(1,1) !Nullable",
+		"DateAdded datetime default:Now() !Nullable",
+		"GlobalId guid default:NewGuid() !Nullable"
 	  ]
 	}`
 
@@ -79,13 +82,14 @@ func testCreateTableJSON(t *testing.T) {
 
 	//"DateAdded datetime default:Now() !Nullable"
 	// "DateAdded !Nullable"; insert datetime
-
 	createTableJSON := `{
 	  "TableName": "Tbl01",
 	  "TableFields": [
 		"Id int32 PrimaryKey",
 		"UserName string Length:5..50 !Nullable",
-		"Counter int32 default:Increment(1,1) !Nullable"
+		"Counter int32 default:Increment(1,1) !Nullable",
+		"DateAdded datetime default:Now() !Nullable",
+		"GlobalId guid default:NewGuid() !Nullable"
 	  ]
 	}`
 
@@ -108,9 +112,11 @@ func testInsertRowJSON(tbl *dbtable.DbTable, t *testing.T) {
 	items := [4]string{"captain america", "IRO MAN", "professor HULk", "peter Parker"}
 	length := tbl.GetLength()
 	for i, item := range items {
+		// println(time.Now().GobEncode())
 		row01 := row{
-			Id:       i + length,
-			UserName: item,
+			Id:        i + length,
+			UserName:  item,
+			DateAdded: "2020-01-26T11:50:18.6752352Z",
 		}
 		row01Json, err := json.Marshal(row01)
 		if err != nil {

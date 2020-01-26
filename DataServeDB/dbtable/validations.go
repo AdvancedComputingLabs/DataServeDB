@@ -90,7 +90,7 @@ func validateCreateTableMetaData(tableInternalId int, createTableData *createTab
 
 		//NOTE: db type property validation is done during parsing.
 	}
-	fmt.Printf("  %v\n", dbTbl)
+	fmt.Printf("table->  %v\n", dbTbl)
 
 	if !pkIsSet {
 		return nil, errors.New("table must have primary key")

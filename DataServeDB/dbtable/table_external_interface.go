@@ -21,6 +21,8 @@ import (
 	"log"
 
 	storage "DataServeDB/dbsystem/dbstorage"
+	"DataServeDB/dbsystem/systypes/dtIso8601Utc"
+	"DataServeDB/dbsystem/systypes/guid"
 )
 
 //TODO: move it to error messages (single location)
@@ -87,11 +89,12 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		//TODO: make error result more user friendly.
 		return errors.New("error occured in parsing row json")
 	}
-
+	println("INsrt")
 	rowProperTyped, rowInternalIds, e := validateRowData(t.tblMain, rowDataUnmarshalled)
 	if e != nil {
 		return e
 	}
+	println("INsrt1")
 	//TODO:- should check the duplicate primary key before insert
 	if _, ok := t.tblData.PkToRowMapper[rowInternalIds[0]]; ok {
 		return errors.New("Duplicate Found for Primary Key")
@@ -104,17 +107,23 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		t.tblData.PkToRowMapper[rowInternalIds[0]] = numOfRows // TODO: should get pk or other secondary keys here properly
 	}
 	/* METOD gob ENCODING */
+	gob.Register(dtIso8601Utc.Iso8601Utc{})
+	gob.Register(guid.Guid{})
+	gob.Register(t.tblData)
+	fmt.Printf("%t", t.tblData)
 	var network bytes.Buffer        // Stand-in for a network connection
 	enc := gob.NewEncoder(&network) // Will write to network.
 	err := enc.Encode(t.tblData)
 	if err != nil {
+		println("error ")
 		log.Fatal("encode error:", err)
 	}
 	/*  METHOD JSON ENCODING
-	// tb, err := json.Marshal(t.tblData.Rows)
-	// if err != nil {
-	// 	return err
-	// }
+	tb, err := json.Marshal(t.tblData.Rows)
+	if err != nil {
+		return err
+	}
+	storage.SaveToTable(t.tblMain.TableId, tb)
 	*/
 	storage.SaveToTable(t.tblMain.TableId, network.Bytes())
 
