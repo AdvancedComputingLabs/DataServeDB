@@ -56,6 +56,11 @@ func (t Iso8601Utc) String() string {
 	return time.Time(t).Format(iso8601UtcForm)
 }
 
+func (t Iso8601Utc) MarshalBinary() ([]byte, error) {
+	return []byte(t.String()), nil
+}
+
+
 func (t Iso8601Utc) MarshalJSON() ([]byte, error) {
 	//Note: Doesn't need to be pointer since it is not changing its state. -hy
 
@@ -68,12 +73,22 @@ func (t Iso8601Utc) MarshalJSON() ([]byte, error) {
 	return []byte(s), nil
 }
 
+func (t *Iso8601Utc) UnmarshalBinary(data []byte) error {
+	s := string(data)
+	dt_gonative, e := time.Parse(iso8601UtcForm, s)
+	if e != nil {
+		//TODO: log error? is it needed?
+		fmt.Println(e)
+		return errors.New("date/time is not in ISO 8601 UTC format")
+	}
+	*t = Iso8601Utc(dt_gonative)
+	return nil
+}
+
 func (t *Iso8601Utc) UnmarshalJSON(data []byte) error {
 	//Note: changes state hence used pointer to itself. -hy
 
-	var s string
-
-	s = string(data)
+	s := string(data)
 
 	//for json, date must be quoted as string
 	dt_gonative, e := time.Parse(iso8601UtcFormInStrQuotes, s)
