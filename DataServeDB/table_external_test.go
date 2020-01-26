@@ -119,3 +119,4 @@ func testGetRowByPk(tbl *dbtable.DbTable, t *testing.T) {
 		t.Errorf("%v\n", e)
 	}
 }
+

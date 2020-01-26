@@ -13,6 +13,8 @@
 package dtIso8601Utc
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -148,6 +150,35 @@ func TestIso8601UseCases(t *testing.T) {
 				}
 			}
 
+		}
+	}
+
+	//gob marshal umarshal
+	{
+		tester := DtTester{
+			Title: "GOB encoding test",
+		}
+		tester.MyDateTime, _ = Iso8601UtcFromString("0900-01-01T00:00:00.0000Z")
+
+		var buf bytes.Buffer
+		enc := gob.NewEncoder(&buf)
+		e := enc.Encode(tester)
+		if e != nil {
+			t.Error(e)
+		} else {
+			fmt.Println(buf.String())
+		}
+
+		var testerDecoded DtTester
+
+		bufDecode := bytes.NewReader(buf.Bytes())
+		dec := gob.NewDecoder(bufDecode)
+		e = dec.Decode(&testerDecoded)
+		if e != nil {
+			t.Error(e)
+		} else {
+			testerDecoded.Title += " decoded"
+			fmt.Println(testerDecoded)
 		}
 	}
 
