@@ -51,7 +51,7 @@ func TestAddFieldsName_Normal(t *testing.T) {
 		FieldType:       dbtypes.Bool,
 	}
 
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if err := tb01.TableFieldsMetaData.add(&dbFieldRule, dbsystem.SystemCasingHandler); err != nil {
 		t.Error("This should pass.")
@@ -77,7 +77,7 @@ func TestAddFieldsName_SameFieldNameMorethanOnce(t *testing.T) {
 		FieldType:       dbtypes.Bool,
 	}
 
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if err := tb01.TableFieldsMetaData.add(&dbFieldRule, dbsystem.SystemCasingHandler); err != nil {
 		t.Error("This should pass.")
@@ -102,7 +102,7 @@ func TestAddFieldsIds_Normal(t *testing.T) {
 		FieldType:       dbtypes.Bool,
 	}
 
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if err := tb01.TableFieldsMetaData.add(&dbFieldRule, dbsystem.SystemCasingHandler); err != nil {
 		t.Error("This should pass.")
@@ -127,7 +127,7 @@ func TestAddFieldsIds_SameIds(t *testing.T) {
 		FieldType:       dbtypes.Bool,
 	}
 
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if err := tb01.TableFieldsMetaData.add(&dbFieldRule, dbsystem.SystemCasingHandler); err != nil {
 		t.Error("This should pass.")
@@ -158,7 +158,7 @@ func TestAddFieldsIds_InternalIds(t *testing.T) {
 		FieldType:       dbtypes.Bool,
 	}
 
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if err := tb01.TableFieldsMetaData.add(&dbFieldRule, dbsystem.SystemCasingHandler); err != nil {
 		t.Error("This should pass.")
@@ -171,7 +171,7 @@ func TestAddFieldsIds_InternalIds(t *testing.T) {
 
 //3.a
 func TestGetFieldMeta_FieldNonExistent(t *testing.T) {
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if _, err := tb01.TableFieldsMetaData.getFieldMetadataInternal("Id", dbsystem.SystemCasingHandler); err == nil {
 		t.Error("This should be not nil.")
@@ -193,7 +193,7 @@ func TestGetFieldMeta_Normal(t *testing.T) {
 		FieldType:       dbtypes.Bool,
 	}
 
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if err := tb01.TableFieldsMetaData.add(&dbFieldRule, dbsystem.SystemCasingHandler); err != nil {
 		t.Error("This should pass.")
@@ -227,7 +227,7 @@ func TestRemoveFieldMeta_Normal(t *testing.T) {
 		FieldType:       dbtypes.Bool,
 	}
 
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if err := tb01.TableFieldsMetaData.add(&dbFieldRule, dbsystem.SystemCasingHandler); err != nil {
 		t.Error("This should pass.")
@@ -254,7 +254,7 @@ func TestRemoveFieldMeta_Normal(t *testing.T) {
 
 func TestRemoveFieldMeta_NonExistant(t *testing.T) {
 
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if err := tb01.TableFieldsMetaData.remove("Id", dbsystem.SystemCasingHandler); err != nil {
 		fmt.Println(err)
@@ -275,7 +275,7 @@ func TestUpdateFieldMeta_Normal(t *testing.T) {
 		FieldType:       dbtypes.Bool,
 	}
 
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if err := tb01.TableFieldsMetaData.add(&dbFieldRule, dbsystem.SystemCasingHandler); err != nil {
 		t.Error("This should pass.")
@@ -308,5 +308,3 @@ func TestUpdateFieldMeta_Normal(t *testing.T) {
 		}
 	}
 }
-
-

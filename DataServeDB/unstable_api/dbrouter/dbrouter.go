@@ -14,6 +14,7 @@ package dbrouter
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -27,9 +28,9 @@ type HttpRestApiHandlerFnI = func(w http.ResponseWriter, r *http.Request, httpMe
 
 // private as it doesn't need to be exposed.
 type reqPathToHandler struct {
-	MatchPath string
+	MatchPath      string
 	matchPathRegEx *regexp.Regexp
-	HandlerFn HttpRestApiHandlerFnI
+	HandlerFn      HttpRestApiHandlerFnI
 }
 
 // keywords, identifiers, and placeholders
@@ -61,6 +62,7 @@ func Register(matchPath string, handlerFn HttpRestApiHandlerFnI) error {
 
 	pathsToHandlers = append(pathsToHandlers, p2h)
 
+	fmt.Printf("%v\n%v\n", pathsToHandlers, p2h.MatchPath)
 	return nil
 }
 
@@ -68,15 +70,32 @@ func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath str
 	if pathsToHandlers == nil {
 		return 0, nil, errors.New("no match path exits")
 	}
+  
+	var dbName string
+	var tblName string
 
 	for _, m := range pathsToHandlers {
-		if m.matchPathRegEx.MatchString(reqPath) {
+		// println("here ", m.matchPathRegEx.FindString(reqPath))
+		if path := m.matchPathRegEx.FindString(reqPath); path != "" {
+			// if m.matchPathRegEx.MatchString(reqPath) {
+			println("path", path)
 			//TODO: extract db name and check
+			var re = regexp.MustCompile(`(?m)[A-Za-z][_0-9A-Za-z]{2,49}`)
+
+			match := re.FindAllString(reqPath, -1)
+			dbName = match[0]
+			tblName = match[2]
+			println("table name", dbName, tblName)
+			// fmt.Printf("%v\n", DataServeDB.MapOfdb)
+
 			//TODO: extract correct path for the handler
 			//TODO: permissions check for db access?
 			//TODO: add auth
 			return m.HandlerFn(w, r, httpMethod, "todo", reqPath)
 		}
+
+		println(m.matchPathRegEx.String())
+		println(reqPath)
 	}
 
 	return 0, nil, errors.New("resource in the path not found")
