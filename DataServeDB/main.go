@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 )
+
 //TODO:
 // 1) use db's own conversion functions [done; sort of, see note], note: for UInt conversion in Length parsing db's convert package is not used as UInt conversion function is not there.
 // 2) add weakconversion to field properties [done]

@@ -2,6 +2,8 @@ package dbtable
 
 import (
 	storage "DataServeDB/dbsystem/dbstorage"
+	"DataServeDB/dbsystem/systypes/dtIso8601Utc"
+	"DataServeDB/dbsystem/systypes/guid"
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
@@ -33,9 +35,14 @@ func GetSaveLoadStructure(dbtbl *DbTable) (string, error) {
 	return "", errors.New("did not convert to json")
 }
 
-func LoadFromJson(dbtbl *DbTable) (*DbTable, error) {
+func LoadFromJson(dbtblJson string) (*DbTable, error) {
 	var slStruct DbTableRecreation
-	row, err := storage.LoadTable(slStruct.TableInternalId)
+	if e := json.Unmarshal([]byte(dbtblJson), &slStruct); e != nil {
+		//TODO: for later after version 0.5, return structured error, top error json error and in sub structure include the json message.
+		return nil, e
+	}
+
+	row, err := storage.LoadTableFromDisk(slStruct.TableInternalId)
 	if err != nil {
 		return nil, err
 	}
@@ -43,14 +50,17 @@ func LoadFromJson(dbtbl *DbTable) (*DbTable, error) {
 	/**** BY METHOD ON gob ENCODE  *****************/
 	network := bytes.NewReader(row) // Stand-in for a network connection
 	dec := gob.NewDecoder(network)  // Will read from network.
+	gob.Register(dtIso8601Utc.Iso8601Utc{})
+	gob.Register(guid.Guid{})
 	var rowDataUnmarshalled tableDataContainer
 	err = dec.Decode(&rowDataUnmarshalled)
 	if err != nil {
 		log.Fatal("decode error 1:", err)
 	}
-	dbtbl.tblData.Rows = rowDataUnmarshalled.Rows
-	dbtbl.tblData.PkToRowMapper = rowDataUnmarshalled.PkToRowMapper
-
+	tblData := &tableDataContainer{
+		Rows:          rowDataUnmarshalled.Rows,
+		PkToRowMapper: rowDataUnmarshalled.PkToRowMapper,
+	}
 	/*
 		// METHOD BY DOING JSON ENCODE ROWS AND VALIDATE PK
 		// var rowDataUnmarshalled []map[int]interface{}
@@ -80,11 +90,12 @@ func LoadFromJson(dbtbl *DbTable) (*DbTable, error) {
 
 		// fmt.Printf("Rows ->> %v\n", dbtbl.tblData.Rows)
 		// fmt.Printf("index ->> %t\n", dbtbl.tblData.PkToRowMapper)
-		// dbtbl, e := createTable(slStruct.TableInternalId, &slStruct.CreationStructure, tdc)
-		// if e != nil {
-		// 	return nil, e
-		// }
+
 	*/
+	dbtbl, e := createTable(slStruct.TableInternalId, &slStruct.CreationStructure, tblData)
+	if e != nil {
+		return nil, e
+	}
 
 	return dbtbl, nil
 }

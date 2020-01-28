@@ -68,7 +68,7 @@ func SaveToTable(tableID int, data []byte) error {
 
 // tableName or table Id should pass
 // TODO :- change to suitable one, as of now it given as table name
-func LoadTable(tableID int) ([]byte, error) {
+func LoadTableFromDisk(tableID int) ([]byte, error) {
 	file := fmt.Sprintf("%stable%d.json", tablesPath, tableID)
 	data, err := ioutil.ReadFile(file)
 

@@ -56,7 +56,7 @@ func TestSaveTableMetadata(t *testing.T) {
 	if tbl01, err := dbtable.CreateTableJSON(createTableJSON); err == nil {
 		if jsonStr, err := dbtable.GetSaveLoadStructure(tbl01); err == nil {
 			println(jsonStr)
-			testLoadTableMetadata(tbl01, t)
+			testLoadTableMetadata(jsonStr, t)
 		} else {
 			t.Errorf("%v\n", err)
 		}
@@ -65,8 +65,8 @@ func TestSaveTableMetadata(t *testing.T) {
 	}
 }
 
-func testLoadTableMetadata(dbtbl *dbtable.DbTable, t *testing.T) {
-	if tbl, err := dbtable.LoadFromJson(dbtbl); err == nil {
+func testLoadTableMetadata(jsonStr string, t *testing.T) {
+	if tbl, err := dbtable.LoadFromJson(jsonStr); err == nil {
 		fmt.Printf("table loaded :- %v\n", tbl)
 		if false {
 			testInsertRowJSON(tbl, t)
