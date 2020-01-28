@@ -63,7 +63,6 @@ func Register(matchPath string, handlerFn HttpRestApiHandlerFnI) error {
 	pathsToHandlers = append(pathsToHandlers, p2h)
 
 	fmt.Printf("%v\n%v\n", pathsToHandlers, p2h.MatchPath)
-
 	return nil
 }
 
@@ -71,6 +70,7 @@ func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath str
 	if pathsToHandlers == nil {
 		return 0, nil, errors.New("no match path exits")
 	}
+  
 	var dbName string
 	var tblName string
 
@@ -87,11 +87,13 @@ func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath str
 			tblName = match[2]
 			println("table name", dbName, tblName)
 			// fmt.Printf("%v\n", DataServeDB.MapOfdb)
+
 			//TODO: extract correct path for the handler
 			//TODO: permissions check for db access?
 			//TODO: add auth
 			return m.HandlerFn(w, r, httpMethod, "todo", reqPath)
 		}
+
 		println(m.matchPathRegEx.String())
 		println(reqPath)
 	}

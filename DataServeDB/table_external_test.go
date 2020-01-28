@@ -55,7 +55,7 @@ func TestSaveTableMetadata(t *testing.T) {
 
 	if tbl01, err := dbtable.CreateTableJSON(createTableJSON); err == nil {
 		if jsonStr, err := dbtable.GetSaveLoadStructure(tbl01); err == nil {
-			println(jsonStr)
+			fmt.Println(jsonStr)
 			testLoadTableMetadata(jsonStr, t)
 		} else {
 			t.Errorf("%v\n", err)
@@ -82,6 +82,7 @@ func testCreateTableJSON(t *testing.T) {
 
 	//"DateAdded datetime default:Now() !Nullable"
 	// "DateAdded !Nullable"; insert datetime
+
 	createTableJSON := `{
 	  "TableName": "Tbl01",
 	  "TableFields": [
@@ -146,3 +147,4 @@ func testGetRowByPk(tbl *dbtable.DbTable, t *testing.T, i int) {
 		t.Errorf("%v\n", e)
 	}
 }
+

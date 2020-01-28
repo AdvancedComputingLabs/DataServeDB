@@ -73,6 +73,7 @@ func createTable(tableInternalId int, createTableData *createTableExternalStruct
 	tbl.tblData = tblDataContainer
 
 	tbl.createTableStructure = *createTableData
+
 	return &tbl, nil
 }
 

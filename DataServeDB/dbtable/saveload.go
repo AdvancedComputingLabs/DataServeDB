@@ -1,14 +1,27 @@
+// Copyright (c) 2020 Advanced Computing Labs DMCC
+
+/*
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+	THE SOFTWARE.
+*/
+
 package dbtable
 
 import (
-	storage "DataServeDB/dbsystem/dbstorage"
-	"DataServeDB/dbsystem/systypes/dtIso8601Utc"
-	"DataServeDB/dbsystem/systypes/guid"
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"log"
+  
+  storage "DataServeDB/dbsystem/dbstorage"
+	"DataServeDB/dbsystem/systypes/dtIso8601Utc"
+	"DataServeDB/dbsystem/systypes/guid"
 )
 
 // Description: dbtable package saving and loading file.
@@ -37,6 +50,7 @@ func GetSaveLoadStructure(dbtbl *DbTable) (string, error) {
 
 func LoadFromJson(dbtblJson string) (*DbTable, error) {
 	var slStruct DbTableRecreation
+
 	if e := json.Unmarshal([]byte(dbtblJson), &slStruct); e != nil {
 		//TODO: for later after version 0.5, return structured error, top error json error and in sub structure include the json message.
 		return nil, e
@@ -93,6 +107,7 @@ func LoadFromJson(dbtblJson string) (*DbTable, error) {
 
 	*/
 	dbtbl, e := createTable(slStruct.TableInternalId, &slStruct.CreationStructure, tblData)
+
 	if e != nil {
 		return nil, e
 	}

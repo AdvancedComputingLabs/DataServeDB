@@ -96,8 +96,8 @@ func (t *tableFieldsMetadataT) getCopyOfFieldsMetadataSafe() []tableFieldStruct 
 	defer t.mu.RUnlock()
 
 	var result []tableFieldStruct
-
-	for _, v := range t.FieldInternalIdToFieldMetaData {
+  
+	for _, v := range t.fieldInternalIdToFieldMetaData {
 		result = append(result, *v)
 	}
 
@@ -190,15 +190,15 @@ func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow Table
 func (t *tableFieldsMetadataT) loadFieldsMetadataSafe(fields []tableFieldStruct) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-
-	if len(t.FieldInternalIdToFieldMetaData) > 0 || len(t.FieldNameToFieldInternalId) > 0 {
+  
+	if len(t.fieldInternalIdToFieldMetaData) > 0 || len(t.fieldNameToFieldInternalId) > 0 {
 		//should be empty, if not error
 		return errors.New("fields data is already loaded, it should be loaded once only")
 	}
 
 	for _, v := range fields {
-		t.FieldNameToFieldInternalId[v.FieldName] = v.FieldInternalId
-		t.FieldInternalIdToFieldMetaData[v.FieldInternalId] = &v
+		t.fieldNameToFieldInternalId[v.FieldName] = v.FieldInternalId
+		t.fieldInternalIdToFieldMetaData[v.FieldInternalId] = &v
 	}
 
 	return nil
