@@ -23,18 +23,18 @@ func fromLabeledByFieldNames(row TableRow, tbl *tableMain, fieldCasingHandler db
 	var meta = &tbl.TableFieldsMetaData
 	rowById := make(tableRowByInternalIds)
 
-	tmp, e := meta.getRowWithFieldMetadataInternal(row, fieldCasingHandler);
+	tmp, e := meta.getRowWithFieldMetadataInternal(row, fieldCasingHandler)
 	if e != nil {
 		return nil, e
 	}
 
 	//execute
 	for Id, holder := range tmp {
-				if vConverted, errConversion := holder.tableFieldInternal.FieldType.ConvertValue(holder.v, holder.tableFieldInternal.FieldTypeProps); errConversion == nil {
-					rowById[Id] = vConverted
-				} else {
-					return nil, errRplRowDataConversion(holder.tableFieldInternal.FieldName, errConversion)
-				}
+		if vConverted, errConversion := holder.tableFieldInternal.FieldType.ConvertValue(holder.v, holder.tableFieldInternal.FieldTypeProps); errConversion == nil {
+			rowById[Id] = vConverted
+		} else {
+			return nil, errRplRowDataConversion(holder.tableFieldInternal.FieldName, errConversion)
+		}
 	}
 
 	return rowById, nil
@@ -51,7 +51,7 @@ func toLabeledByFieldNames(row tableRowByInternalIds, tbl *tableMain) (TableRow,
 	rowByNames := make(TableRow)
 
 	for k, v := range row {
-		if fieldProps, exits := meta.fieldInternalIdToFieldMetaData[k]; exits {
+		if fieldProps, exits := meta.FieldInternalIdToFieldMetaData[k]; exits {
 			//NOTE: this does not need conversion because this will probably come from db internal row and will have correct type.
 			//But check/test.
 			rowByNames[fieldProps.FieldName] = v //NOTE: used field name stored.

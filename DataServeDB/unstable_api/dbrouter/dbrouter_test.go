@@ -17,5 +17,5 @@ func TestRegister(t *testing.T) {
 }
 
 func testMatchPathAndCallHandler(t *testing.T) {
-	MatchPathAndCallHandler(nil, nil, "re_db/tables/users", "GET")
+	MatchPathAndCallHandler(nil, nil, "test_db/tables/users", "GET")
 }

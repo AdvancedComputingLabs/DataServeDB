@@ -34,7 +34,7 @@ External Operations:
 3) Get table row.
 4) Update table row.
 
- */
+*/
 
 func TestAddData_Temp(t *testing.T) {
 
@@ -52,7 +52,7 @@ func TestAddData_Temp(t *testing.T) {
 		FieldType:       dbtypes.Bool,
 	}
 
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if err := tb01.TableFieldsMetaData.add(&dbFieldRule, dbsystem.SystemCasingHandler); err != nil {
 		t.Error("This should pass.")
@@ -75,7 +75,7 @@ func TestAddData_Temp(t *testing.T) {
 		}
 	}
 
-  	{ // from json creation, test: non-existent field
+	{ // from json creation, test: non-existent field
 		row01Json := `{
 			"Id" : 1,
 			"WrongName" : true
@@ -96,7 +96,7 @@ func TestAddData_Temp(t *testing.T) {
 
 	{ // from json creation, test: with one field left out.
 
-	//NOTE: this works at the moment unless there are non-nullable without default value.
+		//NOTE: this works at the moment unless there are non-nullable without default value.
 
 		row01Json := `{
 			"Id" : 1

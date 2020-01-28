@@ -34,7 +34,7 @@ func TestAddData_Normal(t *testing.T) {
 		FieldType:       dbtypes.Bool,
 	}
 
-	tb01 := newTableMain("Tbl01")
+	tb01 := newTableMain(01, "Tbl01")
 
 	if err := tb01.TableFieldsMetaData.add(&dbFieldRule, dbsystem.SystemCasingHandler); err != nil {
 		t.Error("This should pass.")

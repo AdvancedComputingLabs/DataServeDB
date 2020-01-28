@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -24,23 +25,31 @@ import (
 
 //Note: did the tests this way because testing needs to chained, maybe there is better built in way to do this.
 
+type row struct {
+	Id        int
+	UserName  string
+	DateAdded string
+}
+
 func TestStarter(t *testing.T) {
 	testCreateTableJSON(t)
 }
 
-func TestSaveTableMetadata(t *testing.T)  {
+func TestSaveTableMetadata(t *testing.T) {
 	/*
-	Problems:
-	1) data attaching needs to be figured out.
-	2) counter starts again, counter state needs to be saved.
-	 */
-	
+		Problems:
+		1) data attaching needs to be figured out.
+		2) counter starts again, counter state needs to be saved.
+	*/
+
 	createTableJSON := `{
 	  "TableName": "Tbl01",
 	  "TableFields": [
 		"Id int32 PrimaryKey",
 		"UserName string Length:5..50 !Nullable",
-		"Counter int32 default:Increment(1,1) !Nullable"
+		"Counter int32 default:Increment(1,1) !Nullable",
+		"DateAdded datetime default:Now() !Nullable",
+		"GlobalId guid default:NewGuid() !Nullable"
 	  ]
 	}`
 
@@ -56,9 +65,14 @@ func TestSaveTableMetadata(t *testing.T)  {
 	}
 }
 
-func testLoadTableMetadata(jsonStr string, t *testing.T)  {
+func testLoadTableMetadata(jsonStr string, t *testing.T) {
 	if tbl, err := dbtable.LoadFromJson(jsonStr); err == nil {
-		testInsertRowJSON(tbl, t)
+		fmt.Printf("table loaded :- %v\n", tbl)
+		if false {
+			testInsertRowJSON(tbl, t)
+		} else {
+			testByPk(tbl, t)
+		}
 	} else {
 		t.Errorf("%v\n", err)
 	}
@@ -89,28 +103,42 @@ func testCreateTableJSON(t *testing.T) {
 		t.Errorf("%v\n", err)
 	}
 }
-
-func testInsertRowJSON(tbl *dbtable.DbTable, t *testing.T) {
-
-	row01Json := `{
-    "Id" : 1,
-    "UserName" : "JohnDoe"
-}`
-
-	if e := tbl.InsertRowJSON(row01Json); e == nil {
-		fmt.Println("Insert Test Successful")
-		testGetRowByPk(tbl, t)
-	} else {
-		t.Errorf("%v\n", e)
+func testByPk(tbl *dbtable.DbTable, t *testing.T) {
+	for i := 0; i < tbl.GetLength(); i++ {
+		testGetRowByPk(tbl, t, i)
 	}
 }
 
-func testGetRowByPk(tbl *dbtable.DbTable, t *testing.T) {
+func testInsertRowJSON(tbl *dbtable.DbTable, t *testing.T) {
+	items := [4]string{"captain america", "IRO MAN", "professor HULk", "peter Parker"}
+	length := tbl.GetLength()
+	for i, item := range items {
+		// println(time.Now().GobEncode())
+		row01 := row{
+			Id:        i + length,
+			UserName:  item,
+			DateAdded: "2020-01-26T11:50:18.6752352Z",
+		}
+		row01Json, err := json.Marshal(row01)
+		if err != nil {
+			t.Error("erroe converting")
+		} else {
+			if e := tbl.InsertRowJSON(string(row01Json)); e == nil {
+				fmt.Println("Insert Test Successful")
+				testGetRowByPk(tbl, t, row01.Id)
+			} else {
+				t.Errorf("%v\n", e)
+			}
+		}
+	}
+}
+
+func testGetRowByPk(tbl *dbtable.DbTable, t *testing.T, i int) {
 	//TODO: test with multiple types to make sure get function is working properly with different types.
 
-	if row, e := tbl.GetRowByPrimaryKey(1); e == nil {
+	if row, e := tbl.GetRowByPrimaryKey(i); e == nil {
 		fmt.Println(row)
-		if rowJson, e := tbl.GetRowByPrimaryKeyReturnsJSON(1); e == nil {
+		if rowJson, e := tbl.GetRowByPrimaryKeyReturnsJSON(i); e == nil {
 			fmt.Println(rowJson)
 		} else {
 			t.Errorf("%v\n", e)

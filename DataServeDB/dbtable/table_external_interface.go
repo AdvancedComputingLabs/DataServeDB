@@ -13,9 +13,16 @@
 package dbtable
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+
+	storage "DataServeDB/dbsystem/dbstorage"
+	"DataServeDB/dbsystem/systypes/dtIso8601Utc"
+	"DataServeDB/dbsystem/systypes/guid"
 )
 
 //TODO: move it to error messages (single location)
@@ -23,13 +30,13 @@ import (
 type TableRow map[string]interface{} //it is by field name.
 
 type createTableExternalStruct struct {
-	TableName      string
-	TableFields    []string
+	TableName   string
+	TableFields []string
 }
 
 type DbTable struct {
-	tblMain *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
-	tblData *tableDataContainer
+	tblMain              *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
+	tblData              *tableDataContainer
 	createTableStructure createTableExternalStruct
 }
 
@@ -71,7 +78,7 @@ func createTable(tableInternalId int, createTableData *createTableExternalStruct
 }
 
 func (t *DbTable) DebugPrintInternalFieldsNameMappings() string {
-	return fmt.Sprintf("%#v", t.tblMain.TableFieldsMetaData.fieldNameToFieldInternalId)
+	return fmt.Sprintf("%#v", t.tblMain.TableFieldsMetaData.FieldNameToFieldInternalId)
 }
 
 func (t *DbTable) InsertRowJSON(jsonStr string) error {
@@ -83,12 +90,14 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		//TODO: make error result more user friendly.
 		return errors.New("error occured in parsing row json")
 	}
-
 	rowProperTyped, rowInternalIds, e := validateRowData(t.tblMain, rowDataUnmarshalled)
 	if e != nil {
 		return e
 	}
-
+	// check the duplicate primary key before insert
+	if _, ok := t.tblData.PkToRowMapper[rowInternalIds[0]]; ok {
+		return errors.New("Duplicate Found for Primary Key")
+	}
 	_ = rowProperTyped // reminds me why it is used.
 
 	{
@@ -96,12 +105,34 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		t.tblData.Rows = append(t.tblData.Rows, rowInternalIds)
 		t.tblData.PkToRowMapper[rowInternalIds[0]] = numOfRows // TODO: should get pk or other secondary keys here properly
 	}
+	/* METOD gob ENCODING */
+	gob.Register(dtIso8601Utc.Iso8601Utc{})
+	gob.Register(guid.Guid{})
+	var network bytes.Buffer        // Stand-in for a network connection
+	enc := gob.NewEncoder(&network) // Will write to network.
+	err := enc.Encode(t.tblData)
+	if err != nil {
+		println("error ")
+		log.Fatal("encode error:", err)
+	}
+	/*  METHOD JSON ENCODING
+	tb, err := json.Marshal(t.tblData.Rows)
+	if err != nil {
+		return err
+	}
+	storage.SaveToTable(t.tblMain.TableId, tb)
+	*/
+	storage.SaveToTable(t.tblMain.TableId, network.Bytes())
 
 	return nil
+}
+func (t *DbTable) GetLength() int {
+	return int(int64(len(t.tblData.Rows)))
 }
 
 func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {
 	dbType, dbTypeProps := t.tblMain.getPkType()
+
 	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps)
 	if e != nil {
 		return nil, e
@@ -121,6 +152,7 @@ func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {
 }
 
 func (t *DbTable) GetRowByPrimaryKeyReturnsJSON(pkValue interface{}) (string, error) {
+	// fmt.Printf("here %v\n", t.tblData.Rows)
 	row, e := t.GetRowByPrimaryKey(pkValue)
 	if e != nil {
 		return "", e
