@@ -18,7 +18,7 @@ import (
 	"os"
 )
 
-var dbFile = "dbsystem/dbstorage/meta/data.json"
+var dbFile = "../../data/re_db/table/users.json"
 var tablesPath = "dbsystem/dbstorage/tables/"
 
 type dataType interface{}
@@ -31,6 +31,7 @@ func CreateTable(tableName string) {
 
 func SaveToDisk(data []byte) error {
 	println(string(data))
+	println(dbFile)
 	db, err := os.OpenFile(dbFile, os.O_EXCL|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		if !os.IsExist(err) {
@@ -50,9 +51,9 @@ func SaveToDisk(data []byte) error {
 // TODO :- change to suitable one, as of now it given as table name
 func SaveToTable(tableID int, data []byte) error {
 	println(tableID)
-	file := fmt.Sprintf("%stable%d.json", tablesPath, tableID)
-	println("file", file)
-	db, err := os.OpenFile(file, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
+	// file := fmt.Sprintf("%stable%d.json", tablesPath, tableID)
+	// println("file", file)
+	db, err := os.OpenFile(dbFile, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		println(err)
 		if !os.IsExist(err) {
@@ -69,10 +70,12 @@ func SaveToTable(tableID int, data []byte) error {
 // tableName or table Id should pass
 // TODO :- change to suitable one, as of now it given as table name
 func LoadTableFromDisk(tableID int) ([]byte, error) {
-	file := fmt.Sprintf("%stable%d.json", tablesPath, tableID)
-	data, err := ioutil.ReadFile(file)
 
-	return data, err
+	file := fmt.Sprintf("%stable%d.json", tablesPath, tableID)
+	return ioutil.ReadFile(file)
+}
+func LoadTableFromPath() ([]byte, error) {
+	return ioutil.ReadFile(dbFile)
 }
 
 func LoadTableMeta() ([]byte, error) {

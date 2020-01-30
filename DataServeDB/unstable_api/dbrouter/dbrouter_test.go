@@ -1,6 +1,7 @@
 package dbrouter
 
 import (
+	"DataServeDB/unstable_api/runtime"
 	"fmt"
 	"net/http"
 	"testing"
@@ -12,10 +13,11 @@ func TableHandlerTester(w http.ResponseWriter, r *http.Request, httpMethod strin
 }
 
 func TestRegister(t *testing.T) {
+	runtime.InitMapOfDB()
 	Register("{db_name}/tables/{tbl_name}", TableHandlerTester)
 	testMatchPathAndCallHandler(t)
 }
 
 func testMatchPathAndCallHandler(t *testing.T) {
-	MatchPathAndCallHandler(nil, nil, "test_db/tables/users", "GET")
+	MatchPathAndCallHandler(nil, nil, "re_db/tables/users", "GET")
 }

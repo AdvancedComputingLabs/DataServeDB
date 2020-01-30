@@ -35,8 +35,8 @@ type createTableExternalStruct struct {
 }
 
 type DbTable struct {
-	tblMain              *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
-	tblData              *tableDataContainer
+	TblMain              *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
+	TblData              *tableDataContainer
 	createTableStructure createTableExternalStruct
 }
 
@@ -66,11 +66,11 @@ func createTable(tableInternalId int, createTableData *createTableExternalStruct
 	if tblMain, err := validateCreateTableMetaData(tableInternalId, createTableData); err != nil {
 		return nil, err
 	} else {
-		tbl.tblMain = tblMain
+		tbl.TblMain = tblMain
 
 	}
 
-	tbl.tblData = tblDataContainer
+	tbl.TblData = tblDataContainer
 
 	tbl.createTableStructure = *createTableData
 
@@ -78,7 +78,7 @@ func createTable(tableInternalId int, createTableData *createTableExternalStruct
 }
 
 func (t *DbTable) DebugPrintInternalFieldsNameMappings() string {
-	return fmt.Sprintf("%#v", t.tblMain.TableFieldsMetaData.FieldNameToFieldInternalId)
+	return fmt.Sprintf("%#v", t.TblMain.TableFieldsMetaData.FieldNameToFieldInternalId)
 }
 
 func (t *DbTable) InsertRowJSON(jsonStr string) error {
@@ -90,27 +90,27 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		//TODO: make error result more user friendly.
 		return errors.New("error occured in parsing row json")
 	}
-	rowProperTyped, rowInternalIds, e := validateRowData(t.tblMain, rowDataUnmarshalled)
+	rowProperTyped, rowInternalIds, e := validateRowData(t.TblMain, rowDataUnmarshalled)
 	if e != nil {
 		return e
 	}
 	// check the duplicate primary key before insert
-	if _, ok := t.tblData.PkToRowMapper[rowInternalIds[0]]; ok {
+	if _, ok := t.TblData.PkToRowMapper[rowInternalIds[0]]; ok {
 		return errors.New("Duplicate Found for Primary Key")
 	}
 	_ = rowProperTyped // reminds me why it is used.
 
 	{
-		numOfRows := int64(len(t.tblData.Rows))
-		t.tblData.Rows = append(t.tblData.Rows, rowInternalIds)
-		t.tblData.PkToRowMapper[rowInternalIds[0]] = numOfRows // TODO: should get pk or other secondary keys here properly
+		numOfRows := int64(len(t.TblData.Rows))
+		t.TblData.Rows = append(t.TblData.Rows, rowInternalIds)
+		t.TblData.PkToRowMapper[rowInternalIds[0]] = numOfRows // TODO: should get pk or other secondary keys here properly
 	}
 	/* METOD gob ENCODING */
 	gob.Register(dtIso8601Utc.Iso8601Utc{})
 	gob.Register(guid.Guid{})
 	var network bytes.Buffer        // Stand-in for a network connection
 	enc := gob.NewEncoder(&network) // Will write to network.
-	err := enc.Encode(t.tblData)
+	err := enc.Encode(t.TblData)
 	if err != nil {
 		println("error ")
 		log.Fatal("encode error:", err)
@@ -122,28 +122,28 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 	}
 	storage.SaveToTable(t.tblMain.TableId, tb)
 	*/
-	storage.SaveToTable(t.tblMain.TableId, network.Bytes())
+	storage.SaveToTable(t.TblMain.TableId, network.Bytes())
 
 	return nil
 }
 func (t *DbTable) GetLength() int {
-	return int(int64(len(t.tblData.Rows)))
+	return int(int64(len(t.TblData.Rows)))
 }
 
 func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {
-	dbType, dbTypeProps := t.tblMain.getPkType()
+	dbType, dbTypeProps := t.TblMain.getPkType()
 
 	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps)
 	if e != nil {
 		return nil, e
 	}
 
-	rowNum, exists := t.tblData.PkToRowMapper[pkValueCasted]
+	rowNum, exists := t.TblData.PkToRowMapper[pkValueCasted]
 	if !exists {
 		return nil, fmt.Errorf("value '%v' not found", pkValue)
 	}
 
-	row, e := toLabeledByFieldNames(t.tblData.Rows[rowNum], t.tblMain)
+	row, e := toLabeledByFieldNames(t.TblData.Rows[rowNum], t.TblMain)
 	if e != nil {
 		return nil, e
 	}

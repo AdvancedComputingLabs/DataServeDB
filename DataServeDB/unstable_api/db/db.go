@@ -4,11 +4,12 @@ import (
 	"DataServeDB/dbtable"
 )
 
-type mapOfTables map[string]dbtable.DbTable
+type MapOfTables map[string]dbtable.DbTable
 
 // DB struct for maping
 type DB struct {
-	dbName       string
-	dbInternalID int
-	MapOfTables  mapOfTables
+	DbName       string
+	DbInternalID int
+	MapOfTables  MapOfTables
 }
+type MapOfDB map[string]DB
