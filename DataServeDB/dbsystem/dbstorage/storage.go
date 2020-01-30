@@ -18,26 +18,22 @@ import (
 	"os"
 )
 
-var dbFile = "../../data/re_db/table/users.json"
+var mataFile = "../../data/meta.json"
 var tablesPath = "dbsystem/dbstorage/tables/"
 
 type dataType interface{}
 
 // CreateTable to create a table
-func CreateTable(tableName string) {
-	// 	table := dbtable.NewTableMain(tableName)
-	// 	saveToDisk(*table)
-}
+// func CreateTable(tableName string) {
+// 	// 	table := dbtable.NewTableMain(tableName)
+// 	// 	saveToDisk(*table)
+// }
 
 func SaveToDisk(data []byte) error {
 	println(string(data))
-	println(dbFile)
-	db, err := os.OpenFile(dbFile, os.O_EXCL|os.O_WRONLY|os.O_CREATE, 0644)
+	db, err := os.OpenFile(mataFile, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		if !os.IsExist(err) {
-			return err
-		}
-		db, err = os.OpenFile(dbFile, os.O_APPEND, 0644)
+		return err
 	}
 	defer db.Close()
 	_, err = db.Write(data)
@@ -46,14 +42,16 @@ func SaveToDisk(data []byte) error {
 	}
 	return nil
 }
+func LoadMata() ([]byte, error) {
+	return ioutil.ReadFile(mataFile)
+}
 
 // tableName or table Id should pass
 // TODO :- change to suitable one, as of now it given as table name
-func SaveToTable(tableID int, data []byte) error {
-	println(tableID)
-	// file := fmt.Sprintf("%stable%d.json", tablesPath, tableID)
+func SaveToTable(tableRoot, tableName string, data []byte) error {
+	file := fmt.Sprintf("../../data/%stable/%s.json", tableRoot, tableName)
 	// println("file", file)
-	db, err := os.OpenFile(dbFile, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
+	db, err := os.OpenFile(file, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		println(err)
 		if !os.IsExist(err) {
@@ -74,13 +72,13 @@ func LoadTableFromDisk(tableID int) ([]byte, error) {
 	file := fmt.Sprintf("%stable%d.json", tablesPath, tableID)
 	return ioutil.ReadFile(file)
 }
-func LoadTableFromPath() ([]byte, error) {
-	return ioutil.ReadFile(dbFile)
+func LoadTableFromPath(path string) ([]byte, error) {
+	return ioutil.ReadFile(path)
 }
 
-func LoadTableMeta() ([]byte, error) {
-	return ioutil.ReadFile(dbFile)
-}
+// func LoadTableMeta() ([]byte, error) {
+// 	return ioutil.ReadFile(dbFile)
+// }
 
 // func getTableMeta(tableName string) ([]byte, error) {
 // 	data, err := loadTableMeta()

@@ -13,6 +13,7 @@ func TableHandlerTester(w http.ResponseWriter, r *http.Request, httpMethod strin
 }
 
 func TestRegister(t *testing.T) {
+	// runtime.CreateDBmeta()
 	runtime.InitMapOfDB()
 	Register("{db_name}/tables/{tbl_name}", TableHandlerTester)
 	testMatchPathAndCallHandler(t)

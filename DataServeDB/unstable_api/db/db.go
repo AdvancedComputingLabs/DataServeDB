@@ -13,3 +13,11 @@ type DB struct {
 	MapOfTables  MapOfTables
 }
 type MapOfDB map[string]DB
+
+type Meta map[string]DbMeta
+type DbMeta struct {
+	TableMeta []TableMeta
+}
+type TableMeta struct {
+	Table string
+}

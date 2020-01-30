@@ -17,9 +17,10 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 
-	storage "DataServeDB/dbsystem/dbstorage"
+	"DataServeDB/dbsystem/dbstorage"
 	"DataServeDB/dbsystem/systypes/dtIso8601Utc"
 	"DataServeDB/dbsystem/systypes/guid"
 )
@@ -47,15 +48,15 @@ func GetSaveLoadStructure(dbtbl *DbTable) (string, error) {
 
 	return "", errors.New("did not convert to json")
 }
-func LoadTableFromDB(dbtblJson string) (*DbTable, error) {
+func LoadTableFromDB(dbtblJson, dbName string) (*DbTable, error) {
 	var slStruct DbTableRecreation
 
 	if e := json.Unmarshal([]byte(dbtblJson), &slStruct); e != nil {
 		//TODO: for later after version 0.5, return structured error, top error json error and in sub structure include the json message.
 		return nil, e
 	}
-	// path := fmt.Sprintf("../../data/%s/table/%s.json", dbName, slStruct.CreationStructure.TableName)
-	row, err := storage.LoadTableFromPath()
+	path := fmt.Sprintf("../../data/%s/table/%s.json", dbName, slStruct.CreationStructure.TableName)
+	row, err := dbstorage.LoadTableFromPath(path)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func LoadFromJson(dbtblJson string) (*DbTable, error) {
 		return nil, e
 	}
 
-	row, err := storage.LoadTableFromDisk(slStruct.TableInternalId)
+	row, err := dbstorage.LoadTableFromDisk(slStruct.TableInternalId)
 	if err != nil {
 		return nil, err
 	}

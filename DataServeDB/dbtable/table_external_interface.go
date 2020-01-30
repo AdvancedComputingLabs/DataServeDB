@@ -30,7 +30,9 @@ import (
 type TableRow map[string]interface{} //it is by field name.
 
 type createTableExternalStruct struct {
-	TableName   string
+	TableName string
+	//TableRoot to Get to Know this table belongs to which DB
+	TableRoot   string
 	TableFields []string
 }
 
@@ -122,7 +124,7 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 	}
 	storage.SaveToTable(t.tblMain.TableId, tb)
 	*/
-	storage.SaveToTable(t.TblMain.TableId, network.Bytes())
+	storage.SaveToTable(t.TblMain.TableRoot, t.TblMain.TableName, network.Bytes())
 
 	return nil
 }
