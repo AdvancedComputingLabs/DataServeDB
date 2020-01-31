@@ -27,6 +27,9 @@ import (
 // 2)
 //TODO: all dbtype conversions are weak conversions, change it later to choice between weak and strong conversions.
 
+// 3) file names and paths are in packages; make central location and maybe package to handle file paths.
+// 4)
+
 func main() {
 	fmt.Println("Hello World!")
 }

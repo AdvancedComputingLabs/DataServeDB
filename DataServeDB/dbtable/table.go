@@ -26,7 +26,7 @@ type tableMain struct {
 	TableName           string
 	TableFieldsMetaData tableFieldsMetadataT
 	//TableRoot to Get to Know this table belongs to which DB
-	TableRoot string
+	TableRoot string //TODO: references db, can be made better or is it really needed?
 	//TableStringComparer dbstrcmp_base.DbStrCmpInterface
 	//TableDataContainersIds map[string]int
 }

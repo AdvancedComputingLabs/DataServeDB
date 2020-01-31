@@ -13,12 +13,12 @@
 package dbtable
 
 import (
-	"DataServeDB/dbtypes"
 	"errors"
 	"fmt"
 
 	"DataServeDB/dbsystem"
 	db_rules "DataServeDB/dbsystem/rules"
+	"DataServeDB/dbtypes"
 )
 
 //TODO: move it to error messages (single location)

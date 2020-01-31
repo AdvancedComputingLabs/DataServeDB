@@ -34,6 +34,8 @@ type reqPathToHandler struct {
 	HandlerFn      HttpRestApiHandlerFnI
 }
 
+//NOTE: placeholders can be here since they don't change.
+
 // keywords, identifiers, and placeholders
 // {db_name} is special name, which is place holder for any db name provided in the path. For example: re_db/tables/users
 // db_name must be validated with db naming rule.
@@ -88,12 +90,15 @@ func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath str
 			tblName = match[2]
 			// runtime.GetDB(dbName)
 			// check the duplicate primary key before insert
+			//TODO: refactor
 			if db, err := runtime.GetDB(dbName); err == nil {
 				fmt.Printf("%v\n", db.MapOfTables[tblName])
+				//TODO: make get table function
 				if table, ok := db.MapOfTables[tblName]; ok {
 					println("Table Found", table.GetLength())
 				} else {
 					println("No Tables")
+					//TODO: error message is wrong
 					return 0, nil, errors.New("db Name not found")
 				}
 			} else {

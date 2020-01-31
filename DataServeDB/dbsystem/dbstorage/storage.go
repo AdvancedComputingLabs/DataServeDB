@@ -18,6 +18,8 @@ import (
 	"os"
 )
 
+//TODO: file paths here
+
 var mataFile = "../../data/meta.json"
 var tablesPath = "dbsystem/dbstorage/tables/"
 

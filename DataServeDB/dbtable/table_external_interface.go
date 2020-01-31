@@ -27,6 +27,8 @@ import (
 
 //TODO: move it to error messages (single location)
 
+//TODO: table main and table data are public now. Can be private?
+
 type TableRow map[string]interface{} //it is by field name.
 
 type createTableExternalStruct struct {
