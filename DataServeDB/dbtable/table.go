@@ -25,6 +25,8 @@ type tableMain struct {
 	TableId             int
 	TableName           string
 	TableFieldsMetaData tableFieldsMetadataT
+	//TableRoot to Get to Know this table belongs to which DB
+	TableRoot string
 	//TableStringComparer dbstrcmp_base.DbStrCmpInterface
 	//TableDataContainersIds map[string]int
 }

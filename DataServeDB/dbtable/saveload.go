@@ -17,9 +17,10 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
-  
-  storage "DataServeDB/dbsystem/dbstorage"
+
+	"DataServeDB/dbsystem/dbstorage"
 	"DataServeDB/dbsystem/systypes/dtIso8601Utc"
 	"DataServeDB/dbsystem/systypes/guid"
 )
@@ -37,7 +38,7 @@ type DbTableRecreation struct {
 func GetSaveLoadStructure(dbtbl *DbTable) (string, error) {
 	slStruct := DbTableRecreation{}
 
-	slStruct.TableInternalId = dbtbl.tblMain.TableId
+	slStruct.TableInternalId = dbtbl.TblMain.TableId
 	slStruct.CreationStructure = dbtbl.createTableStructure
 
 	//TODO: handle error
@@ -46,6 +47,33 @@ func GetSaveLoadStructure(dbtbl *DbTable) (string, error) {
 	}
 
 	return "", errors.New("did not convert to json")
+}
+func LoadTableFromDB(dbtblJson, dbName string) (*DbTable, error) {
+	var slStruct DbTableRecreation
+
+	if e := json.Unmarshal([]byte(dbtblJson), &slStruct); e != nil {
+		//TODO: for later after version 0.5, return structured error, top error json error and in sub structure include the json message.
+		return nil, e
+	}
+	path := fmt.Sprintf("../../data/%s/table/%s.json", dbName, slStruct.CreationStructure.TableName)
+	row, err := dbstorage.LoadTableFromPath(path)
+	if err != nil {
+		return nil, err
+	}
+	network := bytes.NewReader(row) // Stand-in for a network connection
+	dec := gob.NewDecoder(network)  // Will read from network.
+	gob.Register(dtIso8601Utc.Iso8601Utc{})
+	gob.Register(guid.Guid{})
+	var rowDataUnmarshalled tableDataContainer
+	err = dec.Decode(&rowDataUnmarshalled)
+	if err != nil {
+		log.Fatal("decode error 1:", err)
+	}
+	tblData := &tableDataContainer{
+		Rows:          rowDataUnmarshalled.Rows,
+		PkToRowMapper: rowDataUnmarshalled.PkToRowMapper,
+	}
+	return createTable(slStruct.TableInternalId, &slStruct.CreationStructure, tblData)
 }
 
 func LoadFromJson(dbtblJson string) (*DbTable, error) {
@@ -56,7 +84,7 @@ func LoadFromJson(dbtblJson string) (*DbTable, error) {
 		return nil, e
 	}
 
-	row, err := storage.LoadTableFromDisk(slStruct.TableInternalId)
+	row, err := dbstorage.LoadTableFromDisk(slStruct.TableInternalId)
 	if err != nil {
 		return nil, err
 	}
@@ -106,11 +134,11 @@ func LoadFromJson(dbtblJson string) (*DbTable, error) {
 		// fmt.Printf("index ->> %t\n", dbtbl.tblData.PkToRowMapper)
 
 	*/
-	dbtbl, e := createTable(slStruct.TableInternalId, &slStruct.CreationStructure, tblData)
+	return createTable(slStruct.TableInternalId, &slStruct.CreationStructure, tblData)
 
-	if e != nil {
-		return nil, e
-	}
+	// if e != nil {
+	// 	return nil, e
+	// }
 
-	return dbtbl, nil
+	// return dbtbl, nil
 }
