@@ -25,6 +25,7 @@ import (
 
 // NOTE: Naming is very restrictive to make changes forward compatible. It is easier to relax rules compared to tightening rules which will make previous naming incompatible.
 
+//TODO: refactor it to types package
 type zeroMem struct{}
 
 //It will take a little more memory and cpu cycle, but the convience worth it.
@@ -33,7 +34,24 @@ var syscasing = dbsystem.SystemCasingHandler.Convert
 // Database naming rules
 // -
 
+//NOTE: used in db router so must be public.
 const DbNameValidatorRuleReStrBasic = "[A-Za-z][_0-9A-Za-z]{2,49}"
+
+var dbNameValidatorRe = regexp.MustCompile(fmt.Sprintf("^%s$", DbNameValidatorRuleReStrBasic))
+
+var dbNameReservedWords = map[string]zeroMem{
+	//don't have any yet
+}
+
+func DbNameIsValid(name string) bool {
+	if !dbNameValidatorRe.MatchString(name) {
+		return false
+	}
+	if _, reserved := dbNameReservedWords[syscasing(name)]; reserved {
+		return false
+	}
+	return true
+}
 
 // Table naming rules:
 // - Len: 3 .. 50; Conservative length for now, might increase in future.
@@ -50,7 +68,7 @@ var tableNameReservedWords = map[string]zeroMem{
 	syscasing("tables"): {},
 }
 
-func TableNameRulesCheck(s string) bool {
+func TableNameIsValid(s string) bool {
 	if !tblNameValidatorRe.MatchString(s) {
 		return false
 	}
@@ -72,7 +90,7 @@ var tableFieldNameReservedWords = map[string]zeroMem{
 	syscasing("Timestamp"): {},
 }
 
-func TableFieldNameRulesCheck(s string) bool {
+func TableFieldNameIsValid(s string) bool {
 	if !regexp.MustCompile("^[_A-Za-z][0-9A-Za-z]{0,63}$").MatchString(s) {
 		return false
 	}

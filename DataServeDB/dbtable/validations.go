@@ -13,12 +13,12 @@
 package dbtable
 
 import (
-	"DataServeDB/dbtypes"
 	"errors"
 	"fmt"
 
 	"DataServeDB/dbsystem"
 	db_rules "DataServeDB/dbsystem/rules"
+	"DataServeDB/dbtypes"
 )
 
 //TODO: move it to error messages (single location)
@@ -28,7 +28,7 @@ import (
 // private functions
 
 func validateTableName(tableName string) error {
-	if !db_rules.TableNameRulesCheck(tableName) {
+	if !db_rules.TableNameIsValid(tableName) {
 		return fmt.Errorf("invalid table name '%s'", tableName)
 	}
 	return nil
@@ -100,7 +100,7 @@ func validateCreateTableMetaData(tableInternalId int, createTableData *createTab
 
 // NOTE: TableRow is a map, so no need to pass it as pointer
 // WARNING: TableRow (by field name) is not returned unless function succeeds. So don't override r in calling function.
-func validateRowData(t *tableMain, r TableRow) (TableRow, tableRowByInternalIds, error)  {
+func validateRowData(t *tableMain, r TableRow) (TableRow, tableRowByInternalIds, error) {
 	rowByInternalId, e := fromLabeledByFieldNames(r, t, dbsystem.SystemCasingHandler)
 	if e != nil {
 		return nil, nil, e
@@ -113,4 +113,3 @@ func validateRowData(t *tableMain, r TableRow) (TableRow, tableRowByInternalIds,
 
 	return rowConvertedWithCorrectTypes, rowByInternalId, nil
 }
-

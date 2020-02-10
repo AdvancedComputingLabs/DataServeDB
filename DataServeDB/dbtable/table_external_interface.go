@@ -13,27 +13,41 @@
 package dbtable
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+
+	"DataServeDB/comminterfaces"
+	storage "DataServeDB/dbsystem/dbstorage"
+	"DataServeDB/paths"
 )
 
 //TODO: move it to error messages (single location)
 
+//TODO: table main and table data are public now. Can be private?
+
 type TableRow map[string]interface{} //it is by field name.
 
 type createTableExternalStruct struct {
-	TableName      string
-	TableFields    []string
+	_dbPtr      comminterfaces.DbPtrI // runtime hence _ prefix used.
+	TableName   string
+	TableFields []string
+}
+
+func (t *createTableExternalStruct) AssignDb(dbPtr comminterfaces.DbPtrI) {
+	t._dbPtr = dbPtr
 }
 
 type DbTable struct {
-	tblMain *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
-	tblData *tableDataContainer
+	TblMain              *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
+	TblData              *tableDataContainer
 	createTableStructure createTableExternalStruct
 }
 
-func CreateTableJSON(jsonStr string) (*DbTable, error) {
+func CreateTableJSON(jsonStr string, dbPtr comminterfaces.DbPtrI) (*DbTable, error) {
 
 	var createTableData createTableExternalStruct
 	if err := json.Unmarshal([]byte(jsonStr), &createTableData); err != nil {
@@ -41,6 +55,8 @@ func CreateTableJSON(jsonStr string) (*DbTable, error) {
 		//TODO: make error result more user friendly.
 		return nil, errors.New("error found in table creation json")
 	}
+
+	createTableData._dbPtr = dbPtr
 
 	tdc := &tableDataContainer{
 		Rows:          nil,
@@ -59,11 +75,11 @@ func createTable(tableInternalId int, createTableData *createTableExternalStruct
 	if tblMain, err := validateCreateTableMetaData(tableInternalId, createTableData); err != nil {
 		return nil, err
 	} else {
-		tbl.tblMain = tblMain
+		tbl.TblMain = tblMain
 
 	}
 
-	tbl.tblData = tblDataContainer
+	tbl.TblData = tblDataContainer
 
 	tbl.createTableStructure = *createTableData
 
@@ -71,7 +87,7 @@ func createTable(tableInternalId int, createTableData *createTableExternalStruct
 }
 
 func (t *DbTable) DebugPrintInternalFieldsNameMappings() string {
-	return fmt.Sprintf("%#v", t.tblMain.TableFieldsMetaData.fieldNameToFieldInternalId)
+	return fmt.Sprintf("%#v", t.TblMain.TableFieldsMetaData.FieldNameToFieldInternalId)
 }
 
 func (t *DbTable) InsertRowJSON(jsonStr string) error {
@@ -84,35 +100,64 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		return errors.New("error occured in parsing row json")
 	}
 
-	rowProperTyped, rowInternalIds, e := validateRowData(t.tblMain, rowDataUnmarshalled)
+	_, rowInternalIds, e := validateRowData(t.TblMain, rowDataUnmarshalled)
 	if e != nil {
 		return e
 	}
 
-	_ = rowProperTyped // reminds me why it is used.
-
-	{
-		numOfRows := int64(len(t.tblData.Rows))
-		t.tblData.Rows = append(t.tblData.Rows, rowInternalIds)
-		t.tblData.PkToRowMapper[rowInternalIds[0]] = numOfRows // TODO: should get pk or other secondary keys here properly
+	// check the duplicate primary key before insert
+	//TODO: not sure pk field is rowInternalIds[0]
+	if _, ok := t.TblData.PkToRowMapper[rowInternalIds[0]]; ok {
+		return errors.New("duplicate primary key")
 	}
+
+	//TODO: TblData or Rows was giving error after loading table when data file was not there.
+	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
+	{
+		numOfRows := int64(len(t.TblData.Rows))
+		t.TblData.Rows = append(t.TblData.Rows, rowInternalIds)
+		t.TblData.PkToRowMapper[rowInternalIds[0]] = numOfRows // TODO: should get pk or other secondary keys here properly
+	}
+
+	//TODO: path for table needs its own function?
+	fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
+	path := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
+
+	//TODO: refector this into own function with binary or json option.
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(t.TblData)
+	if err != nil {
+		//TODO: better handling needed
+		println("error ")
+		log.Fatal("encode error:", err)
+	}
+
+	//TODO: disk error handling is needed.
+	storage.SaveToDisk(buf.Bytes(), path)
 
 	return nil
 }
 
+func (t *DbTable) GetLength() int {
+	//TODO: with empty there is potential it to panic with nil
+	return int(int64(len(t.TblData.Rows)))
+}
+
 func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {
-	dbType, dbTypeProps := t.tblMain.getPkType()
+	dbType, dbTypeProps := t.TblMain.getPkType()
+
 	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps)
 	if e != nil {
 		return nil, e
 	}
 
-	rowNum, exists := t.tblData.PkToRowMapper[pkValueCasted]
+	rowNum, exists := t.TblData.PkToRowMapper[pkValueCasted]
 	if !exists {
 		return nil, fmt.Errorf("value '%v' not found", pkValue)
 	}
 
-	row, e := toLabeledByFieldNames(t.tblData.Rows[rowNum], t.tblMain)
+	row, e := toLabeledByFieldNames(t.TblData.Rows[rowNum], t.TblMain)
 	if e != nil {
 		return nil, e
 	}
@@ -121,6 +166,9 @@ func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {
 }
 
 func (t *DbTable) GetRowByPrimaryKeyReturnsJSON(pkValue interface{}) (string, error) {
+	//TODO: Not sure this is really needed here.
+
+	// fmt.Printf("here %v\n", t.tblData.Rows)
 	row, e := t.GetRowByPrimaryKey(pkValue)
 	if e != nil {
 		return "", e

@@ -14,11 +14,13 @@ package dbrouter
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
 
 	rules "DataServeDB/dbsystem/rules"
+	"DataServeDB/unstable_api/runtime"
 )
 
 //function interface for rest api handler
@@ -27,10 +29,12 @@ type HttpRestApiHandlerFnI = func(w http.ResponseWriter, r *http.Request, httpMe
 
 // private as it doesn't need to be exposed.
 type reqPathToHandler struct {
-	MatchPath string
+	MatchPath      string
 	matchPathRegEx *regexp.Regexp
-	HandlerFn HttpRestApiHandlerFnI
+	HandlerFn      HttpRestApiHandlerFnI
 }
+
+//NOTE: placeholders can be here since they don't change.
 
 // keywords, identifiers, and placeholders
 // {db_name} is special name, which is place holder for any db name provided in the path. For example: re_db/tables/users
@@ -61,6 +65,7 @@ func Register(matchPath string, handlerFn HttpRestApiHandlerFnI) error {
 
 	pathsToHandlers = append(pathsToHandlers, p2h)
 
+	fmt.Printf("%v\n%v\n", pathsToHandlers, p2h.MatchPath)
 	return nil
 }
 
@@ -69,15 +74,49 @@ func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath str
 		return 0, nil, errors.New("no match path exits")
 	}
 
+	var dbName string
+	var tblName string
+
 	for _, m := range pathsToHandlers {
-		if m.matchPathRegEx.MatchString(reqPath) {
+		// println("here ", m.matchPathRegEx.FindString(reqPath))
+		if path := m.matchPathRegEx.FindString(reqPath); path != "" {
+			// if m.matchPathRegEx.MatchString(reqPath) {
+			println("path", path)
 			//TODO: extract db name and check
+			var re = regexp.MustCompile(`(?m)[A-Za-z][_0-9A-Za-z]{2,49}`)
+
+			match := re.FindAllString(reqPath, -1)
+			dbName = match[0]
+			tblName = match[2]
+			// runtime.GetDB(dbName)
+			// check the duplicate primary key before insert
+			//TODO: refactor
+			if db, err := runtime.GetDB(dbName); err == nil {
+				fmt.Printf("%v\n", db.MapOfTables[tblName])
+				//TODO: make get table function
+				if table, ok := db.MapOfTables[tblName]; ok {
+					println("Table Found", table.GetLength())
+				} else {
+					println("No Tables")
+					//TODO: error message is wrong
+					return 0, nil, errors.New("db Name not found")
+				}
+			} else {
+				println("BD NOT FOUND")
+				return 0, nil, errors.New("db Name not found")
+			}
+			println("table name", dbName, tblName)
+
+			// fmt.Printf("%v\n", DataServeDB.mapOfdb)
 			//TODO: extract correct path for the handler
 			//TODO: permissions check for db access?
 			//TODO: add auth
 			return m.HandlerFn(w, r, httpMethod, "todo", reqPath)
 		}
-	}
 
+		println(m.matchPathRegEx.String())
+		println(reqPath)
+	}
 	return 0, nil, errors.New("resource in the path not found")
+
 }
