@@ -13,81 +13,32 @@
 package dbstorage
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
+
+	"DataServeDB/paths"
 )
 
-var dbFile = "dbsystem/dbstorage/meta/data.json"
-var tablesPath = "dbsystem/dbstorage/tables/"
+func SaveToDisk(data []byte, path string) error {
+	//println(string(data))
 
-type dataType interface{}
+	//no need to check if path was created here.
+	paths.CreatePathIfNotExist(path)
 
-// CreateTable to create a table
-func CreateTable(tableName string) {
-	// 	table := dbtable.NewTableMain(tableName)
-	// 	saveToDisk(*table)
-}
-
-func SaveToDisk(data []byte) error {
-	println(string(data))
-	db, err := os.OpenFile(dbFile, os.O_EXCL|os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		if !os.IsExist(err) {
-			return err
-		}
-		db, err = os.OpenFile(dbFile, os.O_APPEND, 0644)
-	}
-	defer db.Close()
-	_, err = db.Write(data)
+	fo, err := os.OpenFile(path, os.O_TRUNC|os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0755)
 	if err != nil {
 		return err
 	}
-	return nil
-}
+	defer fo.Close()
 
-// tableName or table Id should pass
-// TODO :- change to suitable one, as of now it given as table name
-func SaveToTable(tableID int, data []byte) error {
-	println(tableID)
-	file := fmt.Sprintf("%stable%d.json", tablesPath, tableID)
-	println("file", file)
-	db, err := os.OpenFile(file, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		println(err)
-		if !os.IsExist(err) {
-			return err
-		}
-	}
-	db.Write(data)
+	_, err = fo.Write(data)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
-// tableName or table Id should pass
-// TODO :- change to suitable one, as of now it given as table name
-func LoadTableFromDisk(tableID int) ([]byte, error) {
-	file := fmt.Sprintf("%stable%d.json", tablesPath, tableID)
-	data, err := ioutil.ReadFile(file)
-
-	return data, err
+func LoadFromDisk(path string) ([]byte, error) {
+	return ioutil.ReadFile(path)
 }
-
-func LoadTableMeta() ([]byte, error) {
-	return ioutil.ReadFile(dbFile)
-}
-
-// func getTableMeta(tableName string) ([]byte, error) {
-// 	data, err := loadTableMeta()
-// 	meta := json.Unmarshal()
-// 	if err == nil {
-// 		for _, tableMeta := range meta {
-// 			if tableMeta.TableName == tableName {
-// 				return tableMeta, nil
-// 			}
-// 		}
-// 	}
-// 	return json.Marshal(data)
-// }

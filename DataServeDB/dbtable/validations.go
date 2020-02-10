@@ -13,12 +13,12 @@
 package dbtable
 
 import (
-	"DataServeDB/dbtypes"
 	"errors"
 	"fmt"
 
 	"DataServeDB/dbsystem"
 	db_rules "DataServeDB/dbsystem/rules"
+	"DataServeDB/dbtypes"
 )
 
 //TODO: move it to error messages (single location)
@@ -28,7 +28,7 @@ import (
 // private functions
 
 func validateTableName(tableName string) error {
-	if !db_rules.TableNameRulesCheck(tableName) {
+	if !db_rules.TableNameIsValid(tableName) {
 		return fmt.Errorf("invalid table name '%s'", tableName)
 	}
 	return nil
@@ -90,7 +90,6 @@ func validateCreateTableMetaData(tableInternalId int, createTableData *createTab
 
 		//NOTE: db type property validation is done during parsing.
 	}
-	fmt.Printf("table->  %v\n", dbTbl)
 
 	if !pkIsSet {
 		return nil, errors.New("table must have primary key")
