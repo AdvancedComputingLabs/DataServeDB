@@ -107,7 +107,7 @@ func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath str
 			}
 			println("table name", dbName, tblName)
 
-			// fmt.Printf("%v\n", DataServeDB.MapOfdb)
+			// fmt.Printf("%v\n", DataServeDB.mapOfdb)
 			//TODO: extract correct path for the handler
 			//TODO: permissions check for db access?
 			//TODO: add auth

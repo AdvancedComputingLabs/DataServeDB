@@ -13,6 +13,7 @@
 package dtIso8601Utc
 
 import (
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"time"
@@ -100,4 +101,10 @@ func (t *Iso8601Utc) UnmarshalJSON(data []byte) error {
 
 	*t = Iso8601Utc(dt_gonative)
 	return nil
+}
+
+//private
+
+func init() {
+	gob.Register(Iso8601Utc{})
 }

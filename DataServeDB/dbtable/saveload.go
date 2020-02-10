@@ -18,26 +18,28 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"os"
 
+	"DataServeDB/comminterfaces"
 	"DataServeDB/dbsystem/dbstorage"
+	"DataServeDB/paths"
 )
 
 // Description: dbtable package saving and loading file.
 
 // !WARNING: unstable api, but this needs to be in dbtable package.
 
-type DbTableRecreation struct {
-	TableInternalId   int
-	CreationStructure createTableExternalStruct
+//TODO: const file to put all the consts in one place?
+const tablesDataPathRelative = "tables_data"
+
+type DatabaseTableRecreation struct {
+	TableInternalId          int //not runtime, used to save table data.
+	DbTableCreationStructure createTableExternalStruct
 }
 
 //!INFO: this is just for demonstration, tune it if you think there is better way to do it.
-func GetSaveLoadStructure(dbtbl *DbTable) (string, error) {
-	slStruct := DbTableRecreation{}
-
-	slStruct.TableInternalId = dbtbl.TblMain.TableId
-	slStruct.CreationStructure = dbtbl.createTableStructure
+func GetTableStorageStructureJson(dbtbl *DbTable) (string, error) {
+	slStruct := GetTableStorageStructure(dbtbl)
 
 	//TODO: handle error
 	if r, e := json.Marshal(slStruct); e == nil {
@@ -47,73 +49,64 @@ func GetSaveLoadStructure(dbtbl *DbTable) (string, error) {
 	return "", errors.New("did not convert to json")
 }
 
-//TODO: whats the difference betwen LoadTableFromDB and LoadFromJson?
-// Seems like only dbname difference. Then, can be reduced to one function.
-
-//TODO: change function name
-//TODO: dbname should be part of it?
-func LoadTableFromDB(dbtblJson, dbName string) (*DbTable, error) {
-	var slStruct DbTableRecreation
-
-	if e := json.Unmarshal([]byte(dbtblJson), &slStruct); e != nil {
-		//TODO: for later after version 0.5, return structured error, top error json error and in sub structure include the json message.
-		return nil, e
-	}
-
-	//TODO: path shouldn't be here
-	path := fmt.Sprintf("../../data/%s/table/%s.json", dbName, slStruct.CreationStructure.TableName)
-	row, err := dbstorage.LoadTableFromPath(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var tblData tableDataContainer
-
-	//TODO: can refectored to its own util function
-	buf := bytes.NewReader(row)
-	dec := gob.NewDecoder(buf)
-
-	//gob.Register(dtIso8601Utc.Iso8601Utc{})
-	//gob.Register(guid.Guid{})
-
-	err = dec.Decode(&tblData)
-	if err != nil {
-		log.Fatal("decode error 1:", err)
-	}
-
-	//tblData := &tableDataContainer{
-	//	Rows:          rowDataUnmarshalled.Rows,
-	//	PkToRowMapper: rowDataUnmarshalled.PkToRowMapper,
-	//}
-	return createTable(slStruct.TableInternalId, &slStruct.CreationStructure, &tblData)
+func GetTableStorageStructure(dbtbl *DbTable) DatabaseTableRecreation {
+	slStruct := DatabaseTableRecreation{}
+	slStruct.TableInternalId = dbtbl.TblMain.TableId
+	slStruct.DbTableCreationStructure = dbtbl.createTableStructure
+	return slStruct
 }
 
-func LoadFromJson(dbtblJson string) (*DbTable, error) {
-	var slStruct DbTableRecreation
+func LoadFromJson(dbtblJson string, dbPtr comminterfaces.DbPtrI) (*DbTable, error) {
+	var slStruct DatabaseTableRecreation
 
 	if e := json.Unmarshal([]byte(dbtblJson), &slStruct); e != nil {
 		//TODO: for later after version 0.5, return structured error, top error json error and in sub structure include the json message.
 		return nil, e
 	}
 
-	row, err := dbstorage.LoadTableFromDisk(slStruct.TableInternalId)
+	slStruct.DbTableCreationStructure._dbPtr = dbPtr
+
+	return LoadFromTableSaveStructure(slStruct)
+}
+
+func LoadFromTableSaveStructure(slStruct DatabaseTableRecreation) (*DbTable, error) {
+
+	tblData, err2 := loadTableDataFromDisk(&slStruct)
+	if err2 != nil {
+		return nil, err2
+	}
+
+	return createTable(slStruct.TableInternalId, &slStruct.DbTableCreationStructure, tblData)
+}
+
+func loadTableDataFromDisk(slStruct *DatabaseTableRecreation) (*tableDataContainer, error) {
+	fileName := fmt.Sprintf("table_%d.dat", slStruct.TableInternalId)
+	path := paths.Combine(slStruct.DbTableCreationStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
+
+	//NOTE: this could be empty if data is not saved.
+	tblDataBytes, err := dbstorage.LoadFromDisk(path)
 	if err != nil {
+		//if path error then empty table
+		if os.IsNotExist(err) {
+			tdc := &tableDataContainer{
+				Rows:          nil,
+				PkToRowMapper: map[interface{}]int64{},
+			}
+			return tdc, nil
+		}
 		return nil, err
 	}
 
 	var tblData tableDataContainer
 
-	//TODO: can refectored to its own util function
-	buf := bytes.NewReader(row)
+	//TODO: can refectored to its own util function?
+	buf := bytes.NewReader(tblDataBytes)
 	dec := gob.NewDecoder(buf)
-
-	//gob.Register(dtIso8601Utc.Iso8601Utc{})
-	//gob.Register(guid.Guid{})
 
 	err = dec.Decode(&tblData)
 	if err != nil {
-		log.Fatal("decode error 1:", err)
+		return nil, err
 	}
 
-	return createTable(slStruct.TableInternalId, &slStruct.CreationStructure, &tblData)
+	return &tblData, nil
 }

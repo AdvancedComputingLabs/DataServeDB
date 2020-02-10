@@ -28,7 +28,7 @@ import (
 // private functions
 
 func validateTableName(tableName string) error {
-	if !db_rules.TableNameRulesCheck(tableName) {
+	if !db_rules.TableNameIsValid(tableName) {
 		return fmt.Errorf("invalid table name '%s'", tableName)
 	}
 	return nil

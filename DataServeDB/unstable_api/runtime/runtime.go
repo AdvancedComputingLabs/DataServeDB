@@ -1,65 +1,106 @@
+// Copyright (c) 2020 Advanced Computing Labs DMCC
+
+/*
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+	THE SOFTWARE.
+*/
+
 package runtime
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"sync"
 
-	storage "DataServeDB/dbsystem/dbstorage"
-	"DataServeDB/dbtable"
+	"DataServeDB/dbsystem"
+	db_rules "DataServeDB/dbsystem/rules"
+	"DataServeDB/paths"
 	"DataServeDB/unstable_api/db"
 )
 
 //TODO: change to get functions
 
-// MapOfdb is exported
-var MapOfdb = make(map[string]db.DB)
-var MetaData = make(db.Meta)
+var syscasing = dbsystem.SystemCasingHandler.Convert
 
-func GetDB(dbName string) (db.DB, error) {
-	if data, ok := MapOfdb[dbName]; ok {
+// mapOfDatabases is exported
+var mapOfDatabases = make(map[string]*db.DB)
+var rwguard sync.RWMutex
+
+func GetDB(dbName string) (*db.DB, error) {
+	dbNameCasingHandled := syscasing(dbName)
+	if data, ok := mapOfDatabases[dbNameCasingHandled]; ok {
 		return data, nil
 	}
-	return db.DB{}, errors.New("db Name not found")
+	return nil, errors.New("database not found")
 }
 
-func LoadDB() error {
-	//TODO: refactor
-	if b, err := storage.LoadMata(); err != nil {
-		return err
-	} else {
-		if err = json.Unmarshal(b, &MetaData); err != nil {
-			return err
-		}
+func mountDb(dbName string, dbPath string) error {
+	rwguard.Lock()
+	defer rwguard.Unlock()
+
+	//convert name to system casing for mapping.
+	dbNameCaseHandled := syscasing(dbName)
+
+	//check if db is already in map
+	if _, alreadyExists := mapOfDatabases[dbNameCaseHandled]; alreadyExists {
+		return errors.New("database already mounted")
 	}
 
-	var mapoftable = make(db.MapOfTables)
+	//initalize db
+	//NOTE: actual casing is needed for db dir/file io
+	database, e := new(db.DB).Init(dbName, dbPath)
+	if e != nil {
+		return e
+	}
 
-	for dbName, DbMeta := range MetaData {
-		for _, tableMeta := range DbMeta.TableMeta {
-			if tbl01, err := dbtable.CreateTableJSON(tableMeta.Table); err == nil {
-				//TODO: why it is using GetSaveLoadStructure? it shouldn't be need to load.
-				if jsonStr, err := dbtable.GetSaveLoadStructure(tbl01); err == nil {
-					fmt.Println(jsonStr)
-					// println(tableMeta.Table, dbName)
-					//TODO: continued: maybe because of this function.
-					if tbl, err := dbtable.LoadTableFromDB(jsonStr, dbName); err == nil {
-						fmt.Printf("table loaded :- %v\n", tbl)
-						mapoftable["users"] = *tbl
-						MapOfdb["re_db"] = db.DB{
-							DbName:       "re_db", //TODO: hard coded.
-							DbInternalID: 0, //TODO: 0?
-							MapOfTables:  mapoftable,
-						}
-					} else {
-						println("err", err.Error())
-						return err
-					}
-				} else {
-					return err
-				}
-			} else {
+	//add to db map
+	mapOfDatabases[dbNameCaseHandled] = database
+
+	return nil
+}
+
+func loadDatabases() error {
+
+	/*
+	//NOTE: keeping it here, incase, in future databases metadata is required.
+	// databases metadata has been removed for now.
+	// reason: easier to just read the dirs and see if it exits - hy 6-Feb-2020
+	 if b, err := storage.LoadDatabasesMetadata(); err != nil {
+			return err
+		} else {
+			if err = json.Unmarshal(b, &DatabasesMetadata); err != nil {
 				return err
+			}
+		}
+	 */
+
+	databases_dir := paths.GetDatabasesMainDirPath()
+
+	if databases_dir == "" {
+		//TODO: test should be fatal.
+		return errors.New("databases dir does not exist")
+	}
+
+	//TODO: logging
+
+	dirItems, e := ioutil.ReadDir(databases_dir)
+	if e != nil {
+		//TODO: refactor to dblog
+		log.Fatal(e)
+	}
+
+	for _, dirItem := range dirItems {
+		if dirItem.IsDir() && db_rules.DbNameIsValid(dirItem.Name()) {
+			e = mountDb(dirItem.Name(), databases_dir)
+			if e != nil {
+				//TODO: log error
 			}
 		}
 	}
@@ -67,25 +108,14 @@ func LoadDB() error {
 	return nil
 }
 
-func InitMapOfDB() {
-	LoadDB()
-}
+func Start() error {
+	fmt.Println("Starting DataServeDB server ...")
 
-//TODO: testing related?
-func CreateDBmeta() {
-	table := db.TableMeta{
-		Table: `{"TableName": "users","TableRoot": "re_db", "TableFields": ["Id int32 PrimaryKey","UserName string Length:5..50 !Nullable","Counter int32 default:Increment(1,1) !Nullable","DateAdded datetime default:Now() !Nullable","GlobalId guid default:NewGuid() !Nullable"]}`,
-	}
+	//TODO: list/log all the databases being mounted.
+	//TODO: refactor
 
-	dbMeta := db.DbMeta{}
+	//TODO: error handling
+	loadDatabases()
 
-	dbMeta.TableMeta = append(dbMeta.TableMeta, table)
-
-	// dbMeta
-	MetaData["re_db"] = dbMeta
-	if db, err := json.Marshal(MetaData); err != nil {
-
-	} else {
-		storage.SaveToDisk(db)
-	}
+	return nil
 }

@@ -16,7 +16,6 @@ import (
 	"sync"
 
 	"DataServeDB/dbtypes"
-	//"DataServeDB/dbstrcmp_base"
 )
 
 // TODO: add tag annotations.
@@ -25,8 +24,6 @@ type tableMain struct {
 	TableId             int
 	TableName           string
 	TableFieldsMetaData tableFieldsMetadataT
-	//TableRoot to Get to Know this table belongs to which DB
-	TableRoot string //TODO: references db, can be made better or is it really needed?
 	//TableStringComparer dbstrcmp_base.DbStrCmpInterface
 	//TableDataContainersIds map[string]int
 }
@@ -65,9 +62,9 @@ func newTableMain(tableInternalId int, tableName string) *tableMain {
 	return &t
 }
 
-func (tm *tableMain) getPkType() (dbtypes.DbTypeI, dbtypes.DbTypePropertiesI) {
+func (t *tableMain) getPkType() (dbtypes.DbTypeI, dbtypes.DbTypePropertiesI) {
 	// TODO: if pk position is not always zero then change it find pk.
 	// it should be implemented as always zero.
-	pkFieldInternal := tm.TableFieldsMetaData.FieldInternalIdToFieldMetaData[0]
+	pkFieldInternal := t.TableFieldsMetaData.FieldInternalIdToFieldMetaData[0]
 	return pkFieldInternal.FieldType, pkFieldInternal.FieldTypeProps
 }

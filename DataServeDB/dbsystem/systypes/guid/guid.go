@@ -13,6 +13,7 @@
 package guid
 
 import (
+	"encoding/gob"
 	"github.com/beevik/guid"
 )
 
@@ -81,6 +82,11 @@ func (t *Guid) UnmarshalJSON(data []byte) error {
 	*t = *g
 
 	return nil
+}
+
+//private
+func init() {
+	gob.Register(Guid{})
 }
 
 

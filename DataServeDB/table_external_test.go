@@ -1,6 +1,9 @@
 package main
 
 import (
+	"DataServeDB/paths"
+	"DataServeDB/unstable_api/db"
+	"DataServeDB/unstable_api/runtime"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -28,7 +31,12 @@ import (
 type row struct {
 	Id        int
 	UserName  string
-	DateAdded string
+}
+
+func TestPaths(t *testing.T) {
+	fmt.Println(paths.GetDatabasesMainDirPath())
+	fmt.Println(paths.GetWorkingDirPath())
+	fmt.Println(paths.GetExeDirPath())
 }
 
 func TestStarter(t *testing.T) {
@@ -53,19 +61,31 @@ func TestSaveTableMetadata(t *testing.T) {
 	  ]
 	}`
 
-	if tbl01, err := dbtable.CreateTableJSON(createTableJSON); err == nil {
-		if jsonStr, err := dbtable.GetSaveLoadStructure(tbl01); err == nil {
+	// db.CreateTableJSON
+
+	db, e := runtime.GetDB("re_db")
+	if e != nil {
+		t.Errorf("%v\n", e)
+		return
+	}
+
+	/* test for save structure
+	if jsonStr, err := dbtable.GetTableStorageStructureJson(tbl01); err == nil {
 			fmt.Println(jsonStr)
-			testLoadTableMetadata(jsonStr, t)
+			//testLoadTableMetadata(jsonStr, t)
 		} else {
 			t.Errorf("%v\n", err)
 		}
+	 */
+
+	if err := db.CreateTableJSON(createTableJSON); err == nil {
+
 	} else {
 		t.Errorf("%v\n", err)
 	}
 }
 
-func testLoadTableMetadata(jsonStr string, t *testing.T) {
+/*func testLoadTableMetadata(jsonStr string, t *testing.T) {
 	if tbl, err := dbtable.LoadFromJson(jsonStr); err == nil {
 		fmt.Printf("table loaded :- %v\n", tbl)
 		if false {
@@ -76,7 +96,7 @@ func testLoadTableMetadata(jsonStr string, t *testing.T) {
 	} else {
 		t.Errorf("%v\n", err)
 	}
-}
+}*/
 
 func testCreateTableJSON(t *testing.T) {
 
@@ -96,29 +116,46 @@ func testCreateTableJSON(t *testing.T) {
 
 	//TODO: check why it is not returning counter.
 
-	if tbl01, err := dbtable.CreateTableJSON(createTableJSON); err == nil {
-		fmt.Println(tbl01.DebugPrintInternalFieldsNameMappings())
-		testInsertRowJSON(tbl01, t)
+	db, e := runtime.GetDB("re_db")
+	if e != nil {
+		t.Errorf("%v\n", e)
+		return
+	}
+
+	if err := db.CreateTableJSON(createTableJSON); err == nil {
+		//fmt.Println(tbl01.DebugPrintInternalFieldsNameMappings())
+		testInsertRowJSON(db, t)
 	} else {
-		t.Errorf("%v\n", err)
+		if err.Error() == "table name already exits" {
+			testInsertRowJSON(db, t)
+		} else {
+			t.Errorf("%v\n", err)
+		}
 	}
 }
+
 func testByPk(tbl *dbtable.DbTable, t *testing.T) {
 	for i := 0; i < tbl.GetLength(); i++ {
 		testGetRowByPk(tbl, t, i)
 	}
 }
 
-func testInsertRowJSON(tbl *dbtable.DbTable, t *testing.T) {
+func testInsertRowJSON(db *db.DB, t *testing.T) {
+	tbl, e := db.GetTable("Tbl01")
+	if e != nil {
+		t.Error(e)
+		return
+	}
+
 	items := [4]string{"captain america", "IRO MAN", "professor HULk", "peter Parker"}
 	length := tbl.GetLength()
+
 	for i, item := range items {
-		// println(time.Now().GobEncode())
 		row01 := row{
 			Id:        i + length,
 			UserName:  item,
-			DateAdded: "2020-01-26T11:50:18.6752352Z",
 		}
+
 		row01Json, err := json.Marshal(row01)
 		if err != nil {
 			t.Error("erroe converting")
@@ -139,6 +176,7 @@ func testGetRowByPk(tbl *dbtable.DbTable, t *testing.T, i int) {
 	if row, e := tbl.GetRowByPrimaryKey(i); e == nil {
 		fmt.Println(row)
 		if rowJson, e := tbl.GetRowByPrimaryKeyReturnsJSON(i); e == nil {
+			fmt.Println("Get With Pk Test Successful")
 			fmt.Println(rowJson)
 		} else {
 			t.Errorf("%v\n", e)

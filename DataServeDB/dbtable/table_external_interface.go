@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"log"
 
+	"DataServeDB/comminterfaces"
 	storage "DataServeDB/dbsystem/dbstorage"
-	"DataServeDB/dbsystem/systypes/dtIso8601Utc"
-	"DataServeDB/dbsystem/systypes/guid"
+	"DataServeDB/paths"
 )
 
 //TODO: move it to error messages (single location)
@@ -32,10 +32,13 @@ import (
 type TableRow map[string]interface{} //it is by field name.
 
 type createTableExternalStruct struct {
-	TableName string
-	//TableRoot to Get to Know this table belongs to which DB
-	TableRoot   string
+	_dbPtr      comminterfaces.DbPtrI // runtime hence _ prefix used.
+	TableName   string
 	TableFields []string
+}
+
+func (t *createTableExternalStruct) AssignDb(dbPtr comminterfaces.DbPtrI) {
+	t._dbPtr = dbPtr
 }
 
 type DbTable struct {
@@ -44,7 +47,7 @@ type DbTable struct {
 	createTableStructure createTableExternalStruct
 }
 
-func CreateTableJSON(jsonStr string) (*DbTable, error) {
+func CreateTableJSON(jsonStr string, dbPtr comminterfaces.DbPtrI) (*DbTable, error) {
 
 	var createTableData createTableExternalStruct
 	if err := json.Unmarshal([]byte(jsonStr), &createTableData); err != nil {
@@ -52,6 +55,8 @@ func CreateTableJSON(jsonStr string) (*DbTable, error) {
 		//TODO: make error result more user friendly.
 		return nil, errors.New("error found in table creation json")
 	}
+
+	createTableData._dbPtr = dbPtr
 
 	tdc := &tableDataContainer{
 		Rows:          nil,
@@ -94,43 +99,48 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		//TODO: make error result more user friendly.
 		return errors.New("error occured in parsing row json")
 	}
-	rowProperTyped, rowInternalIds, e := validateRowData(t.TblMain, rowDataUnmarshalled)
+
+	_, rowInternalIds, e := validateRowData(t.TblMain, rowDataUnmarshalled)
 	if e != nil {
 		return e
 	}
-	// check the duplicate primary key before insert
-	if _, ok := t.TblData.PkToRowMapper[rowInternalIds[0]]; ok {
-		return errors.New("Duplicate Found for Primary Key")
-	}
-	_ = rowProperTyped // reminds me why it is used.
 
+	// check the duplicate primary key before insert
+	//TODO: not sure pk field is rowInternalIds[0]
+	if _, ok := t.TblData.PkToRowMapper[rowInternalIds[0]]; ok {
+		return errors.New("duplicate primary key")
+	}
+
+	//TODO: TblData or Rows was giving error after loading table when data file was not there.
+	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
 	{
 		numOfRows := int64(len(t.TblData.Rows))
 		t.TblData.Rows = append(t.TblData.Rows, rowInternalIds)
 		t.TblData.PkToRowMapper[rowInternalIds[0]] = numOfRows // TODO: should get pk or other secondary keys here properly
 	}
-	/* METOD gob ENCODING */
-	gob.Register(dtIso8601Utc.Iso8601Utc{})
-	gob.Register(guid.Guid{})
-	var network bytes.Buffer        // Stand-in for a network connection
-	enc := gob.NewEncoder(&network) // Will write to network.
+
+	//TODO: path for table needs its own function?
+	fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
+	path := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
+
+	//TODO: refector this into own function with binary or json option.
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
 	err := enc.Encode(t.TblData)
 	if err != nil {
+		//TODO: better handling needed
 		println("error ")
 		log.Fatal("encode error:", err)
 	}
-	/*  METHOD JSON ENCODING
-	tb, err := json.Marshal(t.tblData.Rows)
-	if err != nil {
-		return err
-	}
-	storage.SaveToTable(t.tblMain.TableId, tb)
-	*/
-	storage.SaveToTable(t.TblMain.TableRoot, t.TblMain.TableName, network.Bytes())
+
+	//TODO: disk error handling is needed.
+	storage.SaveToDisk(buf.Bytes(), path)
 
 	return nil
 }
+
 func (t *DbTable) GetLength() int {
+	//TODO: with empty there is potential it to panic with nil
 	return int(int64(len(t.TblData.Rows)))
 }
 
@@ -156,6 +166,8 @@ func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {
 }
 
 func (t *DbTable) GetRowByPrimaryKeyReturnsJSON(pkValue interface{}) (string, error) {
+	//TODO: Not sure this is really needed here.
+
 	// fmt.Printf("here %v\n", t.tblData.Rows)
 	row, e := t.GetRowByPrimaryKey(pkValue)
 	if e != nil {
