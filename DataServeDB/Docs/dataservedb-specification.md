@@ -7,7 +7,7 @@
     
       1.1.1 **CLSimpleAuth1**
       * Uses sha3-256 ( salt + password ) to store password.
-      * Only salt and ( salt + password ) is stored on the server side.
+      * Only salt and hash( salt + password ) is stored on the server side.
       * User sends passwords and server converts to hash to compare on the server side.
       * **Pros:**
         * Passwords are not stored on the server side in plain text.
