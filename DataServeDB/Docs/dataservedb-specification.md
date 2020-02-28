@@ -1,4 +1,4 @@
-DataserveDB Software Design Specification
+# DataserveDB Software Design Specification
 
 1. ## Authentication and User Privileges
     > **NOTE**: Use hash(salt + password); salt in the beginning makes it harder to crack.
