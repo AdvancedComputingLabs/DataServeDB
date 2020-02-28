@@ -17,12 +17,12 @@
         * Password is sent in plain text; but it is over secure connection like ssl then it is safe against evasdropping.
       
     1.2. **User Privileges Format and Access Codes:**
-      * User authentication details are stored in hash table with user name and userauthobject or/and hastable of pointers to userauthobjects.
+      * User authentication details are stored in hash table with user name and userauthobject or hastable of pointers to userauthobjects.
       * User auth object contains user's hashed password and Claims.
       * Structure:
         ```go
         //global UserAuthObject1 can be nil if user is for database(s) only.
-        DbsUsers hastable[username:{global UserAuthObject1, hashtable[dbname:UserAuthObject1]}]
+        DbsUsers hastable[username:discrimnated union{global UserAuthObject1 or database level access hashtable[dbname:UserAuthObject1]}]
         
         UserAuthObject1 {
             AuthScheme string
@@ -42,3 +42,9 @@
       * Database server default root:
         * Default root user is created at installation time.
         * Root user has full access to the database system and all the databases; it is meant for database server systems administrators.
+        * Database users are stored in database, so if database is moved then database users are moved with it.
+            * Conflict resolution with main dbs hashtable:
+                * Main hashtable can contain pointers to multiple sub user auth objects.
+                * When there are users with same name in mutiple databases, main hashtable should combine with userauthobject pointers hashtable.
+                * Database level username cannot have global userauthobject; it is to avoid conflicts. If there exist a same username with global object it should error with conflict when attaching the database.
+                * Implementation and optimization details are left to the implementator.
