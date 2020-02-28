@@ -14,7 +14,7 @@
         * Compares are fast and can serve lot of requests.
       * **Cons:**
         * No expiry on the hash compare; although server can be set to force user to change password after specified period.
-        * Password is sent in plain text; but it is over secure connection like ssl then it is safe to evasdropping.
+        * Password is sent in plain text; but it is over secure connection like ssl then it is safe against evasdropping.
       
     1.2. **User Privileges Format and Access Codes:**
       * User authentication details are stored in hash table with user name and userauthobject or/and hastable of pointers to userauthobjects.
