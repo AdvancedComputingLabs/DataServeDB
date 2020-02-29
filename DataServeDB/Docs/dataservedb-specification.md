@@ -17,16 +17,18 @@
         * Password is sent in plain text; but it is over secure connection like ssl then it is safe against evasdropping.
       
     1.2. **User Privileges Format and Access Codes:**
-      * User authentication details are stored in hash table with user name and userauthobject or hastable of pointers to userauthobjects.
-      * User auth object contains user's hashed password and Claims.
+      * User authentication details are stored in hash table with user name and 'userauthobject' or hastable of pointers to 'userauthobjects'.
+      * User auth object contains user's hashed password and claims.
       * Structure:
         ```go
-        //global UserAuthObject1 can be nil if user is for database(s) only.
+        //global UserAuthObject1 wil be nil if user is in database(s).
         DbsUsers hastable[username:discrimnated union{global UserAuthObject1 or database level access hashtable[dbname:UserAuthObject1]}]
         
         UserAuthObject1 {
             AuthScheme string
             PwdH string //Password Hash in the format for the auth scheme.
+            PwdRenewalIntervelWks uint //Interval is in weeks, 1 means after every 1 week; 0 means disabled.
+            PwdLastChanged db datetime //Zero means not set and if there is renewal interval then user will be asked change password at first login.
             IsDbsRootUser bool //Dbs means database server.
             Claims hashtable {
                 Claims hashtable { ... }
@@ -48,3 +50,4 @@
                 * When there are users with same name in mutiple databases, main hashtable should combine with userauthobject pointers hashtable.
                 * Database level username cannot have global userauthobject; it is to avoid conflicts. If there exist a same username with global object it should error with conflict when attaching the database.
                 * Implementation and optimization details are left to the implementator.
+        * Authentication requires object to know if authentication data was sent over secure connection and type of secure connection. This way some operations that needs secure connection can be forced to be done on secure connection and they can limit the type of secure like minimum version of ssl to add furture security to the communication.
