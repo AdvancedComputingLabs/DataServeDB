@@ -38,7 +38,7 @@
         * Owner: has full access to the object: db, table, or any other db object.
         * Reader
         * Writer
-        * Names are stored with . notation. Example: hastable[dbname.tablename:claims].
+        * Names are qualified with dot notation. Example: hastable[dbname.tablename:claims].
       * Database server default root:
         * Default root user is created at installation time.
         * Root user has full access to the database system and all the databases; it is meant for database server systems administrators.
