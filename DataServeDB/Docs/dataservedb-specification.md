@@ -3,7 +3,7 @@
 1. ## Authentication and User Privileges
     > **NOTE**: Use hash(salt + password); salt in the beginning makes it harder to crack.
 
-    1.1 **Authentication Schemes:**
+    1.1 **Authentication/Authorization Schemes:**
         
     A authentication scheme defines the whole lifetime from start of the authentication to the end of session. They can be built upon existing useable authentication methods, for example, 'CLSimpleAuth1' is based on basic access authentication: https://en.wikipedia.org/wiki/Basic_access_authentication.
     Purpose is to standardize authentication schemes including how passwords are stored on the server.
