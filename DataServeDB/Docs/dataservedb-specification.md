@@ -13,7 +13,7 @@
     * Format of the salt and password separator is dependent on authentication scheme but it is recommended to store salt first, then separator, and then password's hash in cases where there is salt. For example, 'CLSimpleAuth1' uses colon to separate salt from password's hash. 
     * Auth rest api token format:
         ```go
-          auth-scheme-name base64(username|login-id:password|hash) // | is means or.
+          auth-scheme-name base64(username|login-id:password|hash) // '|' means or.
           // Example of header authentication. Although DbAuth header can also be used to initiate authentication.      
           CLSimpleAuth1 aHlAYWNsYWJzLmFlOnNvbWVwYXNzd29yZA== // decoded base64: hy@aclabs.ae:somepassword
         ```
