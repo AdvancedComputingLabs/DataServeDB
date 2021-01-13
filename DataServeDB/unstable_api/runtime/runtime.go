@@ -23,17 +23,21 @@ import (
 	db_rules "DataServeDB/dbsystem/rules"
 	"DataServeDB/paths"
 	"DataServeDB/unstable_api/db"
+	"DataServeDB/unstable_api/dbrouter"
 )
 
 //TODO: change to get functions
 
 var syscasing = dbsystem.SystemCasingHandler.Convert
 
+var isInitalized = false
+
 // mapOfDatabases is exported
 var mapOfDatabases = make(map[string]*db.DB)
 var rwguard sync.RWMutex
 
-func GetDB(dbName string) (*db.DB, error) {
+func GetDb(dbName string) (*db.DB, error) {
+	//TODO: syncing
 	dbNameCasingHandled := syscasing(dbName)
 	if data, ok := mapOfDatabases[dbNameCasingHandled]; ok {
 		return data, nil
@@ -108,7 +112,12 @@ func loadDatabases() error {
 	return nil
 }
 
+func IsInitalized() bool {
+	return isInitalized
+}
+
 func Start() error {
+	//TODO: check if this needs go process to independently initalize db server; there could be hanging issue?
 	fmt.Println("Starting DataServeDB server ...")
 
 	//TODO: list/log all the databases being mounted.
@@ -116,6 +125,18 @@ func Start() error {
 
 	//TODO: error handling
 	loadDatabases()
+
+	//routing
+	dbrouter.Register("{db_name}/tables/{tbl_name}", TableRestPathHandler)
+
+	//http server and rest api routing
+	StartHttpServer()
+
+	cliProcessor()
+
+	//log.Println("Closing DataServeDB server ...")
+
+	isInitalized = true
 
 	return nil
 }
