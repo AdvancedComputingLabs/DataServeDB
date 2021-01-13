@@ -4,8 +4,8 @@
     > **NOTE**: Use hash(salt + password); salt in the beginning makes it harder to crack.
 
     1.1 **Authentication/Authorization Schemes:**
-        
-    A authentication scheme defines the whole lifetime from start of the authentication to the end of session. They can be built upon existing useable authentication methods, for example, 'CLSimpleAuth1' is based on basic access authentication: https://en.wikipedia.org/wiki/Basic_access_authentication.
+
+    Authentication scheme defines the whole lifetime from start of the authentication to the end of session. They can be built upon existing useable authentication methods, for example, 'CLSimpleAuth1' is based on basic access authentication: https://en.wikipedia.org/wiki/Basic_access_authentication.
     Purpose is to standardize authentication schemes including how passwords are stored on the server.
     
     Basic rules for authentication scheme implementations are as follows:
@@ -67,3 +67,7 @@
                 * Database level username cannot have global userauthobject; it is to avoid conflicts. If there exist a same username with global object it should error with conflict when attaching the database.
                 * Implementation and optimization details are left to the implementation.
         * Authentication requires object to know if authentication data was sent over secure connection and type of secure connection. This way some operations that needs secure connection can be forced to be done on secure connection and they can limit the type of secure like minimum version of ssl to upgrade future security to the communication.
+        
+    2.1 **Operations and Return codes:**
+      Operations are model around rest's CRUD (Create, Read, Update, and Delete) as they provide all the functionality needed for database operations.
+      Return codes are based on http return codes which provide all the return codes needed for database operations in a standard way.

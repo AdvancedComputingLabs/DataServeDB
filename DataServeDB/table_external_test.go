@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"DataServeDB/dbtable"
 )
@@ -40,7 +41,11 @@ func TestPaths(t *testing.T) {
 }
 
 func TestStarter(t *testing.T) {
-	testCreateTableJSON(t)
+
+	//testCreateTableJSON(t)
+
+	testRestApiGet(t)
+
 }
 
 func TestSaveTableMetadata(t *testing.T) {
@@ -63,7 +68,7 @@ func TestSaveTableMetadata(t *testing.T) {
 
 	// db.CreateTableJSON
 
-	db, e := runtime.GetDB("re_db")
+	db, e := runtime.GetDb("re_db")
 	if e != nil {
 		t.Errorf("%v\n", e)
 		return
@@ -116,7 +121,7 @@ func testCreateTableJSON(t *testing.T) {
 
 	//TODO: check why it is not returning counter.
 
-	db, e := runtime.GetDB("re_db")
+	db, e := runtime.GetDb("re_db")
 	if e != nil {
 		t.Errorf("%v\n", e)
 		return
@@ -132,6 +137,19 @@ func testCreateTableJSON(t *testing.T) {
 			t.Errorf("%v\n", err)
 		}
 	}
+}
+
+func testRestApiGet(t *testing.T) {
+	// http://localhost:8080/re_db/tables/Id:1
+
+	for !runtime.IsInitalized()  {
+		fmt.Println("Is initialized: ", runtime.IsInitalized())
+		time.Sleep(time.Second * 1)
+	}
+
+	fmt.Println("#1")
+	time.Sleep(time.Second * 5)
+	fmt.Println("#2")
 }
 
 func testByPk(tbl *dbtable.DbTable, t *testing.T) {

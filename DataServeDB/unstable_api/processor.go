@@ -87,7 +87,8 @@ func Process() {
 	//timed break for printing correctly.
 	time.Sleep(1)
 
-	cliProcessor()
+	//problem in test env
+	//cliProcessor()
 
 	log.Println("Closing DataServe...")
 }

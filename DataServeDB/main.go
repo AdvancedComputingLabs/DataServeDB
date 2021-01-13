@@ -1,8 +1,9 @@
 package main
 
 import (
-	"DataServeDB/unstable_api/runtime"
 	"fmt"
+
+	"DataServeDB/unstable_api/runtime"
 )
 
 // Concept:
@@ -29,13 +30,17 @@ import (
 //TODO: all dbtype conversions are weak conversions, change it later to choice between weak and strong conversions.
 
 // 3) file names and paths are in packages; make central location and maybe package to handle file paths. [in progress]
-// Next:
+// Next Micro Tasks:
 //		- [cancelled: used in data saving] table structure changes; internal id runtime. both json and binary need to omit its value.
-//		- rename DbTableCreationStructure to TableCreationStructure
-//		- fix loading db meta data [done]
-//		- fix table data storage paths
-//		- make object for mapping with names but book keeping with internal id
-// 4)
+//		- Map object with Immutable Ids but changing lookup names.
+//		- mutithread correct excution.
+
+// 4) rest api paths handling
+
+// 5) authentication of user access and permissions/rights/roles
+//		- db user name and password also included
+
+
 
 /*
 Paths:
@@ -53,4 +58,5 @@ func init() {
 
 func main() {
 	fmt.Println("Hello World!")
+
 }
