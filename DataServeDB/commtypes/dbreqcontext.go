@@ -1,3 +1,15 @@
+// Copyright (c) 2020 Advanced Computing Labs DMCC
+
+/*
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+	THE SOFTWARE.
+*/
+
 package commtypes
 
 import (
@@ -6,6 +18,15 @@ import (
 )
 
 // fields are public, easier.
+
+/*
+	Example:
+		resPath: /re_db/tables/users/Id:1
+		matchedPath: re_db/tables/users
+		dbName: re_db
+		targetName: users
+		targetDbResTypeId: 1
+*/
 
 type DbReqContext struct {
 	RestMethod        string
@@ -18,7 +39,8 @@ type DbReqContext struct {
 	TargetDbResTypeId constants.DbResTypes
 }
 
-func NewDbReqContext(restMethod, resPath, matchedPath, dbName string, dbi comminterfaces.DbPtrI, targetName string, targetDbResTypeId constants.DbResTypes) *DbReqContext {
+func NewDbReqContext(restMethod, resPath, matchedPath, dbName string,
+	dbi comminterfaces.DbPtrI, targetName string, targetDbResTypeId constants.DbResTypes) *DbReqContext {
 
 	dbreqCtx := DbReqContext{
 		RestMethod:        restMethod,

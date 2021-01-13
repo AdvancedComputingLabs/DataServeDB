@@ -88,6 +88,11 @@ func validateCreateTableMetaData(tableInternalId int, createTableData *createTab
 			return nil, e
 		}
 
+		if fp.FieldTypeProps.IsPrimaryKey() {
+			dbTbl.PkPos = fp.FieldInternalId
+			fmt.Println("Setting primary key on", fp.FieldName, "; position:", dbTbl.PkPos)
+		}
+
 		//NOTE: db type property validation is done during parsing.
 	}
 

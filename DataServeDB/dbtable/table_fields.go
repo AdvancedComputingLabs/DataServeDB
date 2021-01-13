@@ -84,6 +84,7 @@ func (t *tableFieldsMetadataT) add(fmd *tableFieldStruct, fieldCaseHandler dbstr
 	}
 
 	//add to both maps
+	//TODO: Q: can internal id change after reload?
 	t.FieldInternalIdToFieldMetaData[fmd.FieldInternalId] = fmd
 	t.FieldNameToFieldInternalId[fieldNameKeyCase] = fmd.FieldInternalId
 

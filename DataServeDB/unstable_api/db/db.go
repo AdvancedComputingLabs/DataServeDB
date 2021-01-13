@@ -20,30 +20,24 @@ import (
 	"DataServeDB/dbsystem/dbstorage"
 	"DataServeDB/dbtable"
 	"DataServeDB/paths"
+	"DataServeDB/utils/mapwid"
 )
 
 //TODO: can somethings can be private?
 
 //TODO: renaming some structs and fields?
 
-/*
-	1) db metadat is stored and loaded first
-	2) when table meta data is loaded?
+const dbMetadataJson = "metadata/db.json" //TODO: this should be here or single file paths locations?
 
-	what should be in db metadata?
-	- tables information.
-*/
-
-const dbMetadataJson = "metadata/db.json"
-
-type MapOfTables map[string]*dbtable.DbTable
+//type TablesMapOld map[string]*dbtable.DbTable
 
 // DB struct for maping
 type DB struct {
 	DbName       string //runtime at the moment
 	dbPath       string //runtime at the moment
 	DbInternalID int    //runtime at the moment
-	MapOfTables  MapOfTables
+	//Tables       TablesMap
+	Tables *mapwid.MapWithId //loaded at runtime, but not sure TableId is persistant.
 }
 
 type DatabaseMetaSaveStructure struct {
@@ -73,15 +67,21 @@ func (t *DB) loadDbMetadata() error {
 
 	//load tables
 	for _, stbl := range dbMeta.Tables {
+
+		//NOTE: table name validation happens 'LoadFromTableSaveStructure' so it is not needed here.
+
 		stbl.DbTableCreationStructure.AssignDb(t)
-		dtbl, e := dbtable.LoadFromTableSaveStructure(stbl)
+		dtbl, e := dbtable.LoadFromTableSaveStructure(stbl) //could be called attach table data
 		if e != nil {
 			//TODO: handle error better
 			continue
 		}
+
 		//no need to check if table already exits in the map, since this is at load time.
-		//TODO: change from name to table id
-		t.MapOfTables[syscasing(dtbl.TblMain.TableName)] = dtbl
+		//t.Tables[syscasing(dtbl.TblMain.TableName)] = dtbl
+
+		//TODO: here table loaded from disk is added to the map, error can happen with add to map operation.
+		t.Tables.Add(dtbl.TblMain.TableId, syscasing(dtbl.TblMain.TableName), dtbl)
 	}
 
 	//at the moment there are only tables
@@ -93,7 +93,8 @@ func (t *DB) Init(dbName, dbsPath string) (*DB, error) {
 
 	t.DbName = dbName
 
-	t.MapOfTables = make(MapOfTables)
+	//t.Tables = make(TablesMap)
+	t.Tables = mapwid.New()
 
 	t.dbPath = paths.ConstructDbPath(dbName, dbsPath)
 
@@ -115,9 +116,11 @@ func (t *DB) getTablesSaveStructureJson() string {
 	var result string
 	dbMeta := DatabaseMetaSaveStructure{}
 
-	for _, tbl := range t.MapOfTables {
-		tblStructure := dbtable.GetTableStorageStructure(tbl)
-		dbMeta.Tables = append(dbMeta.Tables, tblStructure)
+	for _, tblI := range t.Tables.GetItems() {
+		if tbl, ok := tblI.(*dbtable.DbTable); ok {
+			tblStructure := dbtable.GetTableStorageStructure(tbl)
+			dbMeta.Tables = append(dbMeta.Tables, tblStructure)
+		}
 	}
 
 	{
@@ -168,11 +171,15 @@ func (t *DB) createDbMetadata() {
 
 	tbl01, e := dbtable.CreateTableJSON(createTable01JSON, t)
 	_ = e
-	t.MapOfTables[tbl01.TblMain.TableName] = tbl01
+	//t.Tables[tbl01.TblMain.TableName] = tbl01
+	tbl01.TblMain.TableId = 0
+	t.Tables.Add(tbl01.TblMain.TableId, tbl01.TblMain.TableName, tbl01)
 
 	tbl02, e := dbtable.CreateTableJSON(createTable02JSON, t)
 	_ = e
-	t.MapOfTables[tbl02.TblMain.TableName] = tbl02
+	//t.Tables[tbl02.TblMain.TableName] = tbl02
+	tbl02.TblMain.TableId = 0
+	t.Tables.Add(tbl02.TblMain.TableId, tbl02.TblMain.TableName, tbl02)
 
 	//TODO: make it save all the tables
 	//TODO: change map to table pointer

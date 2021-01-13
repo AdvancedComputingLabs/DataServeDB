@@ -10,6 +10,16 @@
 	THE SOFTWARE.
 */
 
+/*
+Operations:
+	- Loading
+		- Create Table
+		- Attach Table when table is mounted
+	- Change Operations
+		- Delete Table
+		- Alter Table
+ */
+
 package dbtable
 
 import (
@@ -19,8 +29,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 
 	"DataServeDB/comminterfaces"
+	"DataServeDB/commtypes"
 	storage "DataServeDB/dbsystem/dbstorage"
 	"DataServeDB/paths"
 )
@@ -64,10 +76,12 @@ func CreateTableJSON(jsonStr string, dbPtr comminterfaces.DbPtrI) (*DbTable, err
 	}
 
 	//TODO: use globabl const, better practice
+	//NOTE: it is creating table so id is -1.
 	return createTable(-1, &createTableData, tdc)
 }
 
 func createTable(tableInternalId int, createTableData *createTableExternalStruct, tblDataContainer *tableDataContainer) (*DbTable, error) {
+	// TODO: could be moved to table file. Name could be better.
 	// I think it better belongs here than table.go as it is creating DbTable
 
 	tbl := DbTable{}
@@ -76,7 +90,6 @@ func createTable(tableInternalId int, createTableData *createTableExternalStruct
 		return nil, err
 	} else {
 		tbl.TblMain = tblMain
-
 	}
 
 	tbl.TblData = tblDataContainer
@@ -90,6 +103,19 @@ func (t *DbTable) DebugPrintInternalFieldsNameMappings() string {
 	return fmt.Sprintf("%#v", t.TblMain.TableFieldsMetaData.FieldNameToFieldInternalId)
 }
 
+func addIndices(table *DbTable, rowInternalIds tableRowByInternalIds, rowNumber int64) error {
+	//NOTE: tableRowByInternalIds is passed by reference. -HY 22-Apr-2020
+
+	// check the duplicate primary key before insert
+	if _, ok := table.TblData.PkToRowMapper[rowInternalIds[table.TblMain.PkPos]]; ok {
+		return errors.New("duplicate primary key")
+	}
+
+	table.TblData.PkToRowMapper[rowInternalIds[table.TblMain.PkPos]] = rowNumber
+
+	return nil
+}
+
 func (t *DbTable) InsertRowJSON(jsonStr string) error {
 
 	var rowDataUnmarshalled TableRow
@@ -100,24 +126,21 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		return errors.New("error occured in parsing row json")
 	}
 
+	//returns validated row in the structure of internal ids
 	_, rowInternalIds, e := validateRowData(t.TblMain, rowDataUnmarshalled)
 	if e != nil {
 		return e
 	}
 
-	// check the duplicate primary key before insert
-	//TODO: not sure pk field is rowInternalIds[0]
-	if _, ok := t.TblData.PkToRowMapper[rowInternalIds[0]]; ok {
-		return errors.New("duplicate primary key")
+	numOfRows := int64(len(t.TblData.Rows))
+
+	if e := addIndices(t, rowInternalIds, numOfRows); e != nil {
+		return e
 	}
 
 	//TODO: TblData or Rows was giving error after loading table when data file was not there.
 	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
-	{
-		numOfRows := int64(len(t.TblData.Rows))
-		t.TblData.Rows = append(t.TblData.Rows, rowInternalIds)
-		t.TblData.PkToRowMapper[rowInternalIds[0]] = numOfRows // TODO: should get pk or other secondary keys here properly
-	}
+	t.TblData.Rows = append(t.TblData.Rows, rowInternalIds)
 
 	//TODO: path for table needs its own function?
 	fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
@@ -182,4 +205,33 @@ func (t *DbTable) GetRowByPrimaryKeyReturnsJSON(pkValue interface{}) (string, er
 	}
 
 	return string(jsonBytes), nil
+}
+
+func (t *DbTable) Get(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, resultContent []byte, resultErr error) {
+	key, value, err := parseKeyValue(dbReqCtx.ResPath)
+	if err != nil {
+		resultErr = err
+		return
+	}
+
+	//NOTE: there is no empty index 'indexName:' access at the moment.
+	if value == "" {
+		resultErr = errors.New("value is not provided")
+	}
+
+	if key == "" {
+		//primary key
+		row, err := t.GetRowByPrimaryKeyReturnsJSON(value)
+		if err != nil {
+			resultErr = err
+			return
+		}
+
+		resultContent = []byte(row)
+		resultHttpStatus = http.StatusOK
+	} else {
+		//
+	}
+
+	return
 }

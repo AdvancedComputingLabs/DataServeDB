@@ -13,9 +13,11 @@
 package db
 
 import (
-	"DataServeDB/dbtable"
 	"errors"
 	"fmt"
+	"log"
+
+	"DataServeDB/dbtable"
 )
 
 /*
@@ -39,9 +41,18 @@ import (
 func (t *DB) GetTable(tableName string) (*dbtable.DbTable, error) {
 	tblNameCaseHandled := syscasing(tableName)
 
-	tbl, exists := t.MapOfTables[tblNameCaseHandled]
-	if !exists {
+	_, tblI, e := t.Tables.GetByName(tblNameCaseHandled)
+	if e != nil {
+		//TODO: handle errors properly.
 		return nil, fmt.Errorf("table '%s' does not exit", tableName)
+	}
+
+	var tbl *dbtable.DbTable
+	var ok bool
+
+	if tbl, ok = tblI.(*dbtable.DbTable); !ok {
+		//TODO: maybe there is better way to do this
+		log.Fatalf("Casting error while getting table '%s'. This shouldn't happen there is error in the code.\n", tableName)
 	}
 
 	return tbl, nil
@@ -58,13 +69,46 @@ func (t *DB) CreateTableJSON(jsonStr string) error {
 		return e
 	}
 
-	//add to map
-	//TODO: name already exists check
 	tblNameCaseHandled := syscasing(tbl.TblMain.TableName)
-	if _, alreadyExists := t.MapOfTables[tblNameCaseHandled]; alreadyExists {
-		return errors.New("table name already exits")
+
+	//if _, alreadyExists := t.Tables[tblNameCaseHandled]; alreadyExists {
+	//	return errors.New("table name already exits")
+	//}
+	//t.Tables[tblNameCaseHandled] = tbl
+
+	//TODO: table id management.
+
+	if tbl.TblMain.TableId < 0 {
+
+		tbl.TblMain.TableId = t.Tables.LastId
+		triesCount := 0
+
+		//try 5 times then exit.
+		for true {
+			triesCount++
+			tbl.TblMain.TableId++
+
+			//TODO: properly handle this, currently it assumes it is just id already exists.
+			//TODO: need to check error type too.
+
+			if triesCount > 5 {
+				//TODO: handle this better.
+				break
+			}
+
+			if e = t.Tables.Add(tbl.TblMain.TableId, tblNameCaseHandled, tbl); e == nil {
+				break
+			}
+		}
+
+	} else {
+		//NOTE: this is create operation so shouldn't have tableid > -1 but I kept it here just in case.
+		// Probably better to check the logic later and remove it.
+		if e = t.Tables.Add(tbl.TblMain.TableId, tblNameCaseHandled, tbl); e != nil {
+			//TODO: properly handle and log errors.
+			return errors.New("table name already exits")
+		}
 	}
-	t.MapOfTables[tblNameCaseHandled] = tbl
 
 	//save to disk
 	//NOTE: table creation only creates metadata which is stored in db metadata

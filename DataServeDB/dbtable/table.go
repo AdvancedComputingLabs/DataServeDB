@@ -23,34 +23,39 @@ import (
 type tableMain struct {
 	TableId             int
 	TableName           string
+	PkPos				int
 	TableFieldsMetaData tableFieldsMetadataT
+
 	//TableStringComparer dbstrcmp_base.DbStrCmpInterface
 	//TableDataContainersIds map[string]int
 }
 
+//TODO: could go in its own file.
 // Separate, makes it easier to save it separately than table metadata.
 type tableDataContainer struct {
 	Rows          []tableRowByInternalIds
 	PkToRowMapper map[interface{}]int64
 }
 
+//TODO: is this needed here?
 type tablesMapper struct {
 	tableIdToTable     map[int]tableMain
 	tableNameToTableId map[string]int
 }
 
-//Only creates table object, kept this way for unit testing.
+//NOTE: Only creates table object, kept this way for unit testing.
 func newTableMain(tableInternalId int, tableName string) *tableMain {
 
-	if tableInternalId <= -1 {
-		//TODO: table id needs to be done.
-		//TODO: validation of tableid or/and auto generation of correct one
-		tableInternalId = 0
-	}
+	//if tableInternalId < 0 {
+	//	//TODO: table id needs to be done.
+	//	//TODO: validation of tableid or/and auto generation of correct one
+	//	tableInternalId = 0
+	//}
 
 	t := tableMain{
 		TableId:   tableInternalId,
 		TableName: tableName,
+		PkPos: 0, //default position is zero
 		TableFieldsMetaData: tableFieldsMetadataT{
 			mu:                             sync.RWMutex{},
 			FieldInternalIdToFieldMetaData: make(map[int]*tableFieldStruct),
@@ -63,8 +68,6 @@ func newTableMain(tableInternalId int, tableName string) *tableMain {
 }
 
 func (t *tableMain) getPkType() (dbtypes.DbTypeI, dbtypes.DbTypePropertiesI) {
-	// TODO: if pk position is not always zero then change it find pk.
-	// it should be implemented as always zero.
-	pkFieldInternal := t.TableFieldsMetaData.FieldInternalIdToFieldMetaData[0]
+	pkFieldInternal := t.TableFieldsMetaData.FieldInternalIdToFieldMetaData[t.PkPos]
 	return pkFieldInternal.FieldType, pkFieldInternal.FieldTypeProps
 }
