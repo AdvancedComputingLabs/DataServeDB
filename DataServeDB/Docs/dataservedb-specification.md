@@ -4,7 +4,6 @@
     > **NOTE**: Use hash(salt + password); salt in the beginning makes it harder to crack.
 
     1.1 **Authentication/Authorization Schemes:**
-
     Authentication scheme defines the whole lifetime from start of the authentication to the end of session. They can be built upon existing useable authentication methods, for example, 'CLSimpleAuth1' is based on basic access authentication: https://en.wikipedia.org/wiki/Basic_access_authentication.
     Purpose is to standardize authentication schemes including how passwords are stored on the server.
     
@@ -43,7 +42,7 @@
         UserAuthObject1 {
             AuthScheme string
             PwdH string //Password Hash in the format for the auth scheme.
-            PwdRenewalIntervelWks uint //Interval is in weeks, 1 means after every 1 week; 0 means disabled.
+            PwdRenewalIntervelDays uint32 //Interval is in days, 3 means after every 3 days; 0 means disabled.
             PwdLastChanged db datetime //Zero means not set and if there is renewal interval then user will be asked change password at first login.
             IsDbsRootUser bool //Dbs means database server.
             Claims hashtable {
@@ -71,3 +70,4 @@
     2.1 **Operations and Return codes:**
       Operations are model around rest's CRUD (Create, Read, Update, and Delete) as they provide all the functionality needed for database operations.
       Return codes are based on http return codes which provide all the return codes needed for database operations in a standard way.
+      

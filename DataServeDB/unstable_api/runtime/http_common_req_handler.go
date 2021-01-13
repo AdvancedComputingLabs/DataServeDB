@@ -13,12 +13,12 @@
 package runtime
 
 import (
-	"DataServeDB/commtypes"
-	"DataServeDB/dbsystem/constants"
 	"errors"
 	"net/http"
 	"strings"
 
+	"DataServeDB/commtypes"
+	"DataServeDB/dbsystem/constants"
 	"DataServeDB/unstable_api/dbrouter"
 )
 
@@ -110,6 +110,7 @@ func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 	switch strings.ToUpper(httpMethod) {
 	case "GET":
 		dbReqCtx.RestMethodId = constants.RestMethodGet
+		return db.TablesGet(dbReqCtx)
 	}
 
 	return

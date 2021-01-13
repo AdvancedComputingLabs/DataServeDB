@@ -20,6 +20,8 @@ func StartHttpServer() {
 	//NOTE: don't need starting http/https message as it is handled in httpserv package.
 
 	//NOTE: Redirect the incoming HTTP request. Note that "127.0.0.1:8081" will only work if you are accessing the server from your local machine.
+
+	//TODO: change local host
 	httpsHost = fmt.Sprintf("https://localhost:%d", httpsPort)
 
 	//configDir := paths.GetConfigDirPath()
