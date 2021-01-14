@@ -33,9 +33,23 @@ func GetDb(dbName string) (*db.DB, error) {
 	defer rwguardDbOps.RUnlock()
 
 	dbNameCasingHandled := syscasing(dbName)
+
+	//TODO: log error; needs to be here?
+	//TODO: error on log needs dbId?
+	_, DbAsInterface, e := databases.GetByName(dbNameCasingHandled)
+
+	//TODO: better handle errors
+	if e == nil {
+		database, ok := DbAsInterface.(*db.DB)
+		if ok {
+			return database, nil
+		}
+	}
+
+	/*
 	if data, ok := mapOfDatabases[dbNameCasingHandled]; ok {
 		return data, nil
-	}
+	}*/
 	return nil, errors.New("database not found")
 }
 
@@ -139,7 +153,7 @@ func mountDb(dbName, dbPath string) error {
 	dbNameCaseHandled := syscasing(dbName)
 
 	//check if db is already in map
-	if _, _, e := databases.GetByName(dbNameCaseHandled); e != nil {
+	if _, _, e := databases.GetByName(dbNameCaseHandled); e.Error() != "name does not exist" { //TODO: should be enum and not string
 		//TODO: properly handle this, currently it assumes it is just name already exists.
 		return errors.New("database name already exists")
 	}
