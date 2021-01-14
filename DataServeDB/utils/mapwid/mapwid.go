@@ -66,10 +66,6 @@ func (t *MapWithId) GetByName(name string) (int, interface{}, error) {
 	var exists bool
 	var object interface{}
 
-	for key := range t.NameToIdMap {
-		println("Key:", key)
-	}
-
 	if id, exists = t.NameToIdMap[name]; !exists {
 		return -1, nil, errors.New("name does not exist") //TODO: make it more user friendly
 	}
