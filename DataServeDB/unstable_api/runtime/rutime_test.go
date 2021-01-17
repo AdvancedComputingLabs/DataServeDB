@@ -37,7 +37,7 @@ func TestGens(t *testing.T) {
 
 func TestTableGet(t *testing.T) {
 
-	errMountingDb := mountDb("re_db", "./../../Databases")
+	errMountingDb := mountDb("re_db", "./../../databases")
 	if errMountingDb != nil {
 		t.Fatal(errMountingDb)
 	}
