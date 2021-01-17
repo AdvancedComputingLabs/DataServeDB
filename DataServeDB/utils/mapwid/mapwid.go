@@ -17,6 +17,9 @@ import "errors"
 		2) There is no get by id because it would need id to name mapping. It maybe added later if needed.
 */
 
+//NOTE: Might run into struct export issues, hence, kept the field public. But don't use them outside of the package directly.
+//TODO: Make them private and test.
+
 type MapWithId struct {
 	IdMap       map[int]interface{}
 	NameToIdMap map[string]int
@@ -119,14 +122,14 @@ func (t *MapWithId) RemoveByNameUnsync(nameCaseSen string) (int, interface{}, er
 	return id, object, nil
 }
 
-func (t *MapWithId) UpdateUnsync(name_current, name_new string) error {
+func (t *MapWithId) UpdateUnsync(nameCurrentCaseSen, nameNewCaseSen string) error {
 	//COMMENT: do caller need to send id for checking?
 	// It can be checked before calling this through through GetId first.
 
 	var id int
 	var exists bool
 
-	if id, exists = t.NameToIdMap[name_current]; !exists {
+	if id, exists = t.NameToIdMap[nameCurrentCaseSen]; !exists {
 		return errors.New("name does not exist") //TODO: make it more user friendly
 	}
 
@@ -134,9 +137,9 @@ func (t *MapWithId) UpdateUnsync(name_current, name_new string) error {
 		return errors.New("id does not exist") //TODO: make it more user friendly
 	}
 
-	t.NameToIdMap[name_new] = id
+	t.NameToIdMap[nameNewCaseSen] = id
 
-	delete(t.NameToIdMap, name_current)
+	delete(t.NameToIdMap, nameCurrentCaseSen)
 
 	return nil
 }
@@ -145,4 +148,8 @@ func (t *MapWithId) UpdateUnsync(name_current, name_new string) error {
 func (t *MapWithId) HasNameUnsync(nameCaseSen string) bool {
 	_, exists := t.NameToIdMap[nameCaseSen]
 	return exists //TODO: make it more user friendly
+}
+
+func (t *MapWithId) GetLastIdUnsync() int {
+	return  t.LastId
 }

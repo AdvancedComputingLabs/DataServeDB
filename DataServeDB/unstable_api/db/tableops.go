@@ -80,7 +80,7 @@ func (t *DB) CreateTableJSON(jsonStr string) error {
 
 	if tbl.TblMain.TableId < 0 {
 
-		tbl.TblMain.TableId = t.Tables.LastId
+		tbl.TblMain.TableId = t.Tables.GetLastIdUnsync()
 		triesCount := 0
 
 		//try 5 times then exit.

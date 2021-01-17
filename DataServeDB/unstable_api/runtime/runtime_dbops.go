@@ -166,7 +166,7 @@ func mountDb(dbName, dbPath string) error {
 
 	//add to db map
 
-	dbId := databases.LastId
+	dbId := databases.GetLastIdUnsync()
 	triesCount := 0
 
 	for true {
