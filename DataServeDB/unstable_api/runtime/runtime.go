@@ -1,104 +1,54 @@
+// Copyright (c) 2020 Advanced Computing Labs DMCC
+
+/*
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+	THE SOFTWARE.
+*/
+
 package runtime
 
 import (
-	storage "DataServeDB/dbsystem/dbstorage"
-	"DataServeDB/dbtable"
-	"DataServeDB/unstable_api/db"
-	"encoding/json"
-	"errors"
 	"fmt"
+
+	"DataServeDB/dbsystem"
+	"DataServeDB/unstable_api/dbrouter"
 )
 
-// MapOfdb is exported
-var MapOfdb = make(map[string]db.DB)
-var MetaData = make(db.Meta)
+//TODO: change to get functions
 
-func GetDB(dbName string) (db.DB, error) {
-	if data, ok := MapOfdb[dbName]; ok {
-		return data, nil
-	}
-	return db.DB{}, errors.New("db Name not found")
+var syscasing = dbsystem.SystemCasingHandler.Convert
+var isInitalized = false
+
+func IsInitalized() bool {
+	return isInitalized
 }
-func LoadDB() error {
-	if b, err := storage.LoadMata(); err != nil {
-		return err
-	} else {
-		if err = json.Unmarshal(b, &MetaData); err != nil {
-			return err
-		}
-	}
-	var mapoftable = make(db.MapOfTables)
-	// createTableJSON := `{
-	//   "TableName": "users",
-	//   "TableFields": [
-	// 	"Id int32 PrimaryKey",
-	// 	"UserName string Length:5..50 !Nullable",
-	// 	"Counter int32 default:Increment(1,1) !Nullable",
-	// 	"DateAdded datetime default:Now() !Nullable",
-	// 	"GlobalId guid default:NewGuid() !Nullable"
-	//   ]
-	// }`
 
-	for dbName, DbMeta := range MetaData {
-		for _, tableMeta := range DbMeta.TableMeta {
-			if tbl01, err := dbtable.CreateTableJSON(tableMeta.Table); err == nil {
-				if jsonStr, err := dbtable.GetSaveLoadStructure(tbl01); err == nil {
-					fmt.Println(jsonStr)
-					// println(tableMeta.Table, dbName)
-					if tbl, err := dbtable.LoadTableFromDB(jsonStr, dbName); err == nil {
-						fmt.Printf("table loaded :- %v\n", tbl)
-						mapoftable["users"] = *tbl
-						MapOfdb["re_db"] = db.DB{
-							DbName:       "re_db",
-							DbInternalID: 0,
-							MapOfTables:  mapoftable,
-						}
-					} else {
-						println("err", err.Error())
-						return err
-					}
-				} else {
-					return err
-				}
-			} else {
-				return err
-			}
-		}
-	}
-	// fmt.Printf("META:= %v\n", MapOfdb)
+func Start() error {
+	//TODO: check if this needs go process to independently initalize db server; there could be hanging issue?
+	fmt.Println("Starting DataServeDB server ...")
+
+	//TODO: list/log all the databases being mounted.
+	//TODO: refactor
+
+	//TODO: error handling
+	loadDatabases()
+
+	//routing
+	dbrouter.Register("{db_name}/tables/{tbl_name}", TableRestPathHandler)
+
+	//http server and rest api routing
+	StartHttpServer()
+
+	cliProcessor()
+
+	//log.Println("Closing DataServeDB server ...")
+
+	isInitalized = true
+
 	return nil
-	// fmt.Printf("%v\n", MapOfdb)
-	// gob.Register(dtIso8601Utc.Iso8601Utc{})
-	// gob.Register(guid.Guid{})
-	// gob.Register()
-	// var network bytes.Buffer        // Stand-in for a network connection
-	// enc := gob.NewEncoder(&network) // Will write to network.
-	// err := enc.Encode(MapOfdb)
-	// if err != nil {
-	// 	println("error ")
-	// 	log.Fatal("encode error:", err)
-	// }
 }
-
-func InitMapOfDB() {
-	LoadDB()
-}
-func CreateDBmeta() {
-	table := db.TableMeta{
-		Table: `{"TableName": "users","TableRoot": "re_db", "TableFields": ["Id int32 PrimaryKey","UserName string Length:5..50 !Nullable","Counter int32 default:Increment(1,1) !Nullable","DateAdded datetime default:Now() !Nullable","GlobalId guid default:NewGuid() !Nullable"]}`,
-	}
-	dbMeta := db.DbMeta{}
-	dbMeta.TableMeta = append(dbMeta.TableMeta, table)
-	// dbMeta
-	MetaData["re_db"] = dbMeta
-	if db, err := json.Marshal(MetaData); err != nil {
-
-	} else {
-		storage.SaveToDisk(db)
-	}
-
-}
-
-// func LoadData() {
-
-// }

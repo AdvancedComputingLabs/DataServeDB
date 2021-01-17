@@ -1,0 +1,17 @@
+{
+  "Tables": [
+    {
+      "TableInternalId": 0,
+      "DbTableCreationStructure": {
+        "TableName": "Tbl01",
+        "TableFields": [
+          "Id int32 PrimaryKey",
+          "UserName string Length:5..50 !Nullable",
+          "Counter int32 default:Increment(1,1) !Nullable",
+          "DateAdded datetime default:Now() !Nullable",
+          "GlobalId guid default:NewGuid() !Nullable"
+        ]
+      }
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 package guid
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -36,5 +38,25 @@ func TestParseString(t *testing.T) {
 		}
 	}
 
+	{ // gob
 
+		var buf bytes.Buffer
+		enc := gob.NewEncoder(&buf)
+		e := enc.Encode(tester)
+		if e != nil {
+			t.Error(e)
+		} else {
+			fmt.Println(buf.String())
+		}
+
+		var testerDecoded DtTester
+		bufDecode := bytes.NewReader(buf.Bytes())
+		dec := gob.NewDecoder(bufDecode)
+		e = dec.Decode(&testerDecoded)
+		if e != nil {
+			t.Error(e)
+		} else {
+			fmt.Println(testerDecoded)
+		}
+	}
 }

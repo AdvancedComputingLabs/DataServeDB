@@ -188,7 +188,7 @@ func parseAndProcess(tokens []parsers.Token) (fieldName string, dbType DbTypeI, 
 	}
 
 	fieldName = tokens[0].Word
-	if !db_rules.TableFieldNameRulesCheck(fieldName) {
+	if !db_rules.TableFieldNameIsValid(fieldName) {
 		e = fmt.Errorf("invalid table field name '%s'", fieldName)
 		return
 	}

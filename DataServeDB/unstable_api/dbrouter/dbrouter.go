@@ -10,22 +10,45 @@
 	THE SOFTWARE.
 */
 
+/*
+	Package Name: dbrouter
+
+	Package Description:
+		Provides handling of routing paths. Purpose are as follows:
+		i)  gives organized way to manage paths to db resources;
+		ii) makes it easier to add more paths for new db resources.
+
+		Important to note: it does not provide if validation of the target resource, it only checks the path exits.
+			There is handling function, it should validate the target resource.
+
+	Rules:
+		1) Only contains maximum two placeholders at the moment. One should be database name place holder
+			and another target resource like a table, file, or other similar database resource target.
+		2) database placeholder doesn't have to be there always, if no database is matched empty string is valid in this case.
+			Handling function handle empty string(s) according to its needs.
+		3) First matching path returns.
+
+	Valid Usage Patterns:
+		TODO
+*/
+
 package dbrouter
 
 import (
+	"DataServeDB/dbsystem/constants"
 	"errors"
-	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
 
 	rules "DataServeDB/dbsystem/rules"
-	"DataServeDB/unstable_api/runtime"
 )
 
 //function interface for rest api handler
 //NOTE: db is must, hence, db name is extracted by the system before matching.
-type HttpRestApiHandlerFnI = func(w http.ResponseWriter, r *http.Request, httpMethod string, dbName string, resPath string /* path remaining after db name */) (resultHttpStatus int, resultContent []byte, resultErr error)
+type HttpRestApiHandlerFnI = func(w http.ResponseWriter, r *http.Request, httpMethod,
+	resPath /* path remaining after db name */,
+	matchedPath, dbName, targetName string, targetDbResTypeId constants.DbResTypes) (resultHttpStatus int, resultContent []byte, resultErr error)
 
 // private as it doesn't need to be exposed.
 type reqPathToHandler struct {
@@ -33,6 +56,8 @@ type reqPathToHandler struct {
 	matchPathRegEx *regexp.Regexp
 	HandlerFn      HttpRestApiHandlerFnI
 }
+
+//NOTE: placeholders can be here since they don't change.
 
 // keywords, identifiers, and placeholders
 // {db_name} is special name, which is place holder for any db name provided in the path. For example: re_db/tables/users
@@ -55,63 +80,50 @@ func Register(matchPath string, handlerFn HttpRestApiHandlerFnI) error {
 
 	p2h.MatchPath = matchPath
 
-	sMathPathForRegEx := strings.Replace(matchPath, dbNamePlaceHolder, rules.DbNameValidatorRuleReStrBasic, 1)
-	sMathPathForRegEx = strings.Replace(sMathPathForRegEx, tblNamePlaceHolder, rules.TableNameValidatorRuleReStrBasic, 1)
-	p2h.matchPathRegEx = regexp.MustCompile(sMathPathForRegEx)
+	sMatchPathForRegEx := strings.Replace(matchPath, dbNamePlaceHolder, rules.DbNameValidatorRuleReStrBasic, 1)
+	sMatchPathForRegEx = strings.Replace(sMatchPathForRegEx, tblNamePlaceHolder, rules.TableNameValidatorRuleReStrBasic, 1)
+	p2h.matchPathRegEx = regexp.MustCompile(sMatchPathForRegEx)
 
 	p2h.HandlerFn = handlerFn
 
 	pathsToHandlers = append(pathsToHandlers, p2h)
 
-	fmt.Printf("%v\n%v\n", pathsToHandlers, p2h.MatchPath)
+	//fmt.Println(sMatchPathForRegEx) //[A-Za-z][_0-9A-Za-z]{2,49}/tables/[A-Za-z][0-9A-Za-z]{2,49}
+	//fmt.Printf("%v\n%v\n", pathsToHandlers, p2h.MatchPath) //for debugging
 	return nil
 }
 
 func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath string, httpMethod string) (resultHttpStatus int, resultContent []byte, resultErr error) {
 	if pathsToHandlers == nil {
-		return 0, nil, errors.New("no match path exits")
+		return http.StatusNotFound, nil, errors.New("no matching path found")
 	}
 
 	var dbName string
-	var tblName string
+	var targetResName string
+	var targetDbResTypeid constants.DbResTypes = constants.DbResTypeNone
 
+	//find matching path, first match returns
 	for _, m := range pathsToHandlers {
-		// println("here ", m.matchPathRegEx.FindString(reqPath))
 		if path := m.matchPathRegEx.FindString(reqPath); path != "" {
-			// if m.matchPathRegEx.MatchString(reqPath) {
-			println("path", path)
-			//TODO: extract db name and check
-			var re = regexp.MustCompile(`(?m)[A-Za-z][_0-9A-Za-z]{2,49}`)
 
-			match := re.FindAllString(reqPath, -1)
-			dbName = match[0]
-			tblName = match[2]
-			// runtime.GetDB(dbName)
-			// check the duplicate primary key before insert
-			if db, err := runtime.GetDB(dbName); err == nil {
-				fmt.Printf("%v\n", db.MapOfTables[tblName])
-				if table, ok := db.MapOfTables[tblName]; ok {
-					println("Table Found", table.GetLength())
-				} else {
-					println("No Tables")
-					return 0, nil, errors.New("db Name not found")
+			// placeholders can be in any order, so following loop and matching is used.
+
+			matchPathSplit := strings.Split(m.MatchPath, "/")
+			pathSplit := strings.Split(path, "/")
+
+			for i := 0; i < len(matchPathSplit) && i < len(pathSplit); i++ {
+				switch matchPathSplit[i] {
+				case dbNamePlaceHolder:
+					dbName = pathSplit[i]
+				case tblNamePlaceHolder:
+					targetDbResTypeid = constants.DbResTypeTable
+					targetResName = pathSplit[i]
 				}
-			} else {
-				println("BD NOT FOUND")
-				return 0, nil, errors.New("db Name not found")
 			}
-			println("table name", dbName, tblName)
 
-			// fmt.Printf("%v\n", DataServeDB.MapOfdb)
-			//TODO: extract correct path for the handler
-			//TODO: permissions check for db access?
-			//TODO: add auth
-			return m.HandlerFn(w, r, httpMethod, "todo", reqPath)
+			return m.HandlerFn(w, r, httpMethod, reqPath, path, dbName, targetResName, targetDbResTypeid)
 		}
-
-		println(m.matchPathRegEx.String())
-		println(reqPath)
 	}
-	return 0, nil, errors.New("resource in the path not found")
 
+	return http.StatusNotFound, nil, errors.New("no matching path found")
 }
