@@ -82,16 +82,16 @@ func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 	//db auth
 	//TODO: check if separating db auth scheme is better. Keeping all auth tokens under one header have problems with top browsers?
 
-	scheme, authToken, errAuthHeader := getDbAuthFromHttpHeader(r)
-
-	//NOTE: currently auth is must
-	if errAuthHeader != nil {
-		return http.StatusForbidden, nil, errAuthHeader
-	}
-
-	if errAuth := AuthUser(scheme, authToken); errAuth != nil {
-		return http.StatusForbidden, nil, errAuth
-	}
+	//scheme, authToken, errAuthHeader := getDbAuthFromHttpHeader(r)
+	//
+	////NOTE: currently auth is must
+	//if errAuthHeader != nil {
+	//	return http.StatusForbidden, nil, errAuthHeader
+	//}
+	//
+	//if errAuth := AuthUser(scheme, authToken); errAuth != nil {
+	//	return http.StatusForbidden, nil, errAuth
+	//}
 
 	/*
 		Example:
@@ -165,7 +165,11 @@ func commonHttpServReqHandler(w http.ResponseWriter, r *http.Request) {
 	//TODO: http restful api return results handling.
 
 	reqPath := httpRestPathParser(r.URL.String())
-	dbrouter.MatchPathAndCallHandler(w, r, reqPath, r.Method)
+	resultHttpStatus, resultContent, resultErr := dbrouter.MatchPathAndCallHandler(w, r, reqPath, r.Method)
+
+	if resultErr == nil && resultHttpStatus == http.StatusOK {
+		w.Write(resultContent)
+	}
 
 	return
 }
