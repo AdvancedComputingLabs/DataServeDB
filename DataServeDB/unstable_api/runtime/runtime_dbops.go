@@ -20,7 +20,7 @@ import (
 // - RenameDb fn
 // Note: right now goal is to get 1 db, tables, and their joined queries working.
 
-var mapOfDatabases = make(map[string]*db.DB)
+// var mapOfDatabases = make(map[string]*db.DB)
 var databases *mapwid.MapWithId
 var rwguardDbOps sync.RWMutex
 
@@ -47,9 +47,9 @@ func GetDb(dbName string) (*db.DB, error) {
 	}
 
 	/*
-	if data, ok := mapOfDatabases[dbNameCasingHandled]; ok {
-		return data, nil
-	}*/
+		if data, ok := mapOfDatabases[dbNameCasingHandled]; ok {
+			return data, nil
+		}*/
 	return nil, errors.New("database not found")
 }
 
@@ -113,10 +113,9 @@ func CreateDb(dbName string) error {
 
 	dbNameCasingHandled := syscasing(dbName)
 
-	if _, exists := mapOfDatabases[dbNameCasingHandled]; exists {
+	if exists := databases.HasName(dbNameCasingHandled); exists {
 		return errors.New("database name already exists")
 	}
-
 	//TODO: can move to common function
 	databases_dir := paths.GetDatabasesMainDirPath()
 
