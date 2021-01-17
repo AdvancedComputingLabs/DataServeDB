@@ -15,19 +15,19 @@ import "errors"
 	Dev Issues:
 		1) It is using map, which avoids some problems compared to list but it is more expensive.
 		2) There is no get by id because it would need id to name mapping. It maybe added later if needed.
- */
+*/
 
 type MapWithId struct {
-	IdMap map[int]interface{}
+	IdMap       map[int]interface{}
 	NameToIdMap map[string]int
-	LastId int
+	LastId      int
 }
 
 func New() *MapWithId {
 	return &MapWithId{
-		IdMap: make(map[int]interface{}),
+		IdMap:       make(map[int]interface{}),
 		NameToIdMap: make(map[string]int),
-		LastId: -1,
+		LastId:      -1,
 	}
 }
 
@@ -61,10 +61,15 @@ func (t *MapWithId) Add(id int, name string, object interface{}) error {
 	return nil
 }
 
+// GetByName get by name
 func (t *MapWithId) GetByName(name string) (int, interface{}, error) {
 	var id int
 	var exists bool
 	var object interface{}
+
+	// for key := range t.NameToIdMap {
+	// 	println("Key:", key)
+	// }
 
 	if id, exists = t.NameToIdMap[name]; !exists {
 		return -1, nil, errors.New("name does not exist") //TODO: make it more user friendly
@@ -134,4 +139,10 @@ func (t *MapWithId) Update(name_current, name_new string) error {
 	delete(t.NameToIdMap, name_current)
 
 	return nil
+}
+
+// HasName finds wether the new entry name has alredy exist or not
+func (t *MapWithId) HasName(name string) bool {
+	_, exists := t.NameToIdMap[name]
+	return exists //TODO: make it more user friendly
 }
