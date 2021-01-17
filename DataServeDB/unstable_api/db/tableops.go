@@ -36,12 +36,12 @@ import (
 	* delete row
 	* change table
 	* delete table
- */
+*/
 
 func (t *DB) GetTable(tableName string) (*dbtable.DbTable, error) {
 	tblNameCaseHandled := syscasing(tableName)
 
-	_, tblI, e := t.Tables.GetByName(tblNameCaseHandled)
+	_, tblI, e := t.Tables.GetByNameUnsync(tblNameCaseHandled)
 	if e != nil {
 		//TODO: handle errors properly.
 		return nil, fmt.Errorf("table '%s' does not exit", tableName)
@@ -96,7 +96,7 @@ func (t *DB) CreateTableJSON(jsonStr string) error {
 				break
 			}
 
-			if e = t.Tables.Add(tbl.TblMain.TableId, tblNameCaseHandled, tbl); e == nil {
+			if e = t.Tables.AddUnsync(tbl.TblMain.TableId, tblNameCaseHandled, tbl); e == nil {
 				break
 			}
 		}
@@ -104,7 +104,7 @@ func (t *DB) CreateTableJSON(jsonStr string) error {
 	} else {
 		//NOTE: this is create operation so shouldn't have tableid > -1 but I kept it here just in case.
 		// Probably better to check the logic later and remove it.
-		if e = t.Tables.Add(tbl.TblMain.TableId, tblNameCaseHandled, tbl); e != nil {
+		if e = t.Tables.AddUnsync(tbl.TblMain.TableId, tblNameCaseHandled, tbl); e != nil {
 			//TODO: properly handle and log errors.
 			return errors.New("table name already exits")
 		}

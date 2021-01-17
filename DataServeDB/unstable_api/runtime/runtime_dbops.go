@@ -36,7 +36,7 @@ func GetDb(dbName string) (*db.DB, error) {
 
 	//TODO: log error; needs to be here?
 	//TODO: error on log needs dbId?
-	_, DbAsInterface, e := databases.GetByName(dbNameCasingHandled)
+	_, DbAsInterface, e := databases.GetByNameUnsync(dbNameCasingHandled)
 
 	//TODO: better handle errors
 	if e == nil {
@@ -113,7 +113,7 @@ func CreateDb(dbName string) error {
 
 	dbNameCasingHandled := syscasing(dbName)
 
-	if exists := databases.HasName(dbNameCasingHandled); exists {
+	if exists := databases.HasNameUnsync(dbNameCasingHandled); exists {
 		return errors.New("database name already exists")
 	}
 	//TODO: can move to common function
@@ -152,7 +152,7 @@ func mountDb(dbName, dbPath string) error {
 	dbNameCaseHandled := syscasing(dbName)
 
 	//check if db is already in map
-	if _, _, e := databases.GetByName(dbNameCaseHandled); e.Error() != "name does not exist" { //TODO: should be enum and not string
+	if _, _, e := databases.GetByNameUnsync(dbNameCaseHandled); e.Error() != "name does not exist" { //TODO: should be enum and not string
 		//TODO: properly handle this, currently it assumes it is just name already exists.
 		return errors.New("database name already exists")
 	}
@@ -180,7 +180,7 @@ func mountDb(dbName, dbPath string) error {
 
 		//TODO: properly handle this, currently it assumes it is just id already exists.
 		//TODO: need to check error type too.
-		if e := databases.Add(dbId, dbNameCaseHandled, database); e == nil {
+		if e := databases.AddUnsync(dbId, dbNameCaseHandled, database); e == nil {
 			break
 		}
 	}
