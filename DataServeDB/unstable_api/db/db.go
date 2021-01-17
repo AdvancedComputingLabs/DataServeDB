@@ -81,7 +81,7 @@ func (t *DB) loadDbMetadata() error {
 		//t.Tables[syscasing(dtbl.TblMain.TableName)] = dtbl
 
 		//TODO: here table loaded from disk is added to the map, error can happen with add to map operation.
-		t.Tables.Add(dtbl.TblMain.TableId, syscasing(dtbl.TblMain.TableName), dtbl)
+		t.Tables.AddUnsync(dtbl.TblMain.TableId, syscasing(dtbl.TblMain.TableName), dtbl)
 	}
 
 	//at the moment there are only tables
@@ -116,7 +116,7 @@ func (t *DB) getTablesSaveStructureJson() string {
 	var result string
 	dbMeta := DatabaseMetaSaveStructure{}
 
-	for _, tblI := range t.Tables.GetItems() {
+	for _, tblI := range t.Tables.GetItemsUnsync() {
 		if tbl, ok := tblI.(*dbtable.DbTable); ok {
 			tblStructure := dbtable.GetTableStorageStructure(tbl)
 			dbMeta.Tables = append(dbMeta.Tables, tblStructure)
@@ -173,13 +173,13 @@ func (t *DB) createDbMetadata() {
 	_ = e
 	//t.Tables[tbl01.TblMain.TableName] = tbl01
 	tbl01.TblMain.TableId = 0
-	t.Tables.Add(tbl01.TblMain.TableId, tbl01.TblMain.TableName, tbl01)
+	t.Tables.AddUnsync(tbl01.TblMain.TableId, tbl01.TblMain.TableName, tbl01)
 
 	tbl02, e := dbtable.CreateTableJSON(createTable02JSON, t)
 	_ = e
 	//t.Tables[tbl02.TblMain.TableName] = tbl02
 	tbl02.TblMain.TableId = 0
-	t.Tables.Add(tbl02.TblMain.TableId, tbl02.TblMain.TableName, tbl02)
+	t.Tables.AddUnsync(tbl02.TblMain.TableId, tbl02.TblMain.TableName, tbl02)
 
 	//TODO: make it save all the tables
 	//TODO: change map to table pointer
