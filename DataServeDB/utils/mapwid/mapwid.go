@@ -140,3 +140,9 @@ func (t *MapWithId) Update(name_current, name_new string) error {
 
 	return nil
 }
+
+// HasName finds wether the new entry name has alredy exist or not
+func (t *MapWithId) HasName(name string) bool {
+	_, exists := t.NameToIdMap[name]
+	return exists //TODO: make it more user friendly
+}

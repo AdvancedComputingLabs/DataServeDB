@@ -116,7 +116,7 @@ func CreateDb(dbName string) error {
 	// if _, exists := mapOfDatabases[dbNameCasingHandled]; exists {
 	// 	return errors.New("database name already exists")
 	// }
-	if _, exists := databases.NameToIdMap[dbNameCasingHandled]; exists {
+	if exists := databases.HasName(dbNameCasingHandled); exists {
 		return errors.New("database name already exists")
 	}
 	//TODO: can move to common function
