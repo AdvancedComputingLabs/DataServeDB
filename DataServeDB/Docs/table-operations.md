@@ -78,7 +78,7 @@
    //NOTE1: Update fields are in the body in JSON.
    //NOTE2: Primary key at the moment cannot be updated.
    https://[ip or domain]/db_name/tables/tbl01/Id:1 // index_name:value representation
-   https://[ip or domain]/db_name/tables/tbl01/1 //post DELETE; //primary key does not require naming
+   https://[ip or domain]/db_name/tables/tbl01/1 //post PUT; //primary key does not require naming
    ```
 
 5. Deleting Row(s)
