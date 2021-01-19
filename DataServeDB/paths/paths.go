@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 )
 
-const dataDirNameRelative = "Databases"
+const dataDirNameRelative = "databases"
 const configDirNameRelative = "Config"
 
 //returns true if path was created; panics if there is dir creation error

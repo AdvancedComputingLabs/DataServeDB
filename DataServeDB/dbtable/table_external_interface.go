@@ -18,7 +18,7 @@ Operations:
 	- Change Operations
 		- Delete Table
 		- Alter Table
- */
+*/
 
 package dbtable
 

@@ -15,12 +15,17 @@ package runtime
 import (
 	"errors"
 	"net/http"
+	"net/url"
+
+	// "net/url"
 	"strings"
 
 	"DataServeDB/commtypes"
 	"DataServeDB/dbsystem/constants"
 	"DataServeDB/unstable_api/dbrouter"
 )
+
+const maxMEMORY = 1 * 1024 * 1024
 
 func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -100,17 +105,38 @@ func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 			dbName: re_db
 			targetName: users
 			targetDbResTypeId: 1
-	 */
+	*/
 
 	var dbReqCtx *commtypes.DbReqContext
 	dbReqCtx = commtypes.NewDbReqContext(
-			httpMethod, resPath, matchedPath,
-			dbName, db, targetName, targetDbResTypeId)
+		httpMethod, resPath, matchedPath,
+		dbName, "", db, targetName, targetDbResTypeId)
 
 	switch strings.ToUpper(httpMethod) {
 	case "GET":
 		dbReqCtx.RestMethodId = constants.RestMethodGet
 		return db.TablesGet(dbReqCtx)
+	case "POST":
+		if err := r.ParseMultipartForm(maxMEMORY); err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+
+		form := getDataInsert(r.MultipartForm.Value)
+		for key := range form {
+			dbReqCtx = commtypes.NewDbReqContext(
+				httpMethod, resPath, matchedPath,
+				dbName, form.Get(key), db, targetName, targetDbResTypeId)
+			if httpStatus, err := db.TablesPost(dbReqCtx); err != nil {
+				return httpStatus, nil, err
+			}
+		}
+		// dbReqCtx = commtypes.NewDbReqContext(
+		// 	httpMethod, resPath, matchedPath,
+		// 	dbName, "", db, targetName, targetDbResTypeId)
+
+		// db.TablesPost(dbReqCtx)
+
 	}
 
 	return
@@ -125,41 +151,41 @@ func commonHttpServReqHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//********
-//	path := r.URL.String()
-//
-//	table, key, err := requestParser(path)
-//	if err != nil {
-//		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-//		return
-//	}
-//	if strings.ToUpper(table) == "SIGNIN" {
-//		result, err := Signin(w, r)
-//		if err != nil {
-//			return
-//		}
-//		w.Write(result)
-//		return
-//	} else if strings.ToUpper(table) == "AUTHTOKEN" {
-//		_, err := AuthenticateToken(r)
-//		if err != nil {
-//			w.WriteHeader(http.StatusUnauthorized)
-//			return
-//		}
-//		w.WriteHeader(http.StatusOK)
-//		return
-//	}
-//
-//	/***************************************************************************/
-//	/* session cookie checking
-//	/*******************************************************************************/
-//	// We can obtain the session token from the requests cookies, which come with every request
-//
-//	claimID, err := AuthenticateToken(r)
-//	if err != nil {
-//		w.WriteHeader(http.StatusUnauthorized)
-//		return
-//	}
-//	// after check get data according to authenticated user
+	//	path := r.URL.String()
+	//
+	//	table, key, err := requestParser(path)
+	//	if err != nil {
+	//		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+	//		return
+	//	}
+	//	if strings.ToUpper(table) == "SIGNIN" {
+	//		result, err := Signin(w, r)
+	//		if err != nil {
+	//			return
+	//		}
+	//		w.Write(result)
+	//		return
+	//	} else if strings.ToUpper(table) == "AUTHTOKEN" {
+	//		_, err := AuthenticateToken(r)
+	//		if err != nil {
+	//			w.WriteHeader(http.StatusUnauthorized)
+	//			return
+	//		}
+	//		w.WriteHeader(http.StatusOK)
+	//		return
+	//	}
+	//
+	//	/***************************************************************************/
+	//	/* session cookie checking
+	//	/*******************************************************************************/
+	//	// We can obtain the session token from the requests cookies, which come with every request
+	//
+	//	claimID, err := AuthenticateToken(r)
+	//	if err != nil {
+	//		w.WriteHeader(http.StatusUnauthorized)
+	//		return
+	//	}
+	//	// after check get data according to authenticated user
 
 	//TODO: where does http restful api user authentications go?
 	//TODO: http restful api return results handling.
@@ -172,4 +198,7 @@ func commonHttpServReqHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	return
+}
+func getDataInsert(form url.Values) url.Values {
+	return form
 }
