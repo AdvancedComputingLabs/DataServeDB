@@ -17,13 +17,13 @@ func (t *DB) TablesGet(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, 
 
 	//return 0, nil, nil
 }
-func (t *DB) TablesPost(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, resultErr error) {
+func (t *DB) TablesPost(dbReqCtx *commtypes.DbReqContext, insertDataJson string) (resultHttpStatus int, resultErr error) {
 	table, err := t.GetTable(dbReqCtx.TargetName)
 	if err != nil {
 		resultErr = err
 		return
 	}
-	resultErr = table.InsertRowJSON(dbReqCtx.DataInsert)
+	resultErr = table.InsertRowJSON(insertDataJson)
 	if resultErr == nil {
 		resultHttpStatus = http.StatusOK
 	}

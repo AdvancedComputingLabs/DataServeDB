@@ -110,7 +110,7 @@ func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 	var dbReqCtx *commtypes.DbReqContext
 	dbReqCtx = commtypes.NewDbReqContext(
 		httpMethod, resPath, matchedPath,
-		dbName, "", db, targetName, targetDbResTypeId)
+		dbName, db, targetName, targetDbResTypeId)
 
 	switch strings.ToUpper(httpMethod) {
 	case "GET":
@@ -126,8 +126,8 @@ func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 		for key := range form {
 			dbReqCtx = commtypes.NewDbReqContext(
 				httpMethod, resPath, matchedPath,
-				dbName, form.Get(key), db, targetName, targetDbResTypeId)
-			if httpStatus, err := db.TablesPost(dbReqCtx); err != nil {
+				dbName, db, targetName, targetDbResTypeId)
+			if httpStatus, err := db.TablesPost(dbReqCtx, key); err != nil {
 				return httpStatus, nil, err
 			}
 		}
