@@ -34,12 +34,13 @@ type DbReqContext struct {
 	ResPath           string
 	MatchedPath       string
 	DbName            string
+	DataInsert        string
 	Dbi               comminterfaces.DbPtrI
 	TargetName        string
 	TargetDbResTypeId constants.DbResTypes
 }
 
-func NewDbReqContext(restMethod, resPath, matchedPath, dbName string,
+func NewDbReqContext(restMethod, resPath, matchedPath, dbName string, dataInsert string,
 	dbi comminterfaces.DbPtrI, targetName string, targetDbResTypeId constants.DbResTypes) *DbReqContext {
 
 	dbreqCtx := DbReqContext{
@@ -47,6 +48,7 @@ func NewDbReqContext(restMethod, resPath, matchedPath, dbName string,
 		ResPath:           resPath,
 		MatchedPath:       matchedPath,
 		DbName:            dbName,
+		DataInsert:        dataInsert,
 		Dbi:               dbi,
 		TargetName:        targetName,
 		TargetDbResTypeId: targetDbResTypeId,
