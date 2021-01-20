@@ -235,3 +235,53 @@ func (t *DbTable) Get(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, r
 
 	return
 }
+func getPrimaryKey(table *DbTable, rowInternalIds tableRowByInternalIds) (primarKey int64, err error) {
+	if primarKey, ok := table.TblData.PkToRowMapper[rowInternalIds[table.TblMain.PkPos]]; ok {
+		return primarKey, nil
+	}
+	return primarKey, errors.New("does not find primary key")
+}
+
+func (t *DbTable) EditRowJSON(jsonStr string) error {
+
+	var rowDataUnmarshalled TableRow
+	if e := json.Unmarshal([]byte(jsonStr), &rowDataUnmarshalled); e != nil {
+		_ = e
+		//TODO: make error result more user friendly.
+		return errors.New("error occured in parsing row json")
+	}
+
+	//returns validated row in the structure of internal ids
+	_, rowInternalIds, e := validateRowData(t.TblMain, rowDataUnmarshalled)
+	if e != nil {
+		return e
+	}
+
+	pk, err := getPrimaryKey(t, rowInternalIds)
+	if err != nil {
+		return err
+	}
+
+	//TODO: TblData or Rows was giving error after loading table when data file was not there.
+	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
+	t.TblData.Rows[pk] = rowInternalIds
+
+	//TODO: path for table needs its own function?
+	fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
+	path := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
+
+	//TODO: refector this into own function with binary or json option.
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err = enc.Encode(t.TblData)
+	if err != nil {
+		//TODO: better handling needed
+		println("error ")
+		log.Fatal("encode error:", err)
+	}
+
+	//TODO: disk error handling is needed.
+	storage.SaveToDisk(buf.Bytes(), path)
+
+	return nil
+}

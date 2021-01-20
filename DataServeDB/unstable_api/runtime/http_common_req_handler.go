@@ -124,19 +124,22 @@ func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 
 		form := getDataInsert(r.MultipartForm.Value)
 		for key := range form {
-			dbReqCtx = commtypes.NewDbReqContext(
-				httpMethod, resPath, matchedPath,
-				dbName, db, targetName, targetDbResTypeId)
-			if httpStatus, err := db.TablesPost(dbReqCtx, key); err != nil {
+			if httpStatus, err := db.TablesPost(dbReqCtx, form.Get(key)); err != nil {
 				return httpStatus, nil, err
 			}
 		}
-		// dbReqCtx = commtypes.NewDbReqContext(
-		// 	httpMethod, resPath, matchedPath,
-		// 	dbName, "", db, targetName, targetDbResTypeId)
+	case "PUT":
+		if err := r.ParseMultipartForm(maxMEMORY); err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
 
-		// db.TablesPost(dbReqCtx)
-
+		form := getDataInsert(r.MultipartForm.Value)
+		for key := range form {
+			if httpStatus, err := db.TablesEdit(dbReqCtx, form.Get(key)); err != nil {
+				return httpStatus, nil, err
+			}
+		}
 	}
 
 	return
