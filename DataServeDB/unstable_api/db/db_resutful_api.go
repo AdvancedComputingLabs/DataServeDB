@@ -31,11 +31,13 @@ func (t *DB) TablesPost(dbReqCtx *commtypes.DbReqContext, insertDataJson string)
 	return
 }
 func (t *DB) TablesEdit(dbReqCtx *commtypes.DbReqContext, insertDataJson string) (resultHttpStatus int, resultErr error) {
+
 	table, err := t.GetTable(dbReqCtx.TargetName)
 	if err != nil {
 		resultErr = err
 		return
 	}
+	
 	resultErr = table.EditRowJSON(insertDataJson)
 	if resultErr == nil {
 		resultHttpStatus = http.StatusOK

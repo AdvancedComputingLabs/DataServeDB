@@ -1,7 +1,13 @@
 package dbtable
 
 import (
+	storage "DataServeDB/dbsystem/dbstorage"
+	"DataServeDB/paths"
+	"bytes"
+	"encoding/gob"
 	"errors"
+	"fmt"
+	"log"
 	"strings"
 )
 
@@ -28,4 +34,26 @@ func parseKeyValue(resPath string) (key string, value string, err error) {
 	}
 
 	return
+}
+
+func saveToDiskUtil(t *DbTable) error {
+
+	//TODO: path for table needs its own function?
+	fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
+	path := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
+
+	//TODO: refector this into own function with binary or json option?
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(t.TblData)
+	if err != nil {
+		//TODO: better handling needed
+		println("error ")
+		log.Fatal("encode error:", err)
+	}
+
+	//TODO: disk error handling is needed.
+	storage.SaveToDisk(buf.Bytes(), path)
+
+	return nil
 }

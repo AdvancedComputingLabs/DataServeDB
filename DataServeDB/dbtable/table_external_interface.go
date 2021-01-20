@@ -23,18 +23,13 @@ Operations:
 package dbtable
 
 import (
-	"bytes"
-	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 
 	"DataServeDB/comminterfaces"
 	"DataServeDB/commtypes"
-	storage "DataServeDB/dbsystem/dbstorage"
-	"DataServeDB/paths"
 )
 
 //TODO: move it to error messages (single location)
@@ -142,22 +137,8 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
 	t.TblData.Rows = append(t.TblData.Rows, rowInternalIds)
 
-	//TODO: path for table needs its own function?
-	fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
-	path := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
-
-	//TODO: refector this into own function with binary or json option.
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(t.TblData)
-	if err != nil {
-		//TODO: better handling needed
-		println("error ")
-		log.Fatal("encode error:", err)
-	}
-
-	//TODO: disk error handling is needed.
-	storage.SaveToDisk(buf.Bytes(), path)
+	//TODO: handle error
+	saveToDiskUtil(t)
 
 	return nil
 }
@@ -235,6 +216,7 @@ func (t *DbTable) Get(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, r
 
 	return
 }
+
 func getPrimaryKey(table *DbTable, rowInternalIds tableRowByInternalIds) (primarKey int64, err error) {
 	if primarKey, ok := table.TblData.PkToRowMapper[rowInternalIds[table.TblMain.PkPos]]; ok {
 		return primarKey, nil
@@ -266,22 +248,8 @@ func (t *DbTable) EditRowJSON(jsonStr string) error {
 	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
 	t.TblData.Rows[pk] = rowInternalIds
 
-	//TODO: path for table needs its own function?
-	fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
-	path := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
-
-	//TODO: refector this into own function with binary or json option.
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err = enc.Encode(t.TblData)
-	if err != nil {
-		//TODO: better handling needed
-		println("error ")
-		log.Fatal("encode error:", err)
-	}
-
-	//TODO: disk error handling is needed.
-	storage.SaveToDisk(buf.Bytes(), path)
+	//TODO: handle error
+	saveToDiskUtil(t)
 
 	return nil
 }
