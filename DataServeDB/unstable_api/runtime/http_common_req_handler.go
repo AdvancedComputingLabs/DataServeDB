@@ -140,6 +140,8 @@ func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 				return httpStatus, nil, err
 			}
 		}
+	case "DELETE":
+		db.TablesDelete(dbReqCtx)
 	}
 
 	return
