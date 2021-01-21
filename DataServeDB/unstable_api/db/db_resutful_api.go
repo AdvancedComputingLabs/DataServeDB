@@ -37,11 +37,21 @@ func (t *DB) TablesEdit(dbReqCtx *commtypes.DbReqContext, insertDataJson string)
 		resultErr = err
 		return
 	}
-	
+
 	resultErr = table.EditRowJSON(insertDataJson)
 	if resultErr == nil {
 		resultHttpStatus = http.StatusOK
 	}
 
 	return
+}
+func (t *DB) TablesDelete(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, resultErr error) {
+
+	table, err := t.GetTable(dbReqCtx.TargetName)
+	if err != nil {
+		resultErr = err
+		return
+	}
+
+	return table.DeleteRow(dbReqCtx)
 }
