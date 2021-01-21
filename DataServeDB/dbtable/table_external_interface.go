@@ -253,3 +253,50 @@ func (t *DbTable) EditRowJSON(jsonStr string) error {
 
 	return nil
 }
+
+func (t *DbTable) GetRowNumberByPrimaryKey(pkValue interface{}) (int64, error) {
+	dbType, dbTypeProps := t.TblMain.getPkType()
+
+	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps)
+	if e != nil {
+		return 0, e
+	}
+
+	rowNum, exists := t.TblData.PkToRowMapper[pkValueCasted]
+	if !exists {
+		return 0, fmt.Errorf("value '%v' not found", pkValue)
+	}
+	return rowNum, nil
+}
+func (t *DbTable) DeleteRowMapper(pkValue interface{}) error {
+	dbType, dbTypeProps := t.TblMain.getPkType()
+	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps)
+	if e != nil {
+		return e
+	}
+	delete(t.TblData.PkToRowMapper, pkValueCasted)
+	return nil
+}
+func (t *DbTable) DeleteRow(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, resultErr error) {
+	_, value, err := parseKeyValue(dbReqCtx.ResPath)
+	if err != nil {
+		resultErr = err
+		return
+	}
+	rowNum, err := t.GetRowNumberByPrimaryKey(value)
+
+	//TODO: TblData or Rows was giving error after loading table when data file was not there.
+	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
+	t.TblData.Rows[rowNum] = t.TblData.Rows[len(t.TblData.Rows)-1]
+	t.TblData.Rows[len(t.TblData.Rows)-1] = nil
+	t.TblData.Rows = t.TblData.Rows[:len(t.TblData.Rows)-1]
+
+	err = t.DeleteRowMapper(value)
+	if err != nil {
+		return 0, fmt.Errorf("value '%v' not found", value)
+	}
+	//TODO: handle error
+	// saveToDiskUtil(t)
+
+	return http.StatusOK, nil
+}
