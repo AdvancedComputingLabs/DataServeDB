@@ -217,7 +217,7 @@ func (t *DbTable) Get(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, r
 	return
 }
 
-func getPrimaryKey(table *DbTable, rowInternalIds tableRowByInternalIds) (primarKey int64, err error) {
+func getRowNumber(table *DbTable, rowInternalIds tableRowByInternalIds) (primarKey int64, err error) {
 	if primarKey, ok := table.TblData.PkToRowMapper[rowInternalIds[table.TblMain.PkPos]]; ok {
 		return primarKey, nil
 	}
@@ -239,14 +239,14 @@ func (t *DbTable) EditRowJSON(jsonStr string) error {
 		return e
 	}
 
-	pk, err := getPrimaryKey(t, rowInternalIds)
+	rowNum, err := getRowNumber(t, rowInternalIds)
 	if err != nil {
 		return err
 	}
 
 	//TODO: TblData or Rows was giving error after loading table when data file was not there.
 	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
-	t.TblData.Rows[pk] = rowInternalIds
+	t.TblData.Rows[rowNum] = rowInternalIds
 
 	//TODO: handle error
 	saveToDiskUtil(t)
@@ -268,13 +268,22 @@ func (t *DbTable) GetRowNumberByPrimaryKey(pkValue interface{}) (int64, error) {
 	}
 	return rowNum, nil
 }
-func (t *DbTable) DeleteRowMapper(pkValue interface{}) error {
+func (t *DbTable) UpdateRowMapper(pkValue, replaceValue interface{}) error {
 	dbType, dbTypeProps := t.TblMain.getPkType()
 	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps)
 	if e != nil {
 		return e
 	}
+	replaceIndex := t.TblData.PkToRowMapper[pkValueCasted]
 	delete(t.TblData.PkToRowMapper, pkValueCasted)
+	if len(t.TblData.PkToRowMapper) == 0 {
+		return nil
+	}
+	ReplaceValueCasted, e := dbType.ConvertValue(replaceValue, dbTypeProps)
+	if e != nil {
+		return e
+	}
+	t.TblData.PkToRowMapper[ReplaceValueCasted] = replaceIndex
 	return nil
 }
 func (t *DbTable) DeleteRow(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, resultErr error) {
@@ -284,16 +293,20 @@ func (t *DbTable) DeleteRow(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus 
 		return
 	}
 	rowNum, err := t.GetRowNumberByPrimaryKey(value)
+	if err != nil {
+		return resultHttpStatus, err
+	}
 
 	//TODO: TblData or Rows was giving error after loading table when data file was not there.
 	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
-	t.TblData.Rows[rowNum] = t.TblData.Rows[len(t.TblData.Rows)-1]
+	lastIndxVal := t.TblData.Rows[len(t.TblData.Rows)-1]
+	t.TblData.Rows[rowNum] = lastIndxVal
 	t.TblData.Rows[len(t.TblData.Rows)-1] = nil
 	t.TblData.Rows = t.TblData.Rows[:len(t.TblData.Rows)-1]
 
-	err = t.DeleteRowMapper(value)
+	err = t.UpdateRowMapper(value, lastIndxVal)
 	if err != nil {
-		return 0, fmt.Errorf("value '%v' not found", value)
+		return resultHttpStatus, fmt.Errorf("value '%v' not found", value)
 	}
 	//TODO: handle error
 	// saveToDiskUtil(t)
