@@ -268,22 +268,23 @@ func (t *DbTable) GetRowNumberByPrimaryKey(pkValue interface{}) (int64, error) {
 	}
 	return rowNum, nil
 }
-func (t *DbTable) UpdateRowMapper(pkValue, replaceValue interface{}) error {
+func (t *DbTable) UpdateRowMapper(pkValue interface{}, rplcRow tableRowByInternalIds) error {
 	dbType, dbTypeProps := t.TblMain.getPkType()
 	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps)
 	if e != nil {
 		return e
 	}
-	replaceIndex := t.TblData.PkToRowMapper[pkValueCasted]
+	replaceIndex, exists := t.TblData.PkToRowMapper[pkValueCasted]
+	if !exists {
+		return fmt.Errorf("value '%v' not found", pkValue)
+	}
 	delete(t.TblData.PkToRowMapper, pkValueCasted)
 	if len(t.TblData.PkToRowMapper) == 0 {
 		return nil
 	}
-	ReplaceValueCasted, e := dbType.ConvertValue(replaceValue, dbTypeProps)
-	if e != nil {
-		return e
-	}
-	t.TblData.PkToRowMapper[ReplaceValueCasted] = replaceIndex
+
+	t.TblData.PkToRowMapper[rplcRow[t.TblMain.PkPos]] = replaceIndex
+
 	return nil
 }
 func (t *DbTable) DeleteRow(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, resultErr error) {
@@ -292,6 +293,7 @@ func (t *DbTable) DeleteRow(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus 
 		resultErr = err
 		return
 	}
+
 	rowNum, err := t.GetRowNumberByPrimaryKey(value)
 	if err != nil {
 		return resultHttpStatus, err
@@ -309,7 +311,7 @@ func (t *DbTable) DeleteRow(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus 
 		return resultHttpStatus, fmt.Errorf("value '%v' not found", value)
 	}
 	//TODO: handle error
-	// saveToDiskUtil(t)
+	saveToDiskUtil(t)
 
 	return http.StatusOK, nil
 }
