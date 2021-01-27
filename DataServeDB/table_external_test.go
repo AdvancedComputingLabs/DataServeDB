@@ -30,8 +30,8 @@ import (
 //Note: did the tests this way because testing needs to chained, maybe there is better built in way to do this.
 
 type row struct {
-	Id        int
-	UserName  string
+	Id       int
+	UserName string
 }
 
 func TestPaths(t *testing.T) {
@@ -42,7 +42,7 @@ func TestPaths(t *testing.T) {
 
 func TestStarter(t *testing.T) {
 
-	//testCreateTableJSON(t)
+	testCreateTableJSON(t)
 
 	testRestApiGet(t)
 
@@ -81,7 +81,7 @@ func TestSaveTableMetadata(t *testing.T) {
 		} else {
 			t.Errorf("%v\n", err)
 		}
-	 */
+	*/
 
 	if err := db.CreateTableJSON(createTableJSON); err == nil {
 
@@ -142,7 +142,7 @@ func testCreateTableJSON(t *testing.T) {
 func testRestApiGet(t *testing.T) {
 	// http://localhost:8080/re_db/tables/Id:1
 
-	for !runtime.IsInitalized()  {
+	for !runtime.IsInitalized() {
 		fmt.Println("Is initialized: ", runtime.IsInitalized())
 		time.Sleep(time.Second * 1)
 	}
@@ -170,8 +170,8 @@ func testInsertRowJSON(db *db.DB, t *testing.T) {
 
 	for i, item := range items {
 		row01 := row{
-			Id:        i + length,
-			UserName:  item,
+			Id:       i + length,
+			UserName: item,
 		}
 
 		row01Json, err := json.Marshal(row01)
@@ -185,6 +185,36 @@ func testInsertRowJSON(db *db.DB, t *testing.T) {
 				t.Errorf("%v\n", e)
 			}
 		}
+	}
+}
+
+func TestDeleteRowJSON(t *testing.T) {
+	fmt.Println("#1")
+	db, e := runtime.GetDb("re_db")
+	if e != nil {
+		t.Errorf("%v\n", e)
+		return
+	}
+	tbl, e := db.GetTable("Tbl01")
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	for i := 1; i < 9; i++ {
+		row, _ := tbl.GetRowByPrimaryKeyReturnsJSON(i)
+		println(i, "--> ", row)
+	}
+	for i := 1; i < 9; i++ {
+		fmt.Println("#", i)
+		_, err := tbl.DeleteRowByValue(i)
+		if err != nil {
+			t.Error(e)
+			return
+		}
+	}
+	for i := 1; i < 9; i++ {
+		row, _ := tbl.GetRowByPrimaryKeyReturnsJSON(i)
+		println(i, "--> ", row)
 	}
 }
 
@@ -203,4 +233,3 @@ func testGetRowByPk(tbl *dbtable.DbTable, t *testing.T, i int) {
 		t.Errorf("%v\n", e)
 	}
 }
-
