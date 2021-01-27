@@ -293,8 +293,11 @@ func (t *DbTable) DeleteRow(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus 
 		resultErr = err
 		return
 	}
+	return t.DeleteRowByValue(value)
+}
 
-	rowNum, err := t.GetRowNumberByPrimaryKey(value)
+func (t *DbTable) DeleteRowByValue(pkValue interface{}) (resultHttpStatus int, resultErr error) {
+	rowNum, err := t.GetRowNumberByPrimaryKey(pkValue)
 	if err != nil {
 		return resultHttpStatus, err
 	}
@@ -306,9 +309,9 @@ func (t *DbTable) DeleteRow(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus 
 	t.TblData.Rows[len(t.TblData.Rows)-1] = nil
 	t.TblData.Rows = t.TblData.Rows[:len(t.TblData.Rows)-1]
 
-	err = t.UpdateRowMapper(value, lastIndxVal)
+	err = t.UpdateRowMapper(pkValue, lastIndxVal)
 	if err != nil {
-		return resultHttpStatus, fmt.Errorf("value '%v' not found", value)
+		return resultHttpStatus, fmt.Errorf("value '%v' not found", pkValue)
 	}
 	//TODO: handle error
 	saveToDiskUtil(t)
