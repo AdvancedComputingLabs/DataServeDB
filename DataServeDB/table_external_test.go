@@ -137,6 +137,15 @@ func testCreateTableJSON(t *testing.T) {
 			t.Errorf("%v\n", err)
 		}
 	}
+
+	tbl, err := db.GetTable("Tbl01")
+	if err != nil {
+		t.Errorf("%v\n", err)
+		// return
+	}
+	testEdirRow(tbl, t)
+	testDeleteRowJSON(tbl, t)
+
 }
 
 func testRestApiGet(t *testing.T) {
@@ -165,12 +174,12 @@ func testInsertRowJSON(db *db.DB, t *testing.T) {
 		return
 	}
 
-	items := [4]string{"captain america", "IRO MAN", "professor HULk", "peter Parker"}
-	length := tbl.GetLength()
+	items := [4]string{"captain america", "IRON MAN", "professor HULk", "peter Parker"}
+	// length := tbl.GetLength()
 
 	for i, item := range items {
 		row01 := row{
-			Id:       i + length,
+			Id:       i,
 			UserName: item,
 		}
 
@@ -183,39 +192,53 @@ func testInsertRowJSON(db *db.DB, t *testing.T) {
 				testGetRowByPk(tbl, t, row01.Id)
 			} else {
 				t.Errorf("%v\n", e)
+				return
+			}
+		}
+	}
+}
+func testEdirRow(tbl *dbtable.DbTable, t *testing.T) {
+	items := [4]string{"bruce wayne", "Arthur", "wonder women", "superman"}
+	// tbl.EditRowJSON()
+	// length := tbl.GetLength()
+	for i := 0; i < 4; i++ {
+		row01 := row{
+			Id:       i,
+			UserName: items[i],
+		}
+		println(i)
+
+		row01Json, err := json.Marshal(row01)
+		if err != nil {
+			t.Error("erroe converting")
+		} else {
+			if e := tbl.EditRowJSON(string(row01Json)); e == nil {
+				fmt.Println("Insert Test Successful")
+				testGetRowByPk(tbl, t, row01.Id)
+			} else {
+				t.Errorf("%v\n", e)
 			}
 		}
 	}
 }
 
-func TestDeleteRowJSON(t *testing.T) {
-	fmt.Println("#1")
-	db, e := runtime.GetDb("re_db")
-	if e != nil {
-		t.Errorf("%v\n", e)
-		return
-	}
-	tbl, e := db.GetTable("Tbl01")
-	if e != nil {
-		t.Error(e)
-		return
-	}
-	for i := 1; i < 9; i++ {
-		row, _ := tbl.GetRowByPrimaryKeyReturnsJSON(i)
-		println(i, "--> ", row)
-	}
-	for i := 1; i < 9; i++ {
+func testDeleteRowJSON(tbl *dbtable.DbTable, t *testing.T) {
+	// for i := 1; i < 4; i++ {
+	// 	row, _ := tbl.GetRowByPrimaryKeyReturnsJSON(i)
+	// 	println(i, "--> ", row)
+	// }
+	for i := 1; i < 5; i++ {
 		fmt.Println("#", i)
 		_, err := tbl.DeleteRowByValue(i)
 		if err != nil {
-			t.Error(e)
+			t.Error(err)
 			return
 		}
 	}
-	for i := 1; i < 9; i++ {
-		row, _ := tbl.GetRowByPrimaryKeyReturnsJSON(i)
-		println(i, "--> ", row)
-	}
+	// for i := 1; i < 4; i++ {
+	// 	row, _ := tbl.GetRowByPrimaryKeyReturnsJSON(i)
+	// 	println(i, "--> ", row)
+	// }
 }
 
 func testGetRowByPk(tbl *dbtable.DbTable, t *testing.T, i int) {
