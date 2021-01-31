@@ -268,7 +268,7 @@ func (t *DbTable) GetRowNumberByPrimaryKey(pkValue interface{}) (int64, error) {
 	}
 	return rowNum, nil
 }
-func (t *DbTable) UpdateRowMapper(pkValue interface{}, rplcRow tableRowByInternalIds) error {
+func (t *DbTable) UpdateRowMapper(pkValue, rplcValue interface{}) error {
 	dbType, dbTypeProps := t.TblMain.getPkType()
 	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps)
 	if e != nil {
@@ -279,12 +279,14 @@ func (t *DbTable) UpdateRowMapper(pkValue interface{}, rplcRow tableRowByInterna
 		return fmt.Errorf("value '%v' not found", pkValue)
 	}
 	delete(t.TblData.PkToRowMapper, pkValueCasted)
-	if len(t.TblData.PkToRowMapper) == 0 {
+	// delete from last take care by || pkValueCasted == rplcValue,
+	if len(t.TblData.PkToRowMapper) == 0 || pkValueCasted == rplcValue {
 		return nil
 	}
 
-	t.TblData.PkToRowMapper[rplcRow[t.TblMain.PkPos]] = replaceIndex
-
+	// println(t.TblData.PkToRowMapper[rplcValue], "print index", replaceIndex)
+	t.TblData.PkToRowMapper[rplcValue] = replaceIndex
+	// println("deleted!! after replace", len(t.TblData.PkToRowMapper))
 	return nil
 }
 func (t *DbTable) DeleteRow(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, resultErr error) {
@@ -301,6 +303,7 @@ func (t *DbTable) DeleteRowByValue(pkValue interface{}) (resultHttpStatus int, r
 	if err != nil {
 		return resultHttpStatus, err
 	}
+	println(rowNum, t.GetLength())
 
 	//TODO: TblData or Rows was giving error after loading table when data file was not there.
 	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
@@ -309,7 +312,7 @@ func (t *DbTable) DeleteRowByValue(pkValue interface{}) (resultHttpStatus int, r
 	t.TblData.Rows[len(t.TblData.Rows)-1] = nil
 	t.TblData.Rows = t.TblData.Rows[:len(t.TblData.Rows)-1]
 
-	err = t.UpdateRowMapper(pkValue, lastIndxVal)
+	err = t.UpdateRowMapper(pkValue, lastIndxVal[t.TblMain.PkPos])
 	if err != nil {
 		return resultHttpStatus, fmt.Errorf("value '%v' not found", pkValue)
 	}
