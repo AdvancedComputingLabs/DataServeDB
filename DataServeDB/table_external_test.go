@@ -145,7 +145,6 @@ func testCreateTableJSON(t *testing.T) {
 	}
 	testEdirRow(tbl, t)
 	testDeleteRowJSON(tbl, t)
-
 }
 
 func testRestApiGet(t *testing.T) {
@@ -174,8 +173,7 @@ func testInsertRowJSON(db *db.DB, t *testing.T) {
 		return
 	}
 
-	items := [4]string{"captain america", "IRON MAN", "professor HULk", "peter Parker"}
-	// length := tbl.GetLength()
+	items := [4]string{"captain america", "IRON MAN", "professor HULK", "peter Parker"}
 
 	for i, item := range items {
 		row01 := row{
@@ -199,15 +197,11 @@ func testInsertRowJSON(db *db.DB, t *testing.T) {
 }
 func testEdirRow(tbl *dbtable.DbTable, t *testing.T) {
 	items := [4]string{"bruce wayne", "Arthur", "wonder women", "superman"}
-	// tbl.EditRowJSON()
-	// length := tbl.GetLength()
 	for i := 0; i < 4; i++ {
 		row01 := row{
 			Id:       i,
 			UserName: items[i],
 		}
-		println(i)
-
 		row01Json, err := json.Marshal(row01)
 		if err != nil {
 			t.Error("erroe converting")
@@ -223,11 +217,7 @@ func testEdirRow(tbl *dbtable.DbTable, t *testing.T) {
 }
 
 func testDeleteRowJSON(tbl *dbtable.DbTable, t *testing.T) {
-	// for i := 1; i < 4; i++ {
-	// 	row, _ := tbl.GetRowByPrimaryKeyReturnsJSON(i)
-	// 	println(i, "--> ", row)
-	// }
-	for i := 1; i < 5; i++ {
+	for i := 0; i < 4; i++ {
 		fmt.Println("#", i)
 		_, err := tbl.DeleteRowByValue(i)
 		if err != nil {
@@ -235,10 +225,6 @@ func testDeleteRowJSON(tbl *dbtable.DbTable, t *testing.T) {
 			return
 		}
 	}
-	// for i := 1; i < 4; i++ {
-	// 	row, _ := tbl.GetRowByPrimaryKeyReturnsJSON(i)
-	// 	println(i, "--> ", row)
-	// }
 }
 
 func testGetRowByPk(tbl *dbtable.DbTable, t *testing.T, i int) {
