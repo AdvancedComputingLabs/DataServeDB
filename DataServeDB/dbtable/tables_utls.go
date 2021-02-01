@@ -57,3 +57,16 @@ func saveToDiskUtil(t *DbTable) error {
 
 	return nil
 }
+
+// deleting the row of table by slicing method,  and returning the value which want to updated on map
+func (t *DbTable) deleteRowUnordered(rowNum int64) (interface{}, error) {
+	if int(rowNum) >= len(t.TblData.Rows) {
+		return nil, fmt.Errorf("there is a miss match in row index")
+	}
+	lastIndxVal := t.TblData.Rows[len(t.TblData.Rows)-1]
+	t.TblData.Rows[rowNum] = lastIndxVal
+	t.TblData.Rows[len(t.TblData.Rows)-1] = nil
+	t.TblData.Rows = t.TblData.Rows[:len(t.TblData.Rows)-1]
+
+	return lastIndxVal[t.TblMain.PkPos], nil
+}
