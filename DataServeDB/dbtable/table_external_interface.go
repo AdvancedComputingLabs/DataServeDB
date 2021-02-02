@@ -304,10 +304,13 @@ func (t *DbTable) DeleteRowByValue(pkValue interface{}) (resultHttpStatus int, r
 
 	//TODO: TblData or Rows was giving error after loading table when data file was not there.
 	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
-	rplcValue, err := t.deleteRowUnordered(rowNum)
+	Rows, err := deleteRowUnordered(t.TblData.Rows, rowNum)
 	if err != nil {
 		return resultHttpStatus, err
 	}
+	t.TblData.Rows = Rows
+	rplcValue := t.TblData.Rows[t.TblMain.PkPos]
+	println("replace value ", rplcValue)
 	err = t.updateRowMapper(pkValue, rplcValue)
 	if err != nil {
 		return resultHttpStatus, fmt.Errorf("value '%v' not found", pkValue)
