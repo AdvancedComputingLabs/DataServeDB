@@ -2,7 +2,8 @@
 
 ## Basic Specification
 * Query has mime type which is stated first after the opening bracket.
-* system defined keywords starts with $ sign.
+* System defined keywords starts with $ sign.
+* Query url:  https://[ip or domain]/db_name/query/
 
 ### Mime Type: "application/json"
 * NOTE: Currently only supported mime type for querying.
