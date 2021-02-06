@@ -71,7 +71,7 @@
       Operations are model around rest's CRUD (Create, Read, Update, and Delete) as they provide all the functionality needed for database operations.
       Return codes are based on http return codes which provide all the return codes needed for database operations in a standard way.
 
-    3 **Querying and query language:** see spec-dataservedb-query.md
+    3 **Querying and query language:** see [spec-dataservedb-query.md](./spec-dataservedb-query.md)
 
     
       
