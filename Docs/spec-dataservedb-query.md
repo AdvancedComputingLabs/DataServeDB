@@ -8,8 +8,10 @@
 ### Mime Type: "application/json"
 * NOTE: Currently only supported mime type for querying.
 * Must be valid json.
-* Type of the field value used in query doesn't matter as it can use search instructions in text quote but the actual field type different type. Fore example, a query sent with search filters in text quote but field type and its result could is number.
-* "*" as field name returns all the remaining fields.
+* Type of the field value used in query doesn't matter as it can be used for search instructions in text quote but the actual field type might not be text. For example, a query sent with search filters in text quote but field type and its result is a number.
+* "*" as field name returns all the remaining fields. See examples.
+* "{}" means any type and any value. In the case of referenced table, "{}" and "[{}]" equivalent.
+
 
 
 ## Tables
