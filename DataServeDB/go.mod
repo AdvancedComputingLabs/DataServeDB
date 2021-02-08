@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/AdvancedComputingLabs/httpserv v0.0.0-20200215045526-bb7ce6a0144c
 	github.com/beevik/guid v0.0.0-20170504223318-d0ea8faecee0
+	github.com/golang/gddo v0.0.0-20210115222349-20d68f94ee1f
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/satori/go.uuid v1.2.0
 	golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa

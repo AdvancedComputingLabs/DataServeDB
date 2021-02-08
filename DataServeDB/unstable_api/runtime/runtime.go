@@ -40,6 +40,7 @@ func Start() error {
 
 	//routing
 	dbrouter.Register("{db_name}/tables/{tbl_name}", TableRestPathHandler)
+	dbrouter.Register("{db_name}/query", QueryRestPathHandler)
 
 	//http server and rest api routing
 	StartHttpServer()

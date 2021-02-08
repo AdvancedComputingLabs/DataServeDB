@@ -72,6 +72,12 @@ func getDbAuthFromHttpHeader(r *http.Request) (scheme, authToken string, e error
 	return parseDbAuthStr(authStrs[0])
 }
 
+func QueryRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName, targetName string, targetDbResTypeId constants.DbResTypes) (resultHttpStatus int, resultContent []byte, resultErr error) {
+	//TODO: resPath if it is more than /query needs to be handled appropriately.
+
+	return
+}
+
 func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName, targetName string, targetDbResTypeId constants.DbResTypes) (resultHttpStatus int, resultContent []byte, resultErr error) {
 	//TODO: dbName empty case
 
