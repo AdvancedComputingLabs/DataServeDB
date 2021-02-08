@@ -25,5 +25,6 @@ yarn-error.log*
 *.exe
 
 #go project vendor files
-*/vendor/*
+/vendor
 
+*.txt
