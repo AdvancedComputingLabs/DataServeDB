@@ -74,6 +74,9 @@ func getDbAuthFromHttpHeader(r *http.Request) (scheme, authToken string, e error
 
 func QueryRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName, targetName string, targetDbResTypeId constants.DbResTypes) (resultHttpStatus int, resultContent []byte, resultErr error) {
 	//TODO: resPath if it is more than /query needs to be handled appropriately.
+	// var dst interface{}
+	println("decode json")
+	decodeJSONBody(w, r)
 
 	return
 }
@@ -219,12 +222,21 @@ type malformedRequest struct {
 	status int
 	msg    string
 }
+type users struct {
+	UserId     int
+	Name       string
+	Properties []string
+}
 
 func (mr *malformedRequest) Error() string {
 	return mr.msg
 }
 
-func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
+func decodeJSONBody(w http.ResponseWriter, r *http.Request) error {
+	var dst interface{}
+	var result map[string]users
+	var Fields map[string]interface{}
+
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
 		if value != "application/json" {
@@ -278,6 +290,38 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 	if err != io.EOF {
 		msg := "Request body must only contain a single JSON object"
 		return &malformedRequest{status: http.StatusBadRequest, msg: msg}
+	}
+
+	// println(dst)
+	// t := reflect.ValueOf(dst)
+	// i := t.NumField()
+	// for i = 0; i < t.NumField(); i++ {
+	// 	fmt.Printf("%v\n", t.Field(i))
+	// }
+	data, err := json.Marshal(dst)
+	if err != nil {
+		return err
+	}
+
+	// Unmarshal or Decode the JSON to the interface.
+	json.Unmarshal([]byte(data), &result)
+	for f, v := range result {
+		println(f, " --> ")
+		data, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		json.Unmarshal(data, &Fields)
+
+		for fld, val := range Fields {
+			println(fld, "--")
+			va, err := json.Marshal(val)
+			if err != nil {
+				return err
+			}
+			println(string(va))
+
+		}
 	}
 
 	return nil
