@@ -31,6 +31,16 @@ import (
 
 const maxMEMORY = 1 * 1024 * 1024
 
+type malformedRequest struct {
+	status int
+	msg    string
+}
+type users struct {
+	UserId     int
+	Name       string
+	Properties []string
+}
+
 func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "*")
@@ -218,16 +228,6 @@ func commonHttpServReqHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-type malformedRequest struct {
-	status int
-	msg    string
-}
-type users struct {
-	UserId     int
-	Name       string
-	Properties []string
-}
-
 func (mr *malformedRequest) Error() string {
 	return mr.msg
 }
@@ -292,18 +292,12 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request) error {
 		return &malformedRequest{status: http.StatusBadRequest, msg: msg}
 	}
 
-	// println(dst)
-	// t := reflect.ValueOf(dst)
-	// i := t.NumField()
-	// for i = 0; i < t.NumField(); i++ {
-	// 	fmt.Printf("%v\n", t.Field(i))
-	// }
 	data, err := json.Marshal(dst)
 	if err != nil {
 		return err
 	}
 
-	// Unmarshal or Decode the JSON to the interface.
+	// Unmarshal or Decode the JSON to the user struct.
 	json.Unmarshal([]byte(data), &result)
 	for f, v := range result {
 		println(f, " --> ")
@@ -311,6 +305,7 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
+		// Unmarshal or Decode the JSON to the interface.
 		json.Unmarshal(data, &Fields)
 
 		for fld, val := range Fields {
