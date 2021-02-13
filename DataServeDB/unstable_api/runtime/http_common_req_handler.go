@@ -227,6 +227,9 @@ func commonHttpServReqHandler(w http.ResponseWriter, r *http.Request) {
 
 	return
 }
+func getDataInsert(form url.Values) url.Values {
+	return form
+}
 
 func (mr *malformedRequest) Error() string {
 	return mr.msg
@@ -235,7 +238,6 @@ func (mr *malformedRequest) Error() string {
 func decodeJSONBody(w http.ResponseWriter, r *http.Request) error {
 	var dst interface{}
 	var result map[string]users
-	var Fields map[string]interface{}
 
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
@@ -301,26 +303,40 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request) error {
 	json.Unmarshal([]byte(data), &result)
 	for f, v := range result {
 		println(f, " --> ")
-		data, err := json.Marshal(v)
-		if err != nil {
-			return err
-		}
-		// Unmarshal or Decode the JSON to the interface.
-		json.Unmarshal(data, &Fields)
-
-		for fld, val := range Fields {
-			println(fld, "--")
-			va, err := json.Marshal(val)
-			if err != nil {
-				return err
-			}
-			println(string(va))
+		switch f {
+		case "Users":
+			getUsersStuctFields(v)
 
 		}
+
 	}
 
 	return nil
 }
-func getDataInsert(form url.Values) url.Values {
-	return form
+
+func getUsersStuctFields(Users users) error {
+	var Fields map[string]interface{}
+	data, err := json.Marshal(Users)
+	if err != nil {
+		return err
+	}
+	// Unmarshal or Decode the JSON to the interface.
+	json.Unmarshal(data, &Fields)
+
+	for fld, val := range Fields {
+		print(fld, "--")
+		switch fld {
+		case "UserId":
+		case "Name":
+		case "properties":
+
+		}
+		va, err := json.Marshal(val)
+		if err != nil {
+			return err
+		}
+		println(string(va))
+
+	}
+	return nil
 }
