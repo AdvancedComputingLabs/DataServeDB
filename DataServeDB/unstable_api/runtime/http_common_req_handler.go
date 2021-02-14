@@ -13,16 +13,11 @@
 package runtime
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 
 	"strings"
-
-	"github.com/golang/gddo/httputil/header"
 
 	"DataServeDB/commtypes"
 	"DataServeDB/dbsystem/constants"
@@ -30,16 +25,6 @@ import (
 )
 
 const maxMEMORY = 1 * 1024 * 1024
-
-type malformedRequest struct {
-	status int
-	msg    string
-}
-type users struct {
-	UserId     int
-	Name       string
-	Properties []string
-}
 
 func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -80,15 +65,6 @@ func getDbAuthFromHttpHeader(r *http.Request) (scheme, authToken string, e error
 	}
 
 	return parseDbAuthStr(authStrs[0])
-}
-
-func QueryRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName, targetName string, targetDbResTypeId constants.DbResTypes) (resultHttpStatus int, resultContent []byte, resultErr error) {
-	//TODO: resPath if it is more than /query needs to be handled appropriately.
-	// var dst interface{}
-	println("decode json")
-	decodeJSONBody(w, r)
-
-	return
 }
 
 func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName, targetName string, targetDbResTypeId constants.DbResTypes) (resultHttpStatus int, resultContent []byte, resultErr error) {
@@ -229,114 +205,4 @@ func commonHttpServReqHandler(w http.ResponseWriter, r *http.Request) {
 }
 func getDataInsert(form url.Values) url.Values {
 	return form
-}
-
-func (mr *malformedRequest) Error() string {
-	return mr.msg
-}
-
-func decodeJSONBody(w http.ResponseWriter, r *http.Request) error {
-	var dst interface{}
-	var result map[string]users
-
-	if r.Header.Get("Content-Type") != "" {
-		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
-		if value != "application/json" {
-			msg := "Content-Type header is not application/json"
-			return &malformedRequest{status: http.StatusUnsupportedMediaType, msg: msg}
-		}
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
-
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-
-	err := dec.Decode(&dst)
-	if err != nil {
-		var syntaxError *json.SyntaxError
-		var unmarshalTypeError *json.UnmarshalTypeError
-
-		switch {
-		case errors.As(err, &syntaxError):
-			msg := fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxError.Offset)
-			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
-
-		case errors.Is(err, io.ErrUnexpectedEOF):
-			msg := fmt.Sprintf("Request body contains badly-formed JSON")
-			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
-
-		case errors.As(err, &unmarshalTypeError):
-			msg := fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
-			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
-
-		case strings.HasPrefix(err.Error(), "json: unknown field "):
-			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
-			msg := fmt.Sprintf("Request body contains unknown field %s", fieldName)
-			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
-
-		case errors.Is(err, io.EOF):
-			msg := "Request body must not be empty"
-			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
-
-		case err.Error() == "http: request body too large":
-			msg := "Request body must not be larger than 1MB"
-			return &malformedRequest{status: http.StatusRequestEntityTooLarge, msg: msg}
-
-		default:
-			return err
-		}
-	}
-
-	err = dec.Decode(&struct{}{})
-	if err != io.EOF {
-		msg := "Request body must only contain a single JSON object"
-		return &malformedRequest{status: http.StatusBadRequest, msg: msg}
-	}
-
-	data, err := json.Marshal(dst)
-	if err != nil {
-		return err
-	}
-
-	// Unmarshal or Decode the JSON to the user struct.
-	json.Unmarshal([]byte(data), &result)
-	for f, v := range result {
-		println(f, " --> ")
-		switch f {
-		case "Users":
-			getUsersStuctFields(v)
-
-		}
-
-	}
-
-	return nil
-}
-
-func getUsersStuctFields(Users users) error {
-	var Fields map[string]interface{}
-	data, err := json.Marshal(Users)
-	if err != nil {
-		return err
-	}
-	// Unmarshal or Decode the JSON to the interface.
-	json.Unmarshal(data, &Fields)
-
-	for fld, val := range Fields {
-		print(fld, "--")
-		switch fld {
-		case "UserId":
-		case "Name":
-		case "properties":
-
-		}
-		va, err := json.Marshal(val)
-		if err != nil {
-			return err
-		}
-		println(string(va))
-
-	}
-	return nil
 }

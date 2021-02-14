@@ -320,3 +320,25 @@ func (t *DbTable) DeleteRowByValue(pkValue interface{}) (resultHttpStatus int, r
 
 	return http.StatusOK, nil
 }
+func (t *DbTable) GetUser(QryReqCtx *commtypes.QueryReqContext) (resultHttpStatus int, resultContent []byte, resultErr error) {
+	//NOTE: there is no empty index 'indexName:' access at the moment.
+	// if value == "" {
+	// 	resultErr = errors.New("value is not provided")
+	// }
+
+	// if key == "" {
+	// 	//primary key
+	// 	row, err := t.GetRowByPrimaryKeyReturnsJSON(value)
+	// 	if err != nil {
+	// 		resultErr = err
+	// 		return
+	// 	}
+
+	// 	resultContent = []byte(row)
+	// 	resultHttpStatus = http.StatusOK
+	// } else {
+	// 	//
+	// }
+
+	return
+}
