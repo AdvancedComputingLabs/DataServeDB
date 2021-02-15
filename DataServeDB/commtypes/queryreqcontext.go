@@ -14,7 +14,6 @@ package commtypes
 
 import (
 	"DataServeDB/comminterfaces"
-	"DataServeDB/dbsystem/constants"
 )
 
 // fields are public, easier.
@@ -29,25 +28,22 @@ import (
 */
 
 type QueryReqContext struct {
-	RestMethodId      constants.RestMethods
-	ResPath           string
-	MatchedPath       string
-	DbName            string
-	Dbi               comminterfaces.DbPtrI
-	TargetName        string
-	TargetDbResTypeId constants.DbResTypes
+	// MatchedPath string
+	DbName     string
+	Dbi        comminterfaces.DbPtrI
+	TargetName string
+	TargetId   string
 }
 
-func NewQueryReqContext(restMethod, resPath, matchedPath, dbName string,
-	dbi comminterfaces.DbPtrI, targetName string, targetDbResTypeId constants.DbResTypes) *QueryReqContext {
+func NewQueryReqContext(dbName string,
+	dbi comminterfaces.DbPtrI, targetName string, targetId string) *QueryReqContext {
 
 	QryReqCtx := QueryReqContext{
-		ResPath:           resPath,
-		MatchedPath:       matchedPath,
-		DbName:            dbName,
-		Dbi:               dbi,
-		TargetName:        targetName,
-		TargetDbResTypeId: targetDbResTypeId,
+		// MatchedPath: matchedPath,
+		DbName:     dbName,
+		Dbi:        dbi,
+		TargetName: targetName,
+		TargetId:   targetId,
 	}
 
 	return &QryReqCtx
