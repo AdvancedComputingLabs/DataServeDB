@@ -203,6 +203,30 @@ func commonHttpServReqHandler(w http.ResponseWriter, r *http.Request) {
 
 	return
 }
+func QueryRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName, targetName string, targetDbResTypeId constants.DbResTypes) (resultHttpStatus int, resultContent []byte, resultErr error) {
+	//TODO: resPath if it is more than /query needs to be handled appropriately.
+	// var dst interface{}
+	db, e := GetDb(dbName)
+	if e != nil {
+		//at the moment it only returns database not found.
+		return http.StatusNotFound, nil, e
+	}
+
+	var dbReqCtx *commtypes.DbReqContext
+	dbReqCtx = commtypes.NewDbReqContext(
+		httpMethod, resPath, matchedPath,
+		dbName, db, targetName, targetDbResTypeId)
+
+	err, Query := decodeJSONBody(w, r)
+	if err != nil {
+		return http.StatusNotFound, nil, err
+	}
+	_ = Query
+	resultHttpStatus, resultContent, resultErr = db.TablesQueryGet(dbReqCtx)
+	println(string(resultContent))
+
+	return
+}
 func getDataInsert(form url.Values) url.Values {
 	return form
 }
