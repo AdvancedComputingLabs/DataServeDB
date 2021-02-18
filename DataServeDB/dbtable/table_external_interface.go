@@ -216,6 +216,30 @@ func (t *DbTable) Get(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, r
 
 	return
 }
+func (t *DbTable) GetTableRows(pkValue ...interface{}) (rows []TableRow, err error) {
+	if pkValue != nil {
+		for _, v := range pkValue {
+			row, err := t.GetRowByPrimaryKey(v)
+			if err != nil {
+				return nil, err
+			}
+			rows = append(rows, row)
+		}
+		return rows, nil
+	}
+	return t.GetRows()
+}
+
+func (t *DbTable) GetRows() (rows []TableRow, err error) {
+	for _, row := range t.TblData.Rows {
+		rowValues, e := toLabeledByFieldNames(row, t.TblMain)
+		if e != nil {
+			return nil, e
+		}
+		rows = append(rows, rowValues)
+	}
+	return rows, nil
+}
 
 func getRowNumber(table *DbTable, rowInternalIds tableRowByInternalIds) (primarKey int64, err error) {
 	if primarKey, ok := table.TblData.PkToRowMapper[rowInternalIds[table.TblMain.PkPos]]; ok {
@@ -320,25 +344,18 @@ func (t *DbTable) DeleteRowByValue(pkValue interface{}) (resultHttpStatus int, r
 
 	return http.StatusOK, nil
 }
-func (t *DbTable) GetUser(QryReqCtx *commtypes.QueryReqContext) (resultHttpStatus int, resultContent []byte, resultErr error) {
-	//NOTE: there is no empty index 'indexName:' access at the moment.
-	// if value == "" {
-	// 	resultErr = errors.New("value is not provided")
-	// }
 
-	// if key == "" {
-	// 	//primary key
-	// 	row, err := t.GetRowByPrimaryKeyReturnsJSON(value)
-	// 	if err != nil {
-	// 		resultErr = err
-	// 		return
-	// 	}
+// func (t *DbTable) GetRowById(key int64) (resultHttpStatus int, resultContent []byte, resultErr error) {
 
-	// 	resultContent = []byte(row)
-	// 	resultHttpStatus = http.StatusOK
-	// } else {
-	// 	//
-	// }
+// 	//primary key
+// 	row, err := t.GetRowByPrimaryKeyReturnsJSON(key)
+// 	if err != nil {
+// 		resultErr = err
+// 		return
+// 	}
 
-	return
-}
+// 	resultContent = []byte(row)
+// 	resultHttpStatus = http.StatusOK
+
+// 	return
+// }

@@ -14,6 +14,7 @@ package dbtable
 
 import (
 	"errors"
+	"strings"
 	"sync"
 
 	"DataServeDB/dbstrcmp_base"
@@ -97,7 +98,7 @@ func (t *tableFieldsMetadataT) getCopyOfFieldsMetadataSafe() []tableFieldStruct 
 	defer t.mu.RUnlock()
 
 	var result []tableFieldStruct
-  
+
 	for _, v := range t.FieldInternalIdToFieldMetaData {
 		result = append(result, *v)
 	}
@@ -191,7 +192,7 @@ func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow Table
 func (t *tableFieldsMetadataT) loadFieldsMetadataSafe(fields []tableFieldStruct) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-  
+
 	if len(t.FieldInternalIdToFieldMetaData) > 0 || len(t.FieldNameToFieldInternalId) > 0 {
 		//should be empty, if not error
 		return errors.New("fields data is already loaded, it should be loaded once only")
@@ -266,3 +267,7 @@ func (t *tableFieldsMetadataT) updateFieldName(fieldName string, newFieldName st
 }
 
 // tableFieldStruct
+func (t *tableFieldsMetadataT) IsField(name string) (value int, found bool) {
+	value, found = t.FieldNameToFieldInternalId[strings.ToUpper((name))]
+	return
+}

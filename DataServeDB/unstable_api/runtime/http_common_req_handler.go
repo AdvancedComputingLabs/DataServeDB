@@ -217,12 +217,11 @@ func QueryRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 		httpMethod, resPath, matchedPath,
 		dbName, db, targetName, targetDbResTypeId)
 
-	err, Query := decodeJSONBody(w, r)
+	err, query := decodeJSONBody(w, r)
 	if err != nil {
 		return http.StatusNotFound, nil, err
 	}
-	_ = Query
-	resultHttpStatus, resultContent, resultErr = db.TablesQueryGet(dbReqCtx)
+	resultHttpStatus, resultContent, resultErr = db.TablesQueryGet(dbReqCtx, query)
 	println(string(resultContent))
 
 	return
