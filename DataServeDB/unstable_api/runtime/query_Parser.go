@@ -140,6 +140,7 @@ func getUsersStuctFields(dst interface{}) (err error, query []db.Query) {
 
 	// Unmarshal or Decode the JSON to the user struct.
 	json.Unmarshal([]byte(data), &result)
+	_ = result
 	for f, v := range result {
 		var Qry db.Query = db.Query{}
 		Qry.ItemLabel = f
@@ -155,9 +156,9 @@ func getUsersStuctFields(dst interface{}) (err error, query []db.Query) {
 				return err, query
 			}
 			Qry.Children = qry
-			if Qry.Children != nil {
-				Qry.ItemType = "struct"
-			}
+			// if Qry.Children != nil {
+			// 	Qry.ItemType = "struct"
+			// }
 		} else {
 			Qry.ItemValue = nil
 			Qry.Children = nil
