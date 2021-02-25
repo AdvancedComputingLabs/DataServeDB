@@ -31,11 +31,11 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resu
 		return
 	}
 	sort.SliceStable(query.Children, func(i, j int) bool { return query.Children[i].ItemType == "field" })
-	i := sort.Search(len(query.Children), func(i int) bool { return query.Children[i].ItemValue != nil })
-	// println(i)
-	if i < len(query.Children) {
-		println(query.Children[i].ItemLabel)
-	}
+	// i := sort.Search(len(query.Children), func(i int) bool { return query.Children[i].ItemValue != nil })
+	// // println(i)
+	// if i < len(query.Children) {
+	// 	println(query.Children[i].ItemLabel)
+	// }
 	/*********************************************/
 	/* TO DO :- filter out the specific row if the userId mentioned,
 	example {
@@ -109,17 +109,38 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 			if child.ItemType == "field" {
 				res[child.ItemLabel] = row[child.ItemLabel]
 			} else if child.ItemType == "table" {
-				// /* TO DO :- Filter Properties for user  */
-				// props, err := tbl.GetRows()
-				// if err != nil {
-				// 	// resultErr = err
-				// 	return nil, err
-				// }
+				refRows := []dbtable.TableRow{}
+				if child.ItemLabel == "Properties" {
+					table, er := t.GetTable("UserProperties")
+					if er != nil {
+						err = er
+						return
+					}
+					refRows, err = table.GetRows()
+					if err != nil {
+						return
+					}
+				}
 				r, err := t.processQuery(child)
 				if err != nil {
 					return nil, err
 				}
-				res[child.ItemLabel] = r
+				if refRows != nil {
+					ref := []dbtable.TableRow{}
+					for _, v := range refRows {
+						if row["Id"] == v["Id"] {
+							for _, rr := range r {
+								if rr["SlNum"] == v["SlNum"] {
+									ref = append(ref, rr)
+								}
+							}
+						}
+					}
+					res[child.ItemLabel] = ref
+				} else {
+
+					res[child.ItemLabel] = r
+				}
 			}
 		}
 		result = append(result, res)
