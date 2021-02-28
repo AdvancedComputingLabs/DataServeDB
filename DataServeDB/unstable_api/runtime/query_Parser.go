@@ -48,14 +48,14 @@ func (mr *malformedRequest) Error() string {
 	return mr.msg
 }
 
-func decodeJSONBody(w http.ResponseWriter, r *http.Request) (err error, query db.Query) {
+func decodeJSONBody(w http.ResponseWriter, r *http.Request) (query db.Query, err error) {
 	var dst interface{}
 
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
 		if value != "application/json" {
 			msg := "Content-Type header is not application/json"
-			return &malformedRequest{status: http.StatusUnsupportedMediaType, msg: msg}, db.Query{}
+			return db.Query{}, &malformedRequest{status: http.StatusUnsupportedMediaType, msg: msg}
 		}
 	}
 
@@ -72,47 +72,47 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request) (err error, query db
 		switch {
 		case errors.As(err, &syntaxError):
 			msg := fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxError.Offset)
-			return &malformedRequest{status: http.StatusBadRequest, msg: msg}, db.Query{}
+			return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
 
 		case errors.Is(err, io.ErrUnexpectedEOF):
 			msg := fmt.Sprintf("Request body contains badly-formed JSON")
-			return &malformedRequest{status: http.StatusBadRequest, msg: msg}, db.Query{}
+			return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
 
 		case errors.As(err, &unmarshalTypeError):
 			msg := fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
-			return &malformedRequest{status: http.StatusBadRequest, msg: msg}, db.Query{}
+			return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
 
 		case strings.HasPrefix(err.Error(), "json: unknown field "):
 			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
 			msg := fmt.Sprintf("Request body contains unknown field %s", fieldName)
-			return &malformedRequest{status: http.StatusBadRequest, msg: msg}, db.Query{}
+			return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
 
 		case errors.Is(err, io.EOF):
 			msg := "Request body must not be empty"
-			return &malformedRequest{status: http.StatusBadRequest, msg: msg}, db.Query{}
+			return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
 
 		case err.Error() == "http: request body too large":
 			msg := "Request body must not be larger than 1MB"
-			return &malformedRequest{status: http.StatusRequestEntityTooLarge, msg: msg}, db.Query{}
+			return db.Query{}, &malformedRequest{status: http.StatusRequestEntityTooLarge, msg: msg}
 
 		default:
-			return err, db.Query{}
+			return db.Query{}, err
 		}
 	}
 
 	err = dec.Decode(&struct{}{})
 	if err != io.EOF {
 		msg := "Request body must only contain a single JSON object"
-		return &malformedRequest{status: http.StatusBadRequest, msg: msg}, db.Query{}
+		return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
 	}
 	return decodeJSON(dst)
 	// return err, query
 }
-func decodeJSON(dst interface{}) (err error, query db.Query) {
+func decodeJSON(dst interface{}) (query db.Query, err error) {
 	var result map[string]interface{}
 	data, err := json.Marshal(dst)
 	if err != nil {
-		return err, query
+		return query, err
 	}
 	json.Unmarshal([]byte(data), &result)
 	for f, v := range result {
@@ -120,45 +120,60 @@ func decodeJSON(dst interface{}) (err error, query db.Query) {
 		// case "Users":
 		query.ItemLabel = f
 		query.ItemValue = data
-		err, children := getUsersStuctFields(v)
+		children, err := getUsersStuctFields(v)
 		if err != nil {
-			return err, db.Query{}
+			return db.Query{}, err
 		}
 		query.Children = append(query.Children, children...)
 		// }
 	}
 	// Unmarshal or Decode the JSON to the user struct.
 
-	return nil, query
+	return query, nil
 }
-func getUsersStuctFields(dst interface{}) (err error, query []db.Query) {
+func getUsersStuctFields(dst interface{}) (query []db.Query, err error) {
 	var result map[string]interface{}
+	var resArray []interface{}
 	data, err := json.Marshal(dst)
 	if err != nil {
-		return err, query
+		return query, err
 	}
-
+	if _, ok := dst.(map[string]interface{}); ok {
+		// Unmarshal or Decode the JSON to the user struct.
+		err = json.Unmarshal([]byte(data), &result)
+		if err != nil {
+			return query, err
+		}
+		return getStruct(result)
+	} else if _, ok := dst.([]interface{}); ok {
+		err = json.Unmarshal([]byte(data), &resArray)
+		if err != nil {
+			return
+		}
+		return getArrayStruct(resArray)
+	} else if _, ok := dst.(string); ok {
+		return nil, nil
+	}
 	// Unmarshal or Decode the JSON to the user struct.
-	json.Unmarshal([]byte(data), &result)
-	_ = result
-	for f, v := range result {
+
+	return nil, nil
+}
+func getStruct(dst map[string]interface{}) (query []db.Query, err error) {
+	for f, v := range dst {
 		var Qry db.Query = db.Query{}
 		Qry.ItemLabel = f
 
 		data, err := json.Marshal(v)
 		if err != nil {
-			return err, query
+			return query, err
 		}
 		if string(data) != "{}" && string(data) != "[{}]" {
 			Qry.ItemValue = data
-			err, qry := getUsersStuctFields(v)
+			qry, err := getUsersStuctFields(v)
 			if err != nil {
-				return err, query
+				return query, err
 			}
 			Qry.Children = qry
-			// if Qry.Children != nil {
-			// 	Qry.ItemType = "struct"
-			// }
 		} else {
 			Qry.ItemValue = nil
 			Qry.Children = nil
@@ -166,7 +181,25 @@ func getUsersStuctFields(dst interface{}) (err error, query []db.Query) {
 		query = append(query, Qry)
 	}
 
-	return nil, query
+	return query, err
+}
+func getArrayStruct(dst []interface{}) (query []db.Query, err error) {
+	// "Properties": [
+	//   {
+	//     "$WHERE": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum"
+	//   }
+	// ]
+	for _, v := range dst {
+
+		var Qry db.Query = db.Query{}
+		qry, err := getUsersStuctFields(v)
+		if err != nil {
+			return query, err
+		}
+		Qry.Children = qry
+		query = append(query, Qry)
+	}
+	return
 }
 
 // func getUsersStuctFields(User interface{}) (err error, UserStruct users, Flags flags) {
