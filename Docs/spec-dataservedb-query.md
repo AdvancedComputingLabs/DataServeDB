@@ -15,9 +15,11 @@ Issues to resolve (maybe resolved as there are comments that indicate preference
 * [Json Specific Specification](#json-specific-specification)
 * * [Keywords](#keywords-1)
 * * [Query Examples](#query-examples)
-* * * [Tables](#<u>Tables:</u>)
-* * * [List users in users table](#list-all-users-in-users-table:)
+* * * [Tables](#example_tables)
+* * * [List users in users table](#example_a1)
 * * * [List users with their properties](#example_a2)
+* * * [List specific user](#example_a3)
+* * * [List specific user with his/her properties](#example_a4)
 
 ## Base Specification
 * Base specification is common to all as there could be multiple document types.
@@ -71,7 +73,7 @@ Issues to resolve (maybe resolved as there are comments that indicate preference
 * $TOP n. 'n' must be a number.
 
 ### **Query Examples**
-### <u>Tables:</u>
+### <a name="example_tables"></a><u>Tables:</u>
 #### Users Table (Name: Users):
 | UserId        | Name          |
 | ---------:    | :----------   |
@@ -86,20 +88,20 @@ Issues to resolve (maybe resolved as there are comments that indicate preference
 
 <br />
 
-#### List all users in users table:
+#### <a name="example_a1"></a>List all users in users table:
 ```json
 In http header(s): 
 - TYPE: "application/json"
 
 {
-	"$QUERY-API-VER": "1",
+	"$APIVER": "1",
 	"Users": {}
 }
 ```
 
 <br />
 
-<a name="example_a2"></a> Lists all users in 'Users' table with user's property (or properties) in 'Properties' table:
+#### <a name="example_a2"></a>Lists all users in 'Users' table with user's property (or properties) in 'Properties' table:
 ```json
 
 In http header(s): 
@@ -107,7 +109,7 @@ In http header(s):
 
 //NOTE: Following requires relationship setup between 'Users' and 'Properties' tables. For no relational setup, please see next example.
 {
-	"$type": "application/json",
+	"$APIVER": "1",
 	"Users": {
 		"UserId": {},
 		"Name": {},
@@ -117,7 +119,7 @@ In http header(s):
 
 //NOTE: If there is no relationship setup, then all the properties will be listed. However, 'where clause' can be used to filter results.
 {
-	"$type": "application/json",
+	"$APIVER": "1",
 	"Users": {
 		"UserId": {},
 		"Name": {},
@@ -129,14 +131,16 @@ In http header(s):
 
 ```
 
-* Following will only return user record with UserId:
+<br />
+
+#### <a name="example_a3"></a>Following will only return user record with UserId:
 ```json
 
 In http header(s): 
 - TYPE: "application/json"
 
 {
-	"$type": "application/json",
+	"$APIVER": "1",
 	"Users": {
         "UserId": 1,
         "*": {}
@@ -144,7 +148,9 @@ In http header(s):
 }
 ```
 
-* Following will only return user record with UserId and his (or her) property (or properties) in 'Properties' table:
+<br />
+
+#### <a name="example_a4"></a>Following will only return user record with UserId and his (or her) property (or properties) in 'Properties' table:
 ```json
 
 In http header(s): 
@@ -152,7 +158,7 @@ In http header(s):
 
 //NOTE: If relationship between the tables is setup.
 {
-	"$type": "application/json",
+	"$APIVER": "1",
 	"Users": {
 		"UserId": 1,
 		"*": {},
@@ -162,7 +168,7 @@ In http header(s):
 
 //NOTE: If no relationship is setup.
 {
-	"$type": "application/json",
+	"$APIVER": "1",
 	"Users": {
 		"UserId": 1,
 		"*": {},
