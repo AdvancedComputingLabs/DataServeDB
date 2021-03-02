@@ -33,6 +33,16 @@ type row struct {
 	Id       int
 	UserName string
 }
+type FormData struct {
+	SlNum string
+	Name  string
+	// RoleIDs           []guid.Guid
+}
+type rowprops struct {
+	SlNo  int
+	Id    int
+	SlNum string
+}
 
 func TestPaths(t *testing.T) {
 	fmt.Println(paths.GetDatabasesMainDirPath())
@@ -108,17 +118,36 @@ func testCreateTableJSON(t *testing.T) {
 	//"DateAdded datetime default:Now() !Nullable"
 	// "DateAdded !Nullable"; insert datetime
 
-	createTableJSON := `{
-	  "TableName": "Tbl01",
-	  "TableFields": [
-		"Id int32 PrimaryKey",
-		"UserName string Length:5..50 !Nullable",
-		"Counter int32 default:Increment(1,1) !Nullable",
-		"DateAdded datetime default:Now() !Nullable",
-		"GlobalId guid default:NewGuid() !Nullable"
-	  ]
-	}`
+	// createTableJSON := `{
+	//   "TableName": "Users",
+	//   "TableFields": [
+	// 	"Id int32 PrimaryKey",
+	// 	"UserName string Length:5..50 !Nullable",
+	// 	"Counter int32 default:Increment(1,1) !Nullable",
+	// 	"DateAdded datetime default:Now() !Nullable",
+	// 	"GlobalId guid default:NewGuid() !Nullable"
+	//   ]
+	// }`
+	// createTableJSON := `{
+	// 	   "TableName": "Properties",
+	// 	  "TableFields": [
+	// 		"SlNum string PrimaryKey",
+	// 		"Name string Length:5..50 !Nullable",
+	// 		"Counter int32 default:Increment(1,1) !Nullable",
+	// 		"DateAdded datetime default:Now() !Nullable",
+	// 		"GlobalId guid default:NewGuid() !Nullable",
+	// 		"RoleIDs guid  !Nullable"
+	// 	  ]
+	// 	}`
 
+	createTableJSON := `{
+		"TableName": "UserProperties",
+		"TableFields": [
+			"SlNo int32 PrimaryKey",
+			"Id int32 !Nullable",
+			"SlNum string !Nullable"
+		]
+	}`
 	//TODO: check why it is not returning counter.
 
 	db, e := runtime.GetDb("re_db")
@@ -138,13 +167,13 @@ func testCreateTableJSON(t *testing.T) {
 		}
 	}
 
-	tbl, err := db.GetTable("Tbl01")
-	if err != nil {
-		t.Errorf("%v\n", err)
-		// return
-	}
-	testEdirRow(tbl, t)
-	testDeleteRowJSON(tbl, t)
+	// tbl, err := db.GetTable("Tbl01")
+	// if err != nil {
+	// 	t.Errorf("%v\n", err)
+	// 	// return
+	// }
+	// testEdirRow(tbl, t)
+	// testDeleteRowJSON(tbl, t)
 }
 
 func testRestApiGet(t *testing.T) {
@@ -167,18 +196,20 @@ func testByPk(tbl *dbtable.DbTable, t *testing.T) {
 }
 
 func testInsertRowJSON(db *db.DB, t *testing.T) {
-	tbl, e := db.GetTable("Tbl01")
+	tbl, e := db.GetTable("UserProperties")
 	if e != nil {
 		t.Error(e)
 		return
 	}
 
-	items := [4]string{"captain america", "IRON MAN", "professor HULK", "peter Parker"}
+	items := [4]string{"JLT1", "JLTX2", "JLTX3", "JLTX4"}
+	// items := [4]string{"0", "1", "JLTX3", "JLTX4"}
 
-	for i, item := range items {
-		row01 := row{
-			Id:       i,
-			UserName: item,
+	for i, _ := range items {
+		row01 := rowprops{
+			SlNo:  i + 1,
+			Id:    i,
+			SlNum: fmt.Sprintf("acl00%v", i),
 		}
 
 		row01Json, err := json.Marshal(row01)
@@ -187,7 +218,7 @@ func testInsertRowJSON(db *db.DB, t *testing.T) {
 		} else {
 			if e := tbl.InsertRowJSON(string(row01Json)); e == nil {
 				fmt.Println("Insert Test Successful")
-				testGetRowByPk(tbl, t, row01.Id)
+				// testGetRowByPk(tbl, t, row01.SlNum)
 			} else {
 				t.Errorf("%v\n", e)
 				return

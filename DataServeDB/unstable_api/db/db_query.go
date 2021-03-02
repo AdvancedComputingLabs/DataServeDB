@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	// "DataServeDB/unstable_api/runtime"
 	"net/http"
@@ -67,6 +68,8 @@ func (t *DB) verifyQuery(query Query, table *dbtable.DbTable) (Query, error) {
 	for i, value := range query.Children {
 		if _, found := table.TblMain.TableFieldsMetaData.IsField(value.ItemLabel); found {
 			/* TODO make itemtype as macro */
+			e := found
+			_ = e
 			query.Children[i].ItemType = "field"
 		} else if tbl, e := t.GetTable(value.ItemLabel); e == nil {
 			child, err := t.verifyQuery(query.Children[i], tbl)
@@ -75,6 +78,10 @@ func (t *DB) verifyQuery(query Query, table *dbtable.DbTable) (Query, error) {
 			}
 			query.Children[i] = child
 			query.Children[i].ItemType = "table"
+		} else if value.ItemLabel == "$WHERE" {
+			// process string
+			processRules(string(value.ItemValue))
+			return Query{}, nil
 		} else {
 			return Query{}, fmt.Errorf("Query field '%s' does not exit in database", value.ItemLabel)
 		}
@@ -156,4 +163,20 @@ func getSpec(query Query) int {
 		}
 	}
 	return -1
+}
+
+func processRules(str string) {
+	// "Properties": [
+	//   {
+	//     "$WHERE": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum"
+	//   }
+	// ]
+	arr := strings.SplitN(str, "AND", -1)
+	for _, v := range arr {
+		arr1 := strings.SplitN(v, "IS", -1)
+		for _, v1 := range arr1 {
+			println(v1)
+		}
+
+	}
 }

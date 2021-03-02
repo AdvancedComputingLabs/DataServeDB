@@ -105,16 +105,17 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request) (query db.Query, err
 		msg := "Request body must only contain a single JSON object"
 		return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
 	}
-	return decodeJSON(dst)
+	return DecodeJSON(dst)
 	// return err, query
 }
-func decodeJSON(dst interface{}) (query db.Query, err error) {
+func DecodeJSON(dst interface{}) (query db.Query, err error) {
 	var result map[string]interface{}
 	data, err := json.Marshal(dst)
 	if err != nil {
 		return query, err
 	}
-	json.Unmarshal([]byte(data), &result)
+	println(string(data))
+	json.Unmarshal(data, &result)
 	for f, v := range result {
 		// switch f {
 		// case "Users":
@@ -151,9 +152,10 @@ func getUsersStuctFields(dst interface{}) (query []db.Query, err error) {
 			return
 		}
 		return getArrayStruct(resArray)
-	} else if _, ok := dst.(string); ok {
-		return nil, nil
 	}
+	// else if _, ok := dst.(string); ok {
+	// 	return query, nil
+	// }
 	// Unmarshal or Decode the JSON to the user struct.
 
 	return nil, nil
@@ -184,22 +186,7 @@ func getStruct(dst map[string]interface{}) (query []db.Query, err error) {
 	return query, err
 }
 func getArrayStruct(dst []interface{}) (query []db.Query, err error) {
-	// "Properties": [
-	//   {
-	//     "$WHERE": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum"
-	//   }
-	// ]
-	for _, v := range dst {
-
-		var Qry db.Query = db.Query{}
-		qry, err := getUsersStuctFields(v)
-		if err != nil {
-			return query, err
-		}
-		Qry.Children = qry
-		query = append(query, Qry)
-	}
-	return
+	return getUsersStuctFields(dst[0])
 }
 
 // func getUsersStuctFields(User interface{}) (err error, UserStruct users, Flags flags) {
