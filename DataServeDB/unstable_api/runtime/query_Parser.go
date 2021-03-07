@@ -30,20 +30,6 @@ type malformedRequest struct {
 	msg    string
 }
 
-// type users struct {
-// 	UserId     int
-// 	Name       string
-// 	Properties []string
-// }
-
-// type flags struct {
-// 	UserNil bool
-// 	Id      bool
-// 	IdSpecd bool
-// 	Name    bool
-// 	props   bool
-// }
-
 func (mr *malformedRequest) Error() string {
 	return mr.msg
 }
@@ -105,8 +91,8 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request) (query db.Query, err
 		msg := "Request body must only contain a single JSON object"
 		return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
 	}
+
 	return DecodeJSON(dst)
-	// return err, query
 }
 func DecodeJSON(dst interface{}) (query db.Query, err error) {
 	var result map[string]interface{}
@@ -117,8 +103,6 @@ func DecodeJSON(dst interface{}) (query db.Query, err error) {
 	println(string(data))
 	json.Unmarshal(data, &result)
 	for f, v := range result {
-		// switch f {
-		// case "Users":
 		query.ItemLabel = f
 		query.ItemValue = data
 		children, err := getUsersStuctFields(v)
@@ -126,9 +110,7 @@ func DecodeJSON(dst interface{}) (query db.Query, err error) {
 			return db.Query{}, err
 		}
 		query.Children = append(query.Children, children...)
-		// }
 	}
-	// Unmarshal or Decode the JSON to the user struct.
 
 	return query, nil
 }
@@ -153,10 +135,6 @@ func getUsersStuctFields(dst interface{}) (query []db.Query, err error) {
 		}
 		return getArrayStruct(resArray)
 	}
-	// else if _, ok := dst.(string); ok {
-	// 	return query, nil
-	// }
-	// Unmarshal or Decode the JSON to the user struct.
 
 	return nil, nil
 }
@@ -188,38 +166,3 @@ func getStruct(dst map[string]interface{}) (query []db.Query, err error) {
 func getArrayStruct(dst []interface{}) (query []db.Query, err error) {
 	return getUsersStuctFields(dst[0])
 }
-
-// func getUsersStuctFields(User interface{}) (err error, UserStruct users, Flags flags) {
-// 	var Fields map[string]interface{}
-// 	Flags.UserNil = true
-
-// 	data, err := json.Marshal(User)
-// 	if err != nil {
-// 		return err, UserStruct, Flags
-// 	}
-// 	// Unmarshal or Decode the JSON to the interface.
-// 	json.Unmarshal(data, &Fields)
-
-// 	for fld, val := range Fields {
-// 		Flags.UserNil = false
-// 		switch fld {
-// 		case "UserId":
-// 			Flags.Id = true
-// 			data, err := json.Marshal(val)
-// 			if err != nil {
-// 				return err, users{}, flags{}
-// 			}
-// 			if string(data) != "{}" {
-// 				Flags.IdSpecd = true
-// 				// Unmarshal or Decode the JSON to the interface.
-// 				json.Unmarshal(data, &UserStruct.UserId)
-// 				println(UserStruct.UserId)
-// 			}
-// 		case "Name":
-// 			Flags.Name = true
-// 		case "properties":
-// 			Flags.props = true
-// 		}
-// 	}
-// 	return nil, UserStruct, Flags
-// }
