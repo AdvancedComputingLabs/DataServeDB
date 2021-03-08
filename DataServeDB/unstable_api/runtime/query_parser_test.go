@@ -40,9 +40,41 @@ func TestDecodeJSON(t *testing.T) {
 		return
 	}
 
-	fmt.Println(qryAst)
+	fmt.Printf("%v\n", qryAst)
 
 	//check if resulting query ast is correct.
 
+	/*
+		Result should be:
+		Query {
+			ItemLabel: "Users"
+			ItemType: ""
+			ItemValue: Empty
+			Rules: Empty
+			Children: Query[]
+				0: {
+					ItemLabel: "Id"
+					ItemType: ""
+					ItemValue: Empty
+					Rules: Empty
+					Children: Empty
+				}
+				1: {
+					ItemLabel: "UserName"
+					ItemType: ""
+					ItemValue: Empty
+					Rules: Empty
+					Children: Empty
+				}
+				2: {
+					ItemLabel: "Properties"
+					ItemType: ""
+					ItemValue: Empty
+					Rules: TODO: Use correct rules structure here.
+					Children: Empty
+				}
+		}
+	 */
 
+	//TODO: test against valid query structure.
 }
