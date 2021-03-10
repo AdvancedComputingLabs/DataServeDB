@@ -29,11 +29,10 @@ func TestDecodeJSON(t *testing.T) {
 		 ]
 	   	}}`
 
-
 	var dst interface{}
 	json.Unmarshal([]byte(query), &dst)
 
-	qryAst, err := DecodeJSON(dst)
+	qryAst, err := DecodeJSON(query)
 
 	if err != nil {
 		t.Errorf("%v\n", err)
@@ -74,7 +73,7 @@ func TestDecodeJSON(t *testing.T) {
 					Children: Empty
 				}
 		}
-	 */
+	*/
 
 	//TODO: test against valid query structure.
 }

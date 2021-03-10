@@ -48,7 +48,6 @@ func saveToDiskUtil(t *DbTable) error {
 	err := enc.Encode(t.TblData)
 	if err != nil {
 		//TODO: better handling needed
-		println("error ")
 		log.Fatal("encode error:", err)
 	}
 

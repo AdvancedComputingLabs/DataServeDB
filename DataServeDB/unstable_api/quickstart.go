@@ -70,7 +70,7 @@ func saveToken(path string, token *oauth2.Token) {
 }
 
 func getServiece() (srv *calendar.Service) {
-	
+
 	b, err := ioutil.ReadFile("unstable_api/credentials.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)

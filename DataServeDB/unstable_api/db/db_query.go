@@ -60,7 +60,6 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resu
 		//TODO: make error result more user friendly.
 		return
 	}
-	println("bytes", jsonBytes)
 	return http.StatusOK, jsonBytes, resultErr
 
 	//return 0, nil, nil
@@ -158,7 +157,6 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 						for _, prv := range ArrRows[rule.pTable.tableName] {
 							for _, rv := range temp {
 								if rv[rule.lnkTable.fieldName] == prv[rule.lnkTable.fieldName] {
-									println(rv[rule.lnkTable.fieldName])
 									tbres = append(tbres, prv)
 								}
 							}

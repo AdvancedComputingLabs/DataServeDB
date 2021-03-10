@@ -18,8 +18,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"net/http"
-
 	"strings"
 
 	"github.com/golang/gddo/httputil/header"
@@ -35,7 +36,7 @@ func (mr *malformedRequest) Error() string {
 }
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request) (query db.Query, err error) {
-	var dst interface{}
+	// var dst interface{}
 
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
@@ -46,75 +47,41 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request) (query db.Query, err
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
-
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-
-	err = dec.Decode(&dst)
+	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		var syntaxError *json.SyntaxError
-		var unmarshalTypeError *json.UnmarshalTypeError
-
-		switch {
-		case errors.As(err, &syntaxError):
-			msg := fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxError.Offset)
-			return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
-
-		case errors.Is(err, io.ErrUnexpectedEOF):
-			msg := fmt.Sprintf("Request body contains badly-formed JSON")
-			return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
-
-		case errors.As(err, &unmarshalTypeError):
-			msg := fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
-			return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
-
-		case strings.HasPrefix(err.Error(), "json: unknown field "):
-			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
-			msg := fmt.Sprintf("Request body contains unknown field %s", fieldName)
-			return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
-
-		case errors.Is(err, io.EOF):
-			msg := "Request body must not be empty"
-			return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
-
-		case err.Error() == "http: request body too large":
-			msg := "Request body must not be larger than 1MB"
-			return db.Query{}, &malformedRequest{status: http.StatusRequestEntityTooLarge, msg: msg}
-
-		default:
-			return db.Query{}, err
-		}
+		log.Printf("Error reading body: %v", err)
+		return
 	}
 
-	err = dec.Decode(&struct{}{})
-	if err != io.EOF {
-		msg := "Request body must only contain a single JSON object"
-		return db.Query{}, &malformedRequest{status: http.StatusBadRequest, msg: msg}
-	}
-
-	return DecodeJSON(dst)
+	return DecodeJSON(string(data))
 }
-func DecodeJSON(dst interface{}) (query db.Query, err error) {
+func DecodeJSON(dst string) (query db.Query, err error) {
 	var result map[string]interface{}
-	data, err := json.Marshal(dst)
+	data, err := getJsonData(dst)
 	if err != nil {
-		return query, err
+		return
 	}
-	println(string(data))
-	json.Unmarshal(data, &result)
-	for f, v := range result {
-		query.ItemLabel = f
-		query.ItemValue = data
-		children, err := getUsersStuctFields(v)
-		if err != nil {
-			return db.Query{}, err
-		}
-		query.Children = append(query.Children, children...)
+	fieldRef := getFieldRef(dst)
+	err = json.Unmarshal(data, &result)
+	if err != nil {
+		return
 	}
 
+	for i, field := range fieldRef {
+		value, ok := result[field]
+		if ok {
+			query.ItemLabel = field
+			query.ItemValue = data
+			children, err := getUsersStuctFields(value, fieldRef[i+1:])
+			if err != nil {
+				return query, nil
+			}
+			query.Children = append(query.Children, children...)
+		}
+	}
 	return query, nil
 }
-func getUsersStuctFields(dst interface{}) (query []db.Query, err error) {
+func getUsersStuctFields(dst interface{}, fieldRef []string) (query []db.Query, err error) {
 	var result map[string]interface{}
 	var resArray []interface{}
 	data, err := json.Marshal(dst)
@@ -127,42 +94,173 @@ func getUsersStuctFields(dst interface{}) (query []db.Query, err error) {
 		if err != nil {
 			return query, err
 		}
-		return getStruct(result)
+		return getStruct(result, fieldRef)
 	} else if _, ok := dst.([]interface{}); ok {
 		err = json.Unmarshal([]byte(data), &resArray)
 		if err != nil {
 			return
 		}
-		return getArrayStruct(resArray)
+		return getArrayStruct(resArray, fieldRef)
 	}
 
 	return nil, nil
 }
-func getStruct(dst map[string]interface{}) (query []db.Query, err error) {
-	for f, v := range dst {
-		var Qry db.Query = db.Query{}
-		Qry.ItemLabel = f
+func getStruct(dst map[string]interface{}, fieldRef []string) (query []db.Query, err error) {
+	// for f, v := range dst {
+	// 	var Qry db.Query = db.Query{}
+	// 	Qry.ItemLabel = f
 
-		data, err := json.Marshal(v)
-		if err != nil {
-			return query, err
-		}
-		if string(data) != "{}" && string(data) != "[{}]" {
-			Qry.ItemValue = data
-			qry, err := getUsersStuctFields(v)
+	// 	data, err := json.Marshal(v)
+	// 	if err != nil {
+	// 		return query, err
+	// 	}
+	// 	if string(data) != "{}" && string(data) != "[{}]" {
+	// 		Qry.ItemValue = data
+	// 		qry, err := getUsersStuctFields(v, []string{})
+	// 		if err != nil {
+	// 			return query, err
+	// 		}
+	// 		Qry.Children = qry
+	// 	} else {
+	// 		Qry.ItemValue = nil
+	// 		Qry.Children = nil
+	// 	}
+	// 	query = append(query, Qry)
+	// }
+	for i, field := range fieldRef {
+		nxtRef := fieldRef[i+1:]
+		value, ok := dst[field]
+		if ok {
+			var Qry db.Query = db.Query{}
+			Qry.ItemLabel = field
+
+			data, err := json.Marshal(value)
 			if err != nil {
 				return query, err
 			}
-			Qry.Children = qry
-		} else {
-			Qry.ItemValue = nil
-			Qry.Children = nil
+			if string(data) != "{}" && string(data) != "[{}]" {
+				Qry.ItemValue = data
+				qry, err := getUsersStuctFields(value, nxtRef)
+				if err != nil {
+					return query, err
+				}
+				Qry.Children = qry
+			} else {
+				Qry.ItemValue = nil
+				Qry.Children = nil
+			}
+			query = append(query, Qry)
 		}
-		query = append(query, Qry)
 	}
 
 	return query, err
 }
-func getArrayStruct(dst []interface{}) (query []db.Query, err error) {
-	return getUsersStuctFields(dst[0])
+func getArrayStruct(dst []interface{}, fieldRef []string) (query []db.Query, err error) {
+	return getUsersStuctFields(dst[0], fieldRef)
 }
+func getJsonData(str string) (data []byte, err error) {
+	var dst interface{}
+	dec := json.NewDecoder(strings.NewReader(str))
+	dec.DisallowUnknownFields()
+
+	err = dec.Decode(&dst)
+	if err != nil {
+		var syntaxError *json.SyntaxError
+		var unmarshalTypeError *json.UnmarshalTypeError
+
+		switch {
+		case errors.As(err, &syntaxError):
+			msg := fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxError.Offset)
+			return nil, &malformedRequest{status: http.StatusBadRequest, msg: msg}
+
+		case errors.Is(err, io.ErrUnexpectedEOF):
+			msg := fmt.Sprintf("Request body contains badly-formed JSON")
+			return nil, &malformedRequest{status: http.StatusBadRequest, msg: msg}
+
+		case errors.As(err, &unmarshalTypeError):
+			msg := fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
+			return nil, &malformedRequest{status: http.StatusBadRequest, msg: msg}
+
+		case strings.HasPrefix(err.Error(), "json: unknown field "):
+			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
+			msg := fmt.Sprintf("Request body contains unknown field %s", fieldName)
+			return nil, &malformedRequest{status: http.StatusBadRequest, msg: msg}
+
+		case errors.Is(err, io.EOF):
+			msg := "Request body must not be empty"
+			return nil, &malformedRequest{status: http.StatusBadRequest, msg: msg}
+
+		case err.Error() == "http: request body too large":
+			msg := "Request body must not be larger than 1MB"
+			return nil, &malformedRequest{status: http.StatusRequestEntityTooLarge, msg: msg}
+
+		default:
+			return nil, err
+		}
+	}
+
+	err = dec.Decode(&struct{}{})
+	if err != io.EOF {
+		msg := "Request body must only contain a single JSON object"
+		return nil, &malformedRequest{status: http.StatusBadRequest, msg: msg}
+	}
+	data, err = json.Marshal(dst)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+func getFieldRef(dst string) (fieldRef []string) {
+	dec := json.NewDecoder(strings.NewReader(dst))
+	for {
+		t, err := dec.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		if d, ok := t.(string); ok {
+			fieldRef = append(fieldRef, d)
+		}
+	}
+	return
+}
+
+func openDelim(t json.Delim) bool {
+	open := map[json.Delim]int{
+		'{': 1,
+		'[': 2,
+	}
+	_, ok := open[t]
+	return ok
+}
+func closeDelim(t json.Delim) bool {
+	close := map[json.Delim]int{
+		'}': 1,
+		']': 2,
+	}
+	_, ok := close[t]
+	return ok
+}
+
+// func DecodeJSON1(dst interface{}) (query db.Query, err error) {
+// 	var result map[string]interface{}
+// 	data, err := json.Marshal(dst)
+// 	if err != nil {
+// 		return query, err
+// 	}
+// 	println("json-> ", string(data))
+// 	json.Unmarshal(data, &result)
+// 	for f, v := range result {
+// 		query.ItemLabel = f
+// 		query.ItemValue = data
+// 		children, err := getUsersStuctFields(v)
+// 		if err != nil {
+// 			return db.Query{}, err
+// 		}
+// 		query.Children = append(query.Children, children...)
+// 	}
+
+// 	return query, nil
+// }

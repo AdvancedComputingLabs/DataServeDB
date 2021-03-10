@@ -164,7 +164,6 @@ func tableDoesNotSupportListOperation(table string) error {
 }
 
 func postData(table string, claimID []guid.Guid, form url.Values) ([]byte, error) {
-	println(table)
 	switch strings.ToUpper(table) {
 	case "PROPERTIES":
 		data1, _ := getProperties(form)

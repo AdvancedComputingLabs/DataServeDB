@@ -334,7 +334,6 @@ func (t *DbTable) DeleteRowByValue(pkValue interface{}) (resultHttpStatus int, r
 	}
 	t.TblData.Rows = Rows
 	rplcValue := t.TblData.Rows[t.TblMain.PkPos]
-	println("replace value ", rplcValue)
 	err = t.updateRowMapper(pkValue, rplcValue)
 	if err != nil {
 		return resultHttpStatus, fmt.Errorf("value '%v' not found", pkValue)

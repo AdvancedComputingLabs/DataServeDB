@@ -18,7 +18,7 @@ import (
 // 	   }}
 func TestQuary(t *testing.T) {
 	query := `{"Users": {
-		"Id": {},
+		"Id": 1,
 		"UserName": {},
 		"Properties": [
 		   {
@@ -27,9 +27,31 @@ func TestQuary(t *testing.T) {
 		 ]
 	   	}}`
 	var dst interface{}
-	json.Unmarshal([]byte(query), &dst)
 
-	qry, err := runtime.DecodeJSON(dst)
+	// dec := json.NewDecoder(strings.NewReader(query))
+	// for {
+	// 	t, err := dec.Token()
+	// 	if err == io.EOF {
+	// 		break
+	// 	}
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	fmt.Printf("%T: %v", t, t)
+	// 	if dec.More() {
+	// 		fmt.Printf(" (more)")
+	// 	}
+	// 	fmt.Printf("\n")
+	// }
+
+	json.Unmarshal([]byte(query), &dst)
+	data, err := json.Marshal(dst)
+	if err != nil {
+		print("error")
+	}
+	println("marshal ", string(data))
+
+	qry, err := runtime.DecodeJSON(query)
 	if err != nil {
 		t.Errorf("%v\n", err)
 		return
@@ -43,7 +65,6 @@ func TestQuary(t *testing.T) {
 	dbReqCtx = commtypes.NewDbReqContext(
 		"", "", "",
 		"re_db", db, "", 1)
-	println("qry-> ", qry.ItemLabel)
 	// b, e := json.Marshal(query)
 	// if e != nil {
 	// 	t.Errorf("%v\n", e)
