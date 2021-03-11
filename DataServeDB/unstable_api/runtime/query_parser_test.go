@@ -32,7 +32,7 @@ func TestDecodeJSON(t *testing.T) {
 	var dst interface{}
 	json.Unmarshal([]byte(query), &dst)
 
-	qryAst, err := DecodeJSON(query)
+	_, qryAst, err := DecodeJSON([]byte(query))
 
 	if err != nil {
 		t.Errorf("%v\n", err)
