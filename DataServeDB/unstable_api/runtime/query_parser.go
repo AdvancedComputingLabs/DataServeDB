@@ -15,6 +15,7 @@ package runtime
 import (
 	"DataServeDB/unstable_api/db"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -149,17 +150,54 @@ func checkJsonData(str []byte) (resultHttpStatus int, err error) {
 
 	err = dec.Decode(&dst)
 	if err != nil {
-		resultHttpStatus = http.StatusNotAcceptable
-		return
+		var syntaxError *json.SyntaxError
+		var unmarshalTypeError *json.UnmarshalTypeError
+
+		switch {
+		case errors.As(err, &syntaxError):
+			msg := fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxError.Offset)
+			return http.StatusBadRequest, errors.New(msg)
+
+		case errors.Is(err, io.ErrUnexpectedEOF):
+			msg := fmt.Sprintf("Request body contains badly-formed JSON")
+			return http.StatusBadRequest, errors.New(msg)
+
+		case errors.As(err, &unmarshalTypeError):
+			msg := fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
+			return http.StatusBadRequest, errors.New(msg)
+
+		case strings.HasPrefix(err.Error(), "json: unknown field "):
+			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
+			msg := fmt.Sprintf("Request body contains unknown field %s", fieldName)
+			return http.StatusBadRequest, errors.New(msg)
+
+		case errors.Is(err, io.EOF):
+			msg := "Request body must not be empty"
+			return http.StatusBadRequest, errors.New(msg)
+
+		case err.Error() == "http: request body too large":
+			msg := "Request body must not be larger than 1MB"
+			return http.StatusBadRequest, errors.New(msg)
+
+		default:
+			return http.StatusBadRequest, err
+		}
 	}
 
 	err = dec.Decode(&struct{}{})
 	if err != io.EOF {
-		resultHttpStatus = http.StatusNotAcceptable
-		return
+		msg := "Request body must only contain a single JSON object"
+		return http.StatusBadRequest, errors.New(msg)
 	}
-	// data, err := json.Marshal(dst)
+
+	data, err := json.Marshal(dst)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	_ = data
 	resultHttpStatus = http.StatusOK
+
 	return
 }
 func getFieldRef(dst string) (fieldRef []string) {

@@ -3,7 +3,6 @@ package main
 import (
 	"DataServeDB/commtypes"
 	"DataServeDB/unstable_api/runtime"
-	"encoding/json"
 	"testing"
 )
 
@@ -26,7 +25,7 @@ func TestQuary(t *testing.T) {
 		   }
 		 ]
 	   	}}`
-	var dst interface{}
+	//var dst interface{}
 
 	// dec := json.NewDecoder(strings.NewReader(query))
 	// for {
@@ -44,14 +43,7 @@ func TestQuary(t *testing.T) {
 	// 	fmt.Printf("\n")
 	// }
 
-	json.Unmarshal([]byte(query), &dst)
-	data, err := json.Marshal(dst)
-	if err != nil {
-		print("error")
-	}
-	println("marshal ", string(data))
-
-	qry, err := runtime.DecodeJSON(query)
+	_, qry, err := runtime.DecodeJSON([]byte(query))
 	if err != nil {
 		t.Errorf("%v\n", err)
 		return
