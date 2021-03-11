@@ -27,7 +27,8 @@ func TestDecodeJSON(t *testing.T) {
 			 "$WHERE": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum"
 		   }
 		 ]
-	   	}}`
+	   	}}
+		`
 
 	var dst interface{}
 	json.Unmarshal([]byte(query), &dst)

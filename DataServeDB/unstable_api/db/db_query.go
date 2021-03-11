@@ -31,7 +31,7 @@ type Query struct {
 	Children  []Query
 }
 
-func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resultHttpStatus int, resultContent []byte, resultErr error) {
+func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query *Query) (resultHttpStatus int, resultContent []byte, resultErr error) {
 	// result := []dbtable.TableRow{}
 	table, err := t.GetTable(query.ItemLabel)
 	if err != nil {
@@ -48,7 +48,7 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resu
 	/* TO DO :- filter out the specific row if the userId mentioned,
 	}*/
 
-	result, err := t.processQuery(query)
+	result, err := t.processQuery(*query)
 	if err != nil {
 		resultErr = err
 		return
@@ -65,7 +65,7 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resu
 	//return 0, nil, nil
 }
 
-func (t *DB) verifyQuery(query Query, table *dbtable.DbTable) (Query, error) {
+func (t *DB) verifyQuery(query *Query, table *dbtable.DbTable) (*Query, error) {
 	for i, value := range query.Children {
 		if _, found := table.TblMain.TableFieldsMetaData.IsField(value.ItemLabel); found {
 			/* TODO make itemtype as macro */
@@ -73,11 +73,11 @@ func (t *DB) verifyQuery(query Query, table *dbtable.DbTable) (Query, error) {
 			_ = e
 			query.Children[i].ItemType = "field"
 		} else if tbl, e := t.GetTable(value.ItemLabel); e == nil {
-			child, err := t.verifyQuery(query.Children[i], tbl)
+			child, err := t.verifyQuery(&query.Children[i], tbl)
 			if err != nil {
-				return Query{}, err
+				return nil, err
 			}
-			query.Children[i] = child
+			query.Children[i] = *child
 			query.Children[i].ItemType = "table"
 		} else if value.ItemLabel == "$WHERE" {
 			// process string
@@ -85,7 +85,7 @@ func (t *DB) verifyQuery(query Query, table *dbtable.DbTable) (Query, error) {
 			query.Rules = rules
 			return query, nil
 		} else {
-			return Query{}, fmt.Errorf("Query field '%s' does not exit in database", value.ItemLabel)
+			return nil, fmt.Errorf("Query field '%s' does not exit in database", value.ItemLabel)
 		}
 	}
 	return query, nil
