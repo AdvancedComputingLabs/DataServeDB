@@ -26,3 +26,5 @@ yarn-error.log*
 
 #go project vendor files
 DataServeDB/vendor
+DataServeDB/go.mod
+DataServeDB/go.sum
