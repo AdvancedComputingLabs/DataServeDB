@@ -8,17 +8,21 @@ import (
 	"regexp"
 	"strings"
 
-	// "DataServeDB/unstable_api/runtime"
 	"net/http"
 )
 
 type QueryOp int
 
 const (
-	OpNone	= iota // starting with 0
+	OpNone = iota // starting with 0
 	OpIS
 	OpOR
 	OpAND
+)
+
+const (
+	Field = "field"
+	Table = "table"
 )
 
 type ruleInfo struct {
@@ -26,12 +30,6 @@ type ruleInfo struct {
 	fieldName string
 	operation QueryOp
 	next      *ruleInfo
-}
-type ruleTabel struct {
-	pTable   ruleInfo
-	lnkTable ruleInfo
-	// pkField   string
-	// linkField string
 }
 
 type Query struct {
@@ -43,7 +41,6 @@ type Query struct {
 }
 
 func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resultHttpStatus int, resultContent []byte, resultErr error) {
-	// result := []dbtable.TableRow{}
 	table, err := t.GetTable(query.ItemLabel)
 	if err != nil {
 		resultErr = err
@@ -54,11 +51,6 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resu
 		resultErr = err
 		return
 	}
-	// sort.SliceStable(query.Children, func(i, j int) bool { return query.Children[i].ItemType == "field" })
-	/*********************************************/
-	/* TO DO :- filter out the specific row if the userId mentioned,
-	}*/
-
 	result, err := t.processQuery(query)
 	if err != nil {
 		resultErr = err
@@ -67,33 +59,27 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resu
 
 	jsonBytes, err := json.Marshal(result)
 	if err != nil {
-		resultErr = err
+		resultErr = fmt.Errorf("error decoding result: %V", err)
 		//TODO: make error result more user friendly.
 		return
 	}
 	return http.StatusOK, jsonBytes, resultErr
-
-	//return 0, nil, nil
 }
 
 func (t *DB) verifyQuery(query Query, table *dbtable.DbTable) (Query, error) {
 	for i, value := range query.Children {
 		if _, found := table.TblMain.TableFieldsMetaData.IsField(value.ItemLabel); found {
 			/* TODO make itemtype as macro */
-			e := found
-			_ = e
-			query.Children[i].ItemType = "field"
+			query.Children[i].ItemType = Field
 		} else if tbl, e := t.GetTable(value.ItemLabel); e == nil {
 			child, err := t.verifyQuery(query.Children[i], tbl)
 			if err != nil {
 				return Query{}, err
 			}
 			query.Children[i] = child
-			query.Children[i].ItemType = "table"
+			query.Children[i].ItemType = Table
 		} else if value.ItemLabel == "$WHERE" {
-			// process string
 			rules := getRules(value.ItemValue)
-			// fmt.Println(*rules)
 			query.Rules = rules
 			return query, nil
 		} else {
@@ -115,7 +101,6 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 		if err != nil {
 			return
 		}
-
 	} else {
 		rows, err = table.GetTableRows()
 		if err != nil {
@@ -132,15 +117,12 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 			continue
 		}
 		for _, child := range query.Children {
-			if child.ItemType == "field" {
+			if child.ItemType == Field {
 				res[child.ItemLabel] = row[child.ItemLabel]
-			} else if child.ItemType == "table" {
+			} else if child.ItemType == Table {
 				var tempRow dbtable.TableRow
 				temp := []dbtable.TableRow{}
 				tbres := []dbtable.TableRow{}
-				// if child.Rules[0].pTable.tableName != query.ItemLabel {
-				// 	return nil, fmt.Errorf("primary table not fount in rule")
-				// }
 				if _, ok := ArrRows[query.ItemLabel]; !ok {
 					ArrRows[query.ItemLabel] = rows
 				}
@@ -153,14 +135,13 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 						ArrRows[rule.tableName] = rows1
 					}
 				}
-				//   "$WHERE": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum"
 				for rule := child.Rules; rule != nil; rule = rule.next {
-					if rule.operation == 3 {
+					if rule.operation == OpAND {
 						continue
 					}
 					if rule.tableName == query.ItemLabel {
 						tempRow = row
-						if rule.operation == 1 {
+						if rule.operation == OpIS {
 							for _, rv := range ArrRows[rule.next.tableName] {
 								if tempRow[rule.fieldName] == rv[rule.fieldName] {
 									temp = append(temp, rv)
@@ -169,7 +150,7 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 						}
 					}
 					if rule.tableName == child.ItemLabel {
-						if rule.operation == 1 {
+						if rule.operation == OpIS {
 							for _, prv := range ArrRows[rule.tableName] {
 								for _, rv := range temp {
 									if rv[rule.fieldName] == prv[rule.fieldName] {
@@ -179,7 +160,6 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 							}
 						}
 					}
-
 				}
 				res[child.ItemLabel] = tbres
 			}
@@ -190,7 +170,7 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 }
 func getSpec(query Query) int {
 	for i, v := range query.Children {
-		if v.ItemType == "field" {
+		if v.ItemType == Field {
 			if v.ItemValue != nil {
 				return i
 			}
@@ -201,31 +181,11 @@ func getSpec(query Query) int {
 
 func getRules(b []byte) (rulse *ruleInfo) {
 	rule := ruleInfo{}
-	// tblRule := []ruleTabel{}
 	// "Properties": [
 	//   {
 	//     "$WHERE": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum"
 	//   }
 	// ]
-
-	// var re = regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)( IS )([A-z]*[.][A-z]*)`)
-
-	// for _, match := range re.FindAllString(str, -1) {
-	// 	rule := ruleTabel{}
-	// 	var reg = regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)`)
-	// 	for i, match1 := range reg.FindAllString(match, -1) {
-	// 		arr := strings.Split(match1, ".")
-	// 		if i == 0 {
-	// 			rule.pTable.tableName = arr[0]
-	// 			rule.pTable.fieldName = arr[1]
-	// 		} else if i == 1 {
-	// 			rule.lnkTable.tableName = arr[0]
-	// 			rule.lnkTable.fieldName = arr[1]
-	// 		}
-	// 	}
-	// 	rulse = append(rulse, rule)
-	// }
-
 	var re = regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)`)
 	if byt := re.Find(b); byt != nil {
 		arr := strings.Split(string(byt), ".")
@@ -261,5 +221,5 @@ func getOpr(str []byte) QueryOp {
 	if v, ok := operators[string(opr)]; ok {
 		return v
 	}
-	return 0
+	return OpNone
 }
