@@ -12,10 +12,19 @@ import (
 	"net/http"
 )
 
+type QueryOp int
+
+const (
+	OpNone	= iota // starting with 0
+	OpIS
+	OpOR
+	OpAND
+)
+
 type ruleInfo struct {
 	tableName string
 	fieldName string
-	operation int
+	operation QueryOp
 	next      *ruleInfo
 }
 type ruleTabel struct {
@@ -241,11 +250,11 @@ func (t *DB) getRowsBytableName(tableName string) (rows []dbtable.TableRow, err 
 	return
 }
 
-func getOpr(str []byte) int {
-	operators := map[string]int{
-		"IS":  1,
-		"OR":  2,
-		"AND": 3,
+func getOpr(str []byte) QueryOp {
+	operators := map[string]QueryOp{
+		"IS":  OpIS,
+		"OR":  OpOR,
+		"AND": OpAND,
 	}
 	var opre = regexp.MustCompile(`(?m)([A-Z]{2,5})`)
 	opr := opre.Find(str)
