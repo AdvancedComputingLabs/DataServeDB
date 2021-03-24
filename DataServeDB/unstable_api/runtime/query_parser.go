@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/golang/gddo/httputil/header"
@@ -144,7 +145,6 @@ func getUsersStuctFields(dst interface{}, fieldRef []string) (query []db.Query, 
 		}
 		return getArrayStruct(resArray, fieldRef)
 	}
-
 	return nil, nil
 }
 func getStruct(dst map[string]interface{}, fieldRef []string) (query []db.Query, err error) {
@@ -161,11 +161,16 @@ func getStruct(dst map[string]interface{}, fieldRef []string) (query []db.Query,
 			}
 			if string(data) != "{}" && string(data) != "[{}]" {
 				Qry.ItemValue = data
-				qry, err := getUsersStuctFields(value, nxtRef)
-				if err != nil {
-					return query, err
+				if field == "$WHERE" {
+					Qry.Rules = parseRules(data)
+					Qry.Children = nil
+				} else {
+					qry, err := getUsersStuctFields(value, nxtRef)
+					if err != nil {
+						return query, err
+					}
+					Qry.Children = qry
 				}
-				Qry.Children = qry
 			} else {
 				Qry.ItemValue = nil
 				Qry.Children = nil
@@ -195,4 +200,40 @@ func getFieldRef(dst string) (fieldRef []string) {
 		}
 	}
 	return
+}
+
+// func getRulse(b []byte) (query []db.Query) {
+// 	var qry db.Query
+// 	qry.Rules =
+// }
+func parseRules(b []byte) (rulse *db.RuleInfo) {
+	rule := db.RuleInfo{}
+	// "Properties": [
+	//   {
+	//     "$WHERE": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum"
+	//   }
+	// ]
+	var re = regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)`)
+	if byt := re.Find(b); byt != nil {
+		arr := strings.Split(string(byt), ".")
+		rule.TableName = arr[0]
+		rule.FieldName = arr[1]
+		rule.Operation = getOpr(b[len(byt)+1:])
+		rule.Next = parseRules(b[(len(byt) + 3):])
+		return &rule
+	}
+	return nil
+}
+func getOpr(str []byte) db.QueryOp {
+	operators := map[string]db.QueryOp{
+		"IS":  db.OpIS,
+		"OR":  db.OpOR,
+		"AND": db.OpAND,
+	}
+	var opre = regexp.MustCompile(`(?m)([A-Z]{2,5})`)
+	opr := opre.Find(str)
+	if v, ok := operators[string(opr)]; ok {
+		return v
+	}
+	return db.OpNone
 }

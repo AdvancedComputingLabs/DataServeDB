@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"net/http"
 )
 
 type QueryOp int
+type ItemType int
 
 const (
 	OpNone = iota // starting with 0
@@ -21,22 +21,23 @@ const (
 )
 
 const (
-	Field = "field"
-	Table = "table"
+	Field = iota
+	Table
+	Rule
 )
 
-type ruleInfo struct {
-	tableName string
-	fieldName string
-	operation QueryOp
-	next      *ruleInfo
+type RuleInfo struct {
+	TableName string
+	FieldName string
+	Operation QueryOp
+	Next      *RuleInfo
 }
 
 type Query struct {
 	ItemLabel string
-	ItemType  string
+	ItemType  ItemType
 	ItemValue []byte // json Converted
-	Rules     *ruleInfo
+	Rules     *RuleInfo
 	Children  []Query
 }
 
@@ -79,9 +80,9 @@ func (t *DB) verifyQuery(query Query, table *dbtable.DbTable) (Query, error) {
 			query.Children[i] = child
 			query.Children[i].ItemType = Table
 		} else if value.ItemLabel == "$WHERE" {
-			rules := getRules(value.ItemValue)
-			query.Rules = rules
-			return query, nil
+			// query.ItemType = Rule
+			fmt.Println(value.Rules)
+			// value.Rules
 		} else {
 			return Query{}, fmt.Errorf("Query field '%s' does not exist in database", value.ItemLabel)
 		}
@@ -126,34 +127,34 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 				if _, ok := ArrRows[query.ItemLabel]; !ok {
 					ArrRows[query.ItemLabel] = rows
 				}
-				for rule := child.Rules; rule != nil; rule = rule.next {
-					if _, ok := ArrRows[rule.tableName]; !ok {
-						rows1, err := t.getRowsBytableName(rule.tableName)
+				for rule := child.Children[0].Rules; rule != nil; rule = rule.Next {
+					if _, ok := ArrRows[rule.TableName]; !ok {
+						rows1, err := t.getRowsBytableName(rule.TableName)
 						if err != nil {
 							return nil, err
 						}
-						ArrRows[rule.tableName] = rows1
+						ArrRows[rule.TableName] = rows1
 					}
 				}
-				for rule := child.Rules; rule != nil; rule = rule.next {
-					if rule.operation == OpAND {
+				for rule := child.Children[0].Rules; rule != nil; rule = rule.Next {
+					if rule.Operation == OpAND {
 						continue
 					}
-					if rule.tableName == query.ItemLabel {
+					if rule.TableName == query.ItemLabel {
 						tempRow = row
-						if rule.operation == OpIS {
-							for _, rv := range ArrRows[rule.next.tableName] {
-								if tempRow[rule.fieldName] == rv[rule.fieldName] {
+						if rule.Operation == OpIS {
+							for _, rv := range ArrRows[rule.Next.TableName] {
+								if tempRow[rule.FieldName] == rv[rule.FieldName] {
 									temp = append(temp, rv)
 								}
 							}
 						}
 					}
-					if rule.tableName == child.ItemLabel {
-						if rule.operation == OpIS {
-							for _, prv := range ArrRows[rule.tableName] {
+					if rule.TableName == child.ItemLabel {
+						if rule.Operation == OpIS {
+							for _, prv := range ArrRows[rule.TableName] {
 								for _, rv := range temp {
-									if rv[rule.fieldName] == prv[rule.fieldName] {
+									if rv[rule.FieldName] == prv[rule.FieldName] {
 										tbres = append(tbres, prv)
 									}
 								}
@@ -179,25 +180,6 @@ func getSpec(query Query) int {
 	return -1
 }
 
-func getRules(b []byte) (rulse *ruleInfo) {
-	rule := ruleInfo{}
-	// "Properties": [
-	//   {
-	//     "$WHERE": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum"
-	//   }
-	// ]
-	var re = regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)`)
-	if byt := re.Find(b); byt != nil {
-		arr := strings.Split(string(byt), ".")
-		rule.tableName = arr[0]
-		rule.fieldName = arr[1]
-		rule.operation = getOpr(b[len(byt)+1:])
-		rule.next = getRules(b[(len(byt) + 3):])
-		return &rule
-	}
-	return nil
-
-}
 func (t *DB) getRowsBytableName(tableName string) (rows []dbtable.TableRow, err error) {
 	table, err := t.GetTable(tableName)
 	if err != nil {
