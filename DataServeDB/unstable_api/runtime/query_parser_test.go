@@ -40,7 +40,7 @@ func TestDecodeJSON(t *testing.T) {
 		return
 	}
 
-	fmt.Printf("%v\n", qryAst)
+	fmt.Printf("here %v\n", qryAst)
 
 	//check if resulting query ast is correct.
 

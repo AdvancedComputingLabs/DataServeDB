@@ -42,7 +42,7 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request) (resultHttpStatus in
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
 		if value != "application/json" {
-			msg := "Content-Type header is not application/json"
+			msg := "content-Type header is not application/json"
 			return http.StatusBadRequest, &db.Query{}, &malformedRequest{status: http.StatusUnsupportedMediaType, msg: msg}
 		}
 	}
@@ -71,28 +71,28 @@ func DecodeJSON(dst []byte) (resultHttpStatus int, query *db.Query, err error) {
 
 		switch {
 		case errors.As(err, &syntaxError):
-			msg := fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxError.Offset)
+			msg := fmt.Sprintf("request body contains badly-formed JSON (at position %d)", syntaxError.Offset)
 			return http.StatusBadRequest, nil, errors.New(msg)
 
 		case errors.Is(err, io.ErrUnexpectedEOF):
-			msg := fmt.Sprintf("Request body contains badly-formed JSON")
+			msg := fmt.Sprintf("request body contains badly-formed JSON")
 			return http.StatusBadRequest, nil, errors.New(msg)
 
 		case errors.As(err, &unmarshalTypeError):
-			msg := fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
+			msg := fmt.Sprintf("request body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
 			return http.StatusBadRequest, nil, errors.New(msg)
 
 		case strings.HasPrefix(err.Error(), "json: unknown field "):
 			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
-			msg := fmt.Sprintf("Request body contains unknown field %s", fieldName)
+			msg := fmt.Sprintf("request body contains unknown field %s", fieldName)
 			return http.StatusBadRequest, nil, errors.New(msg)
 
 		case errors.Is(err, io.EOF):
-			msg := "Request body must not be empty"
+			msg := "request body must not be empty"
 			return http.StatusBadRequest, nil, errors.New(msg)
 
 		case err.Error() == "http: request body too large":
-			msg := "Request body must not be larger than 1MB"
+			msg := "request body must not be larger than 1MB"
 			return http.StatusBadRequest, nil, errors.New(msg)
 
 		default:
@@ -104,6 +104,7 @@ func DecodeJSON(dst []byte) (resultHttpStatus int, query *db.Query, err error) {
 	err = json.Unmarshal(dst, &result)
 	if err != nil {
 		//TODO: set http error
+		resultHttpStatus = http.StatusNotAcceptable
 		return
 	}
 
@@ -202,10 +203,6 @@ func getFieldRef(dst string) (fieldRef []string) {
 	return
 }
 
-// func getRulse(b []byte) (query []db.Query) {
-// 	var qry db.Query
-// 	qry.Rules =
-// }
 func parseRules(b []byte) (rulse *db.RuleInfo) {
 	rule := db.RuleInfo{}
 	// "Properties": [
