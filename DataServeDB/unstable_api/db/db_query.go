@@ -18,12 +18,16 @@ const (
 	OpIS
 	OpOR
 	OpAND
+	OpGT
+	OpGTEQ
+	OpLT
+	OpLTEQ
 )
 
 const (
-	Field = iota
-	Table
-	Rule
+	field = iota
+	table
+	rule
 )
 
 type RuleInfo struct {
@@ -32,22 +36,37 @@ type RuleInfo struct {
 	Operation QueryOp
 	Next      *RuleInfo
 }
+type RuleFieldInfo struct {
+	TableName string
+	FieldName string
+}
+
+type Rule struct {
+	LeftRule     *RuleFieldInfo
+	RightRule    *RuleFieldInfo
+	LeftOperand  string
+	RightOperand string
+
+	Operator QueryOp
+}
+
+type Rules []interface{}
 
 type Query struct {
 	ItemLabel string
 	ItemType  ItemType
-	ItemValue []byte // json Converted
-	Rules     *RuleInfo
+	ItemValue string // json Converted
+	Rules     Rules
 	Children  []Query
 }
 
 func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resultHttpStatus int, resultContent []byte, resultErr error) {
-	table, err := t.GetTable(query.ItemLabel)
+	tbl, err := t.GetTable(query.ItemLabel)
 	if err != nil {
 		resultErr = err
 		return
 	}
-	query, err = t.verifyQuery(query, table)
+	query, err = t.verifyQuery(query, tbl)
 	if err != nil {
 		resultErr = err
 		return
@@ -67,18 +86,18 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resu
 	return http.StatusOK, jsonBytes, resultErr
 }
 
-func (t *DB) verifyQuery(query Query, table *dbtable.DbTable) (Query, error) {
+func (t *DB) verifyQuery(query Query, tbl *dbtable.DbTable) (Query, error) {
 	for i, value := range query.Children {
-		if _, found := table.TblMain.TableFieldsMetaData.IsField(value.ItemLabel); found {
+		if _, found := tbl.TblMain.TableFieldsMetaData.IsField(value.ItemLabel); found {
 			/* TODO make itemtype as macro */
-			query.Children[i].ItemType = Field
+			query.Children[i].ItemType = field
 		} else if tbl, e := t.GetTable(value.ItemLabel); e == nil {
 			child, err := t.verifyQuery(query.Children[i], tbl)
 			if err != nil {
 				return Query{}, err
 			}
 			query.Children[i] = child
-			query.Children[i].ItemType = Table
+			query.Children[i].ItemType = table
 		} else if value.ItemLabel == "$WHERE" {
 			// query.ItemType = Rule
 			fmt.Println(value.Rules)
@@ -92,18 +111,18 @@ func (t *DB) verifyQuery(query Query, table *dbtable.DbTable) (Query, error) {
 func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 	rows := []dbtable.TableRow{}
 	ArrRows := map[string][]dbtable.TableRow{}
-	table, err := t.GetTable(query.ItemLabel)
+	tbl, err := t.GetTable(query.ItemLabel)
 	if err != nil {
 		return
 	}
 	spec := getSpec(query)
 	if spec != -1 {
-		rows, err = table.GetTableRows(string(query.Children[spec].ItemValue))
+		rows, err = tbl.GetTableRows(string(query.Children[spec].ItemValue))
 		if err != nil {
 			return
 		}
 	} else {
-		rows, err = table.GetTableRows()
+		rows, err = tbl.GetTableRows()
 		if err != nil {
 			return
 		}
@@ -118,50 +137,50 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 			continue
 		}
 		for _, child := range query.Children {
-			if child.ItemType == Field {
+			if child.ItemType == field {
 				res[child.ItemLabel] = row[child.ItemLabel]
-			} else if child.ItemType == Table {
-				var tempRow dbtable.TableRow
-				temp := []dbtable.TableRow{}
+			} else if child.ItemType == table {
+				// var tempRow dbtable.TableRow
+				// temp := []dbtable.TableRow{}
 				tbres := []dbtable.TableRow{}
 				if _, ok := ArrRows[query.ItemLabel]; !ok {
 					ArrRows[query.ItemLabel] = rows
 				}
-				for rule := child.Children[0].Rules; rule != nil; rule = rule.Next {
-					if _, ok := ArrRows[rule.TableName]; !ok {
-						rows1, err := t.getRowsBytableName(rule.TableName)
-						if err != nil {
-							return nil, err
-						}
-						ArrRows[rule.TableName] = rows1
-					}
-				}
-				for rule := child.Children[0].Rules; rule != nil; rule = rule.Next {
-					if rule.Operation == OpAND {
-						continue
-					}
-					if rule.TableName == query.ItemLabel {
-						tempRow = row
-						if rule.Operation == OpIS {
-							for _, rv := range ArrRows[rule.Next.TableName] {
-								if tempRow[rule.FieldName] == rv[rule.FieldName] {
-									temp = append(temp, rv)
-								}
-							}
-						}
-					}
-					if rule.TableName == child.ItemLabel {
-						if rule.Operation == OpIS {
-							for _, prv := range ArrRows[rule.TableName] {
-								for _, rv := range temp {
-									if rv[rule.FieldName] == prv[rule.FieldName] {
-										tbres = append(tbres, prv)
-									}
-								}
-							}
-						}
-					}
-				}
+				// for rule := child.Children[0].Rules; rule != nil; rule = rule.Next {
+				// 	if _, ok := ArrRows[rule.TableName]; !ok {
+				// 		rows1, err := t.getRowsBytableName(rule.TableName)
+				// 		if err != nil {
+				// 			return nil, err
+				// 		}
+				// 		ArrRows[rule.TableName] = rows1
+				// 	}
+				// }
+				// for rule := child.Children[0].Rules; rule != nil; rule = rule.Next {
+				// 	if rule.Operation == OpAND {
+				// 		continue
+				// 	}
+				// 	if rule.TableName == query.ItemLabel {
+				// 		tempRow = row
+				// 		if rule.Operation == OpIS {
+				// 			for _, rv := range ArrRows[rule.Next.TableName] {
+				// 				if tempRow[rule.FieldName] == rv[rule.FieldName] {
+				// 					temp = append(temp, rv)
+				// 				}
+				// 			}
+				// 		}
+				// 	}
+				// 	if rule.TableName == child.ItemLabel {
+				// 		if rule.Operation == OpIS {
+				// 			for _, prv := range ArrRows[rule.TableName] {
+				// 				for _, rv := range temp {
+				// 					if rv[rule.FieldName] == prv[rule.FieldName] {
+				// 						tbres = append(tbres, prv)
+				// 					}
+				// 				}
+				// 			}
+				// 		}
+				// 	}
+				// }
 				res[child.ItemLabel] = tbres
 			}
 		}
@@ -171,8 +190,8 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 }
 func getSpec(query Query) int {
 	for i, v := range query.Children {
-		if v.ItemType == Field {
-			if v.ItemValue != nil {
+		if v.ItemType == field {
+			if v.ItemValue != "" {
 				return i
 			}
 		}
@@ -181,11 +200,11 @@ func getSpec(query Query) int {
 }
 
 func (t *DB) getRowsBytableName(tableName string) (rows []dbtable.TableRow, err error) {
-	table, err := t.GetTable(tableName)
+	tbl, err := t.GetTable(tableName)
 	if err != nil {
 		return nil, err
 	}
-	rows, err = table.GetTableRows()
+	rows, err = tbl.GetTableRows()
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +216,10 @@ func getOpr(str []byte) QueryOp {
 		"IS":  OpIS,
 		"OR":  OpOR,
 		"AND": OpAND,
+		">":   OpGT,
+		">=":  OpGTEQ,
+		"<":   OpLT,
+		"<=":  OpLTEQ,
 	}
 	var opre = regexp.MustCompile(`(?m)([A-Z]{2,5})`)
 	opr := opre.Find(str)

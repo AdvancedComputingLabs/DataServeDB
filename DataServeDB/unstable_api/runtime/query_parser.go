@@ -114,7 +114,7 @@ func DecodeJSON(dst []byte) (resultHttpStatus int, query *db.Query, err error) {
 		value, ok := result[field]
 		if ok {
 			query.ItemLabel = field
-			query.ItemValue = dst
+			query.ItemValue = string(dst)
 			children, err := getUsersStuctFields(value, fieldRef[i+1:])
 			if err != nil {
 				return http.StatusForbidden, query, err
@@ -161,9 +161,9 @@ func getStruct(dst map[string]interface{}, fieldRef []string) (query []db.Query,
 				return query, err
 			}
 			if string(data) != "{}" && string(data) != "[{}]" {
-				Qry.ItemValue = data
+				Qry.ItemValue = string(data)
 				if field == "$WHERE" {
-					Qry.Rules = parseRules(data)
+					Qry.Rules, _ = getRule(string(data))
 					Qry.Children = nil
 				} else {
 					qry, err := getUsersStuctFields(value, nxtRef)
@@ -173,7 +173,7 @@ func getStruct(dst map[string]interface{}, fieldRef []string) (query []db.Query,
 					Qry.Children = qry
 				}
 			} else {
-				Qry.ItemValue = nil
+				Qry.ItemValue = ""
 				Qry.Children = nil
 			}
 			query = append(query, Qry)
@@ -203,34 +203,107 @@ func getFieldRef(dst string) (fieldRef []string) {
 	return
 }
 
-func parseRules(b []byte) (rulse *db.RuleInfo) {
-	rule := db.RuleInfo{}
-	// "Properties": [
-	//   {
-	//     "$WHERE": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum"
-	//   }
-	// ]
-	var re = regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)`)
-	if byt := re.Find(b); byt != nil {
-		arr := strings.Split(string(byt), ".")
-		rule.TableName = arr[0]
-		rule.FieldName = arr[1]
-		rule.Operation = getOpr(b[len(byt)+1:])
-		rule.Next = parseRules(b[(len(byt) + 3):])
-		return &rule
+func parseRules(str string) (rule db.Rule) {
+	// rule := db.RuleInfo{}
+	//   `(?m)(\(|)([A-z]*[.][A-z]*)( [A-Z]{2,4} )([A-z]*[.][A-z]*)(\)|)`
+	// `(?m)((\(|)([A-z]*[.][A-z]*)( [A-Z]{2,4} )([A-z]*[.][A-z]*)(\)|))|(\(|)([A-z]*[.][A-z]*)( )([<>=]{1,2})( )(\w*)(\)|)`
+	// "$WHERE": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum"
+	var re = regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)|( [<>=A-Z]{1,4} )|(\w[\w]*)`)
+	tbl := regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)`)
+	optr := regexp.MustCompile(`(?m)([<>=A-Z]{1,4})`)
+	oprnd := regexp.MustCompile(`(?m)(\w[\w]*)`)
+
+	for i, match := range re.FindAllString(str, -1) {
+		if tbl.FindString(match) != "" {
+			if i == 0 {
+				rule.LeftRule = getTableInfo(match)
+			} else if i == 2 {
+				rule.RightRule = getTableInfo(match)
+			}
+		} else if optr.FindString(match) != "" {
+			rule.Operator = getOpr(match)
+		} else if oprnd.FindString(match) != "" {
+			if i == 0 {
+				rule.LeftOperand = match
+			} else if i == 2 {
+				rule.RightOperand = match
+			}
+		}
 	}
-	return nil
+	return
 }
-func getOpr(str []byte) db.QueryOp {
+func getOpr(str string) db.QueryOp {
 	operators := map[string]db.QueryOp{
 		"IS":  db.OpIS,
 		"OR":  db.OpOR,
 		"AND": db.OpAND,
+		">":   db.OpGT,
+		">=":  db.OpGTEQ,
+		"<":   db.OpLT,
+		"<=":  db.OpLTEQ,
 	}
-	var opre = regexp.MustCompile(`(?m)([A-Z]{2,5})`)
-	opr := opre.Find(str)
-	if v, ok := operators[string(opr)]; ok {
+	var opre = regexp.MustCompile(`(?m)([<>=A-Z]{1,4})`)
+	opr := opre.FindString(str)
+	if v, ok := operators[opr]; ok {
 		return v
 	}
 	return db.OpNone
 }
+func getTableInfo(str string) *db.RuleFieldInfo {
+	tblInfo := &db.RuleFieldInfo{}
+	arr := strings.Split(str, ".")
+	tblInfo.TableName = arr[0]
+	tblInfo.FieldName = arr[1]
+	return tblInfo
+}
+
+func getRule(str string) (rules db.Rules, err error) {
+	// rule := db.Rule{}
+	frstGrpRule := regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)( [A-Z]{2,4} )([A-z]*[.][A-z]*)`)
+	scndGrpRule := regexp.MustCompile(`([A-z]*[.][A-z]*)( )([<>=]{1,2})( )(\w*)`)
+	bracegrp := regexp.MustCompile(`(?m)(\()(\w[\s.<>=\w]*)(\))`)
+	optr := regexp.MustCompile(`(?m)([A-Z]{2,4})`)
+	re := regexp.MustCompile(`(?m)(\()(\w[\s.<>=\w]*)(\))|([A-z]*[.][A-z]*)( [A-Z]{2,4} )([A-z]*[.][A-z]*)|(([A-z]*[.][A-z]*)( )([<>=]{1,2})( )(\w*))|([A-Z]{2,4})`)
+	for _, match := range re.FindAllString(str, -1) {
+		if b := bracegrp.FindStringIndex(match); b != nil {
+			child, _ := getBrcGrp(match)
+			rules = append(rules, child)
+		} else if b := frstGrpRule.FindStringIndex(match); b != nil {
+			rule := parseRules(match)
+			rules = append(rules, rule)
+		} else if b := scndGrpRule.FindStringIndex(match); b != nil {
+			rule := parseRules(match)
+			rules = append(rules, rule)
+		} else if b := optr.FindStringIndex(match); b != nil {
+			rules = append(rules, getOpr(match))
+		}
+	}
+	return
+}
+func getBrcGrp(str string) (rules db.Rules, err error) {
+	bracegrp := regexp.MustCompile(`(?m)(\w[\s.<>=\w]*)`)
+	if match := bracegrp.FindString(str); match != "" {
+		return getRule(match)
+	}
+	return
+}
+func getFirstGroup(str string) (rule db.Rule, err error) {
+	frstGrpRule := regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)( [A-Z]{2,4} )([A-z]*[.][A-z]*)`)
+	if b := frstGrpRule.FindStringIndex(str); b != nil {
+		rule = parseRules(str)
+	}
+
+	return
+}
+
+// func getscndGrp(str string) (rule db.Rule, err error) {
+// 	scndGrpRule := regexp.MustCompile(`([A-z]*[.][A-z]*)|([<>=]{1,2})|(\w*)`)
+// 	tbl := regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)`)
+// 	for _, v := range scndGrpRule.FindAllString(str, -1) {
+// 		if byt := tbl.FindString(v); byt != "" {
+// 			rule.MainTable = getTableInfo(v)
+// 		}
+
+// 	}
+// 	return
+// }
