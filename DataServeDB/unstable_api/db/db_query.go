@@ -5,7 +5,6 @@ import (
 	"DataServeDB/dbtable"
 	"encoding/json"
 	"fmt"
-	"regexp"
 
 	"net/http"
 )
@@ -30,18 +29,19 @@ const (
 	rule
 )
 
-type RuleInfo struct {
-	TableName string
-	FieldName string
-	Operation QueryOp
-	Next      *RuleInfo
-}
+// type RuleInfo struct {
+// 	TableName string
+// 	FieldName string
+// 	Operation QueryOp
+// 	Next      *RuleInfo
+// }
+
 type RuleFieldInfo struct {
 	TableName string
 	FieldName string
 }
 
-type Rule struct {
+type RuleFeild struct {
 	LeftRule     *RuleFieldInfo
 	RightRule    *RuleFieldInfo
 	LeftOperand  string
@@ -50,14 +50,30 @@ type Rule struct {
 	Operator QueryOp
 }
 
-type Rules []interface{}
+type Rule []interface{}
+type Rules struct {
+	Label string
+	Rule  Rule
+}
 
 type Query struct {
 	ItemLabel string
 	ItemType  ItemType
 	ItemValue string // json Converted
-	Rules     Rules
+	Rules     []Rules
 	Children  []Query
+}
+
+type Row map[string]interface{}
+
+var Operators = map[string]QueryOp{
+	"IS":  OpIS,
+	"OR":  OpOR,
+	"AND": OpAND,
+	">":   OpGT,
+	">=":  OpGTEQ,
+	"<":   OpLT,
+	"<=":  OpLTEQ,
 }
 
 func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resultHttpStatus int, resultContent []byte, resultErr error) {
@@ -100,7 +116,7 @@ func (t *DB) verifyQuery(query Query, tbl *dbtable.DbTable) (Query, error) {
 			query.Children[i].ItemType = table
 		} else if value.ItemLabel == "$WHERE" {
 			// query.ItemType = Rule
-			fmt.Println(value.Rules)
+			// fmt.Println(value.Rules)
 			// value.Rules
 		} else {
 			return Query{}, fmt.Errorf("Query field '%s' does not exist in database", value.ItemLabel)
@@ -155,32 +171,24 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 				// 		ArrRows[rule.TableName] = rows1
 				// 	}
 				// }
-				// for rule := child.Children[0].Rules; rule != nil; rule = rule.Next {
-				// 	if rule.Operation == OpAND {
-				// 		continue
-				// 	}
-				// 	if rule.TableName == query.ItemLabel {
-				// 		tempRow = row
-				// 		if rule.Operation == OpIS {
-				// 			for _, rv := range ArrRows[rule.Next.TableName] {
-				// 				if tempRow[rule.FieldName] == rv[rule.FieldName] {
-				// 					temp = append(temp, rv)
-				// 				}
-				// 			}
-				// 		}
-				// 	}
-				// 	if rule.TableName == child.ItemLabel {
-				// 		if rule.Operation == OpIS {
-				// 			for _, prv := range ArrRows[rule.TableName] {
-				// 				for _, rv := range temp {
-				// 					if rv[rule.FieldName] == prv[rule.FieldName] {
-				// 						tbres = append(tbres, prv)
-				// 					}
-				// 				}
-				// 			}
-				// 		}
-				// 	}
-				// }
+				ArrRows := map[string][]dbtable.TableRow{}
+				for _, rule := range child.Children[0].Rules[0].Rule {
+					rul := []*RuleFieldInfo{}
+					if rl, ok := rule.(RuleFeild); ok {
+						rul := append(rul, rl.LeftRule, rl.RightRule)
+						for _, v := range rul {
+							if v != nil {
+								if _, ok := ArrRows[v.TableName]; !ok {
+									row, err := t.getRowsBytableName(v.TableName)
+									if err != nil {
+										return nil, err
+									}
+									ArrRows[v.TableName] = row
+								}
+							}
+						}
+					}
+				}
 				res[child.ItemLabel] = tbres
 			}
 		}
@@ -211,20 +219,93 @@ func (t *DB) getRowsBytableName(tableName string) (rows []dbtable.TableRow, err 
 	return
 }
 
-func getOpr(str []byte) QueryOp {
-	operators := map[string]QueryOp{
-		"IS":  OpIS,
-		"OR":  OpOR,
-		"AND": OpAND,
-		">":   OpGT,
-		">=":  OpGTEQ,
-		"<":   OpLT,
-		"<=":  OpLTEQ,
+func (t *DB) processRules(rules Rule, ArrRows map[string][]dbtable.TableRow) ([]dbtable.TableRow, error) {
+	tbres := []dbtable.TableRow{}
+
+	var crntOpr QueryOp = OpNone
+	temp := []dbtable.TableRow{}
+	// prev := []dbtable.TableRow{}
+	for i, rule := range rules {
+		if rl, ok := rule.(RuleFeild); ok {
+			// var left, right interface{}
+			if rl.LeftRule != nil {
+				for _, lv := range ArrRows[rl.LeftRule.TableName] {
+					if rl.RightRule != nil {
+						for _, rv := range ArrRows[rl.RightRule.TableName] {
+							if rl.Operator == OpIS {
+								if rv[rl.RightRule.FieldName] == lv[rl.LeftRule.FieldName] {
+									temp = append(temp, lv)
+								}
+							}
+						}
+					} else if rl.RightOperand != "" {
+						if rl.Operator == OpIS {
+							if lv[rl.LeftRule.FieldName] == rl.RightOperand {
+								temp = append(temp, lv)
+							}
+						}
+					}
+				}
+			} else if rl.LeftOperand != "" {
+				if rl.RightRule != nil {
+					for _, rv := range ArrRows[rl.RightRule.TableName] {
+						if rl.Operator == OpIS {
+							if rv[rl.RightRule.FieldName] == rl.LeftOperand {
+								temp = append(temp, rv)
+							}
+						}
+					}
+				} else if rl.RightOperand != "" {
+					if rl.LeftOperand == rl.RightOperand {
+						// error handling
+					}
+				}
+			}
+		} else if rl, ok := rule.([]interface{}); ok {
+			temp, err := t.processRules(rl, ArrRows)
+			if err != nil {
+				return nil, err
+			}
+			_ = temp
+		}
+
+		if opr, ok := rule.(QueryOp); ok {
+			crntOpr = opr
+		} else if i != 0 {
+			// todo operations on stackwise
+			// process temp with prev
+			if crntOpr == OpIS {
+				//
+			} else if crntOpr == OpAND {
+
+			} else if crntOpr == OpOR {
+
+			} else if crntOpr == OpGT {
+
+			} else if crntOpr == OpGTEQ {
+
+			} else if crntOpr == OpLTEQ {
+
+			} else if crntOpr == OpLT {
+
+			}
+
+		} else {
+
+			// prev = temp
+		}
 	}
-	var opre = regexp.MustCompile(`(?m)([A-Z]{2,5})`)
-	opr := opre.Find(str)
-	if v, ok := operators[string(opr)]; ok {
-		return v
-	}
-	return OpNone
+
+	return tbres, nil
 }
+
+// func isFunc(left, right interface{}) {
+
+// }
+
+// func doOp(left, right interface{}, opr QueryOp) {
+// 	if opr == OpIS {
+// 		isFunc(left, right)
+// 	}
+
+// }
