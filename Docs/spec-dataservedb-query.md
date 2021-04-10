@@ -20,6 +20,7 @@ Issues to resolve (maybe resolved as there are comments that indicate preference
 * * * [List users with their properties](#example_a2)
 * * * [List specific user](#example_a3)
 * * * [List specific user with his/her properties](#example_a4)
+* * * [Junction table example](#example_b1)
 
 ## Base Specification
 * Base specification is common to all as there could be multiple document types.
@@ -35,20 +36,26 @@ Issues to resolve (maybe resolved as there are comments that indicate preference
 * TYPE: mime type. Only used in header.
 * APIVER: version for the query api.
 * WHERE: Similar to sql where clause. Specifies search conditions.
-* 'WHERE' clause supports following operators:
-* * '=' : Equal to.
-* * IS: Equivalent to '=' but uses word and it might be preferable for readability.
-* * '>' : Greater than.
-* * '>=' : Greater than or equal to.
-* * '<' : Less than.
-* * '<=' : Less than or equal to.
-* * '!=' : Not equal to.
-* * IS NOT: Same as '!='.
-* * OR: Logical disjunction.
-* * AND: Logical conjunction.
-* * BETWEEN: Search between the specified range.
+* * Supports following operators:
+* * * '=' : Equal to.
+* * * IS: Equivalent to '=' but uses word and it might be preferable for readability.
+* * * '>' : Greater than.
+* * * '>=' : Greater than or equal to.
+* * * '<' : Less than.
+* * * '<=' : Less than or equal to.
+* * * '!=' : Not equal to.
+* * * IS NOT: Same as '!='.
+* * * OR: Logical disjunction.
+* * * AND: Logical conjunction.
+* * * BETWEEN: Search between the specified range.
 <!-- * * '(' and ')': TODO: might have issues so left it for now -->
 * TOP n: Selects top n (specified number) of the results. 'n' must be a number.
+* JOIN: Similar to sql join clause. It specifies relationship between two or more tables.
+* * > **WARNING**: Might only supported until relationship support is added to tables metadata. To make this clause permant is under review.
+* * > **TODO**: Workout inner and outer join issues and edge cases.
+* * Supports following operators:
+* * * IS: Specifies primary and foreign key relationship between two tables.
+* * * AND: Specifies combined relationships between tables and their fields.
 
 ## Json Specific Specification 
 * Mime Type: "application/json" 
@@ -68,9 +75,13 @@ Issues to resolve (maybe resolved as there are comments that indicate preference
 > **NOTE**: Order matters. For example, TOP first then WHERE clause and WHERE first then TOP may have different results.
 * $APIVER.
 * $WHERE.
-* WHERE clause operators *(note: operators do not require '$' sign)*:
-* * =, IS, >, >=, <, <=, !=, IS NOT, OR, AND, and BETWEEN.
+* * Operators *(note: operators do not require '$' sign)*:
+	<br /> =, IS, >, >=, <, <=, !=, IS NOT, OR, AND, and BETWEEN. (For more detail see base specification).
 * $TOP n. 'n' must be a number.
+* $JOIN.
+* * Operators: IS and AND. (For more detail see base specification).
+* $COMPOSE: Composes result that is different than tables, for example, combining results of two tables together.
+* * > **NOTE**: This is not in base specification, hence, at the moment only in json based querying.
 
 ### **Query Examples**
 ### <a name="example_tables"></a><u>Tables:</u>
@@ -124,7 +135,7 @@ In http header(s):
 		"UserId": {},
 		"Name": {},
 		"Properties": [{
-			"$WHERE": "Properties.UserId IS Users.UserId"
+			"$JOIN": "Properties.UserId IS Users.UserId"
 		}]
 	}
 }
@@ -173,9 +184,87 @@ In http header(s):
 		"UserId": 1,
 		"*": {},
 		"Properties": [{
-			"$WHERE": "Properties.UserId IS Users.UserId"
+			"$JOIN": "Properties.UserId IS Users.UserId"
+		}]
+	}
+} 
+
+```
+
+### <a name="example_b1"></a>Junction table example:
+See wikipedia [many-to-many data model](#https://en.wikipedia.org/wiki/Many-to-many_(data_model)) for explaination.
+
+<u>Tables</u>:
+#### Users Table (Name: Users):
+| UserId        | Name          |
+| ---------:    | :----------   |
+|   1           | John          |
+|   2           | Mark          |
+
+#### Properties Table (Name: Properties):
+| PropertyId    | Name          |
+| ---------:    | :----------   |
+|   1           | JLTApt01      |
+|   2           | MarinaVilla05 |
+
+#### User and Properties Junction Table (Name: UserProperties):
+|   UserId  	| PropertyId  |
+| ---------:    | ---------:  |
+|   1           | 1           |
+|   2           | 2           |
+
+<br />
+
+```json
+
+In http header(s): 
+- TYPE: "application/json"
+
+//NOTE: If relationships between the tables is setup.
+//NOTE: If relationship is setup it will automatically check the junction table and figure out the results.
+//NOTE: Only 1 level of junction table is supported.
+{
+	"$APIVER": "1",
+	"Users": {
+		"Properties": [{}]
+	}
+}
+
+//NOTE: Following is equavelnt as previous example.
+//NOTE: Prefix '_' is to hide 'UserProperties' data from the print out of the results.
+//TODO: check if json is correct.
+{
+	"$APIVER": "1",
+	"Users": {
+		"_UserProperties": [{
+			"Properties": [{}]
 		}]
 	}
 }
+
+//TODO: when this is needed "*": {},
+
+//NOTE: If no relationship is setup.
+{
+	"$APIVER": "1",
+	"Users": {
+		"Properties": [{
+			"$JOIN": "Users.UserId IS UserProperties.UserId AND Properties.PropertyId IS UserProperties.PropertyId"
+		}]
+	}
+} 
+
+//NOTE: Same as previous but easier to read the combining logic between the tables.
+{
+	"$APIVER": "1",
+	"Users": {
+		"Properties": [{
+			"$JOIN": "(Users.UserId IS UserProperties.UserId) AND (Properties.PropertyId IS UserProperties.PropertyId)"
+		}]
+	}
+} 
+
+//TODO: as renaming in results
+//TODO: support spaces in renaming?
 
 ```
