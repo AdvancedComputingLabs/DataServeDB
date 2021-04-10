@@ -51,7 +51,7 @@ Issues to resolve (maybe resolved as there are comments that indicate preference
 <!-- * * '(' and ')': TODO: might have issues so left it for now -->
 * TOP n: Selects top n (specified number) of the results. 'n' must be a number.
 * JOIN: Similar to sql join clause. It specifies relationship between two or more tables.
-* * > **WARNING**: Might only supported until relationship support is added to tables metadata. To make this clause permant is under review.
+* * > **WARNING**: Might only supported until relationship support is added to tables metadata. To make this clause permanent is under review.
 * * > **TODO**: Workout inner and outer join issues and edge cases.
 * * Supports following operators:
 * * * IS: Specifies primary and foreign key relationship between two tables.
@@ -81,7 +81,7 @@ Issues to resolve (maybe resolved as there are comments that indicate preference
 * $JOIN.
 * * Operators: IS and AND. (For more detail see base specification).
 * $COMPOSE: Composes result that is different than tables, for example, combining results of two tables together.
-* * > **NOTE**: This is not in base specification, hence, at the moment only in json based querying.
+* * > **NOTE**: This is not in base specification, hence, currently it is only in json based querying.
 
 ### **Query Examples**
 ### <a name="example_tables"></a><u>Tables:</u>
