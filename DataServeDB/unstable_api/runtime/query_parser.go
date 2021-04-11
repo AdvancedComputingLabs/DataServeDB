@@ -169,7 +169,7 @@ func getStruct(dst map[string]interface{}, fieldRef []string) (query []db.Query,
 				// } else {
 				if nxtRef[0] == "$WHERE" || nxtRef[0] == "$JOIN" {
 					// println("a-> ", field)
-					// Qry.Rules, _ = getRule(string(data))
+					Qry.Rules, _ = getRules(value)
 					Qry.Children = nil
 				} else {
 					qry, err := getUsersStuctFields(value, nxtRef)
@@ -249,13 +249,37 @@ func getTableInfo(str string) *db.RuleFieldInfo {
 	tblInfo.FieldName = arr[1]
 	return tblInfo
 }
-func getRules(dst []byte) (rules []db.Rules, err error) {
-	// data, err := json.Marshal(dst)
-	// if err != nil {
-	// 	return
-	// }
-	// data
+func getRules(dst interface{}) (rules []db.Rules, err error) {
+	rule := db.Rules{}
+	if rl, ok := dst.([]interface{}); ok {
+		println(len(rl))
+		for _, v := range rl {
+			if v1, ok := v.(map[string]interface{}); ok {
+				// Unmarshal or Decode the JSON to the user struct.
+				for field, value := range v1 {
+					rule.Label = field
+					str, er := getRuleStr(value)
+					if er != nil {
+						return
+					}
+					rule.Rule, err = getRule(str)
+					if err != nil {
+						return
+					}
+					rules = append(rules, rule)
+				}
+			}
+			// getRule(v)
+		}
+	}
+	fmt.Println(rules)
 	return
+}
+func getRuleStr(value interface{}) (string, error) {
+	if str, ok := value.(string); ok {
+		return str, nil
+	}
+	return "", fmt.Errorf("rule string not found")
 }
 
 func getRule(str string) (rules db.Rule, err error) {

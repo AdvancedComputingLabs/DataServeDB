@@ -26,7 +26,7 @@ const (
 const (
 	field = iota
 	table
-	rule
+	// rule
 )
 
 // type RuleInfo struct {
@@ -62,6 +62,12 @@ type Query struct {
 	ItemValue string // json Converted
 	Rules     []Rules
 	Children  []Query
+}
+type setRule struct {
+	res      string // result table name
+	ref      string // reference tble name
+	relation string // relation table name
+	rule     Rules  // rules
 }
 
 type Row map[string]interface{}
@@ -158,35 +164,43 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 			} else if child.ItemType == table {
 				// var tempRow dbtable.TableRow
 				// temp := []dbtable.TableRow{}
+				// tgtbl := child.ItemLabel
 				tbres := []dbtable.TableRow{}
 				if _, ok := ArrRows[query.ItemLabel]; !ok {
+					println(ok)
 					ArrRows[query.ItemLabel] = rows
 				}
-				// for rule := child.Children[0].Rules; rule != nil; rule = rule.Next {
-				// 	if _, ok := ArrRows[rule.TableName]; !ok {
-				// 		rows1, err := t.getRowsBytableName(rule.TableName)
-				// 		if err != nil {
-				// 			return nil, err
-				// 		}
-				// 		ArrRows[rule.TableName] = rows1
-				// 	}
-				// }
-				ArrRows := map[string][]dbtable.TableRow{}
-				for _, rule := range child.Children[0].Rules[0].Rule {
-					rul := []*RuleFieldInfo{}
-					if rl, ok := rule.(RuleFeild); ok {
-						rul := append(rul, rl.LeftRule, rl.RightRule)
-						for _, v := range rul {
-							if v != nil {
-								if _, ok := ArrRows[v.TableName]; !ok {
-									row, err := t.getRowsBytableName(v.TableName)
-									if err != nil {
-										return nil, err
-									}
-									ArrRows[v.TableName] = row
-								}
-							}
+				for _, rules := range child.Rules {
+					if rules.Label == "$JOIN" {
+						set := setRule{}
+						// ruleAst := rules.Rule
+						// rul := []*RuleFieldInfo{}
+						set.res = child.ItemLabel
+						set.ref = query.ItemLabel
+						if err = t.getTablesFromRules(ArrRows, rules.Rule); err != nil {
+							return nil, err
 						}
+
+						processJoin(ArrRows, set)
+
+						// for _, rule := range rules.Rule {
+						// 	if rl, ok := rule.(RuleFeild); ok {
+						// 		if rl.LeftRule != nil {
+						// 			if rl.RightRule != nil {
+						// 				for _, lv := range ArrRows[rl.LeftRule.TableName] {
+						// 					for _, rv := range ArrRows[rl.RightRule.TableName] {
+						// 						if lv[rl.LeftRule.FieldName] == rv[rl.RightRule.FieldName] {
+						// 							temp = append(temp, rv)
+						// 						}
+						// 					}
+
+						// 				}
+
+						// 			}
+						// 		}
+						// 	}
+
+						// }
 					}
 				}
 				res[child.ItemLabel] = tbres
@@ -219,85 +233,124 @@ func (t *DB) getRowsBytableName(tableName string) (rows []dbtable.TableRow, err 
 	return
 }
 
-func (t *DB) processRules(rules Rule, ArrRows map[string][]dbtable.TableRow) ([]dbtable.TableRow, error) {
-	tbres := []dbtable.TableRow{}
-
-	var crntOpr QueryOp = OpNone
-	temp := []dbtable.TableRow{}
-	// prev := []dbtable.TableRow{}
-	for i, rule := range rules {
+// getTablesFromRules get the table rows from the rule structure
+func (t *DB) getTablesFromRules(ArrRows map[string][]dbtable.TableRow, ruleAst Rule) error {
+	rul := []*RuleFieldInfo{}
+	for _, rule := range ruleAst {
 		if rl, ok := rule.(RuleFeild); ok {
-			// var left, right interface{}
-			if rl.LeftRule != nil {
-				for _, lv := range ArrRows[rl.LeftRule.TableName] {
-					if rl.RightRule != nil {
-						for _, rv := range ArrRows[rl.RightRule.TableName] {
-							if rl.Operator == OpIS {
-								if rv[rl.RightRule.FieldName] == lv[rl.LeftRule.FieldName] {
-									temp = append(temp, lv)
-								}
-							}
+			rul := append(rul, rl.LeftRule, rl.RightRule)
+			for _, v := range rul {
+				if v != nil {
+					if _, ok := ArrRows[v.TableName]; !ok {
+						row, err := t.getRowsBytableName(v.TableName)
+						if err != nil {
+							return err
 						}
-					} else if rl.RightOperand != "" {
-						if rl.Operator == OpIS {
-							if lv[rl.LeftRule.FieldName] == rl.RightOperand {
-								temp = append(temp, lv)
-							}
-						}
-					}
-				}
-			} else if rl.LeftOperand != "" {
-				if rl.RightRule != nil {
-					for _, rv := range ArrRows[rl.RightRule.TableName] {
-						if rl.Operator == OpIS {
-							if rv[rl.RightRule.FieldName] == rl.LeftOperand {
-								temp = append(temp, rv)
-							}
-						}
-					}
-				} else if rl.RightOperand != "" {
-					if rl.LeftOperand == rl.RightOperand {
-						// error handling
+						ArrRows[v.TableName] = row
 					}
 				}
 			}
-		} else if rl, ok := rule.([]interface{}); ok {
-			temp, err := t.processRules(rl, ArrRows)
-			if err != nil {
-				return nil, err
-			}
-			_ = temp
 		}
+	}
+	return nil
+}
+func setRules(set setRule) {
 
-		if opr, ok := rule.(QueryOp); ok {
-			crntOpr = opr
-		} else if i != 0 {
-			// todo operations on stackwise
-			// process temp with prev
-			if crntOpr == OpIS {
-				//
-			} else if crntOpr == OpAND {
+}
 
-			} else if crntOpr == OpOR {
-
-			} else if crntOpr == OpGT {
-
-			} else if crntOpr == OpGTEQ {
-
-			} else if crntOpr == OpLTEQ {
-
-			} else if crntOpr == OpLT {
+func processJoin(ArrRows map[string][]dbtable.TableRow, set setRule) {
+	// rul := []*RuleFieldInfo{}
+	for _, rule := range set.rule.Rule {
+		if rl, ok := rule.(RuleFeild); ok {
+			if rl.LeftRule != nil {
 
 			}
-
-		} else {
-
-			// prev = temp
 		}
 	}
 
-	return tbres, nil
 }
+
+// Process $WHERE
+
+// func (t *DB) processRules(rules Rule, ArrRows map[string][]dbtable.TableRow) ([]dbtable.TableRow, error) {
+// 	tbres := []dbtable.TableRow{}
+
+// 	var crntOpr QueryOp = OpNone
+// 	temp := []dbtable.TableRow{}
+// 	// prev := []dbtable.TableRow{}
+// 	for i, rule := range rules {
+// 		if rl, ok := rule.(RuleFeild); ok {
+// 			// var left, right interface{}
+// 			if rl.LeftRule != nil {
+// 				for _, lv := range ArrRows[rl.LeftRule.TableName] {
+// 					if rl.RightRule != nil {
+// 						for _, rv := range ArrRows[rl.RightRule.TableName] {
+// 							if rl.Operator == OpIS {
+// 								if rv[rl.RightRule.FieldName] == lv[rl.LeftRule.FieldName] {
+// 									temp = append(temp, lv)
+// 								}
+// 							}
+// 						}
+// 					} else if rl.RightOperand != "" {
+// 						if rl.Operator == OpIS {
+// 							if lv[rl.LeftRule.FieldName] == rl.RightOperand {
+// 								temp = append(temp, lv)
+// 							}
+// 						}
+// 					}
+// 				}
+// 			} else if rl.LeftOperand != "" {
+// 				if rl.RightRule != nil {
+// 					for _, rv := range ArrRows[rl.RightRule.TableName] {
+// 						if rl.Operator == OpIS {
+// 							if rv[rl.RightRule.FieldName] == rl.LeftOperand {
+// 								temp = append(temp, rv)
+// 							}
+// 						}
+// 					}
+// 				} else if rl.RightOperand != "" {
+// 					if rl.LeftOperand == rl.RightOperand {
+// 						// error handling
+// 					}
+// 				}
+// 			}
+// 		} else if rl, ok := rule.([]interface{}); ok {
+// 			temp, err := t.processRules(rl, ArrRows)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			_ = temp
+// 		}
+
+// 		if opr, ok := rule.(QueryOp); ok {
+// 			crntOpr = opr
+// 		} else if i != 0 {
+// 			// todo operations on stackwise
+// 			// process temp with prev
+// 			if crntOpr == OpIS {
+// 				//
+// 			} else if crntOpr == OpAND {
+
+// 			} else if crntOpr == OpOR {
+
+// 			} else if crntOpr == OpGT {
+
+// 			} else if crntOpr == OpGTEQ {
+
+// 			} else if crntOpr == OpLTEQ {
+
+// 			} else if crntOpr == OpLT {
+
+// 			}
+
+// 		} else {
+
+// 			// prev = temp
+// 		}
+// 	}
+
+// 	return tbres, nil
+// }
 
 // func isFunc(left, right interface{}) {
 

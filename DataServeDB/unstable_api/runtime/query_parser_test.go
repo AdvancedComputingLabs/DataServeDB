@@ -23,10 +23,12 @@ func TestDecodeJSON(t *testing.T) {
 		"Id": {},
 		"UserName": {},
 		"Properties": [
-		   {
-			 "$JOIN": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum",
+		   	{
+			 "$JOIN": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum"
+			},
+			{
 			 "$WHERE": "(Users.Id IS UserProperties.Id OR Properties.SlNum IS UserProperties.SlNum) AND (Users.Id >= 2)"
-		   }
+		   	}
 		 ]
 	   	}}
 		`
