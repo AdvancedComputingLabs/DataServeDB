@@ -28,3 +28,5 @@ yarn-error.log*
 DataServeDB/vendor
 DataServeDB/go.mod
 DataServeDB/go.sum
+DataServeDB/go.mod
+DataServeDB/go.sum
