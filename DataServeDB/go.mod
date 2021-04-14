@@ -22,6 +22,6 @@ require (
 	golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sys v0.0.0-20210305230114-8fe3ee5dd75b // indirect
-	golang.org/x/tools v0.0.0-20191127201027-ecd32218bd7f
-	google.golang.org/api v0.15.0 
+	golang.org/x/tools v0.0.0-20191127201027-ecd32218bd7f // indirect
+	google.golang.org/api v0.15.0
 )
