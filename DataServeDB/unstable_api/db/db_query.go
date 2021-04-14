@@ -15,26 +15,21 @@ type ItemType int
 const (
 	OpNone = iota // starting with 0
 	OpIS
+	OpISNOT
 	OpOR
 	OpAND
+	OpBETWEEN
 	OpGT
 	OpGTEQ
 	OpLT
 	OpLTEQ
+	OpNTEQ
 )
 
 const (
 	field = iota
 	table
-	// rule
 )
-
-// type RuleInfo struct {
-// 	TableName string
-// 	FieldName string
-// 	Operation QueryOp
-// 	Next      *RuleInfo
-// }
 
 type RuleFieldInfo struct {
 	TableName string
@@ -67,19 +62,22 @@ type setRule struct {
 	res      *RuleFieldInfo // result table name
 	ref      *RuleFieldInfo // reference tble name
 	relation string         // relation table name
-	rule     Rules          // rules
+	rule     Rule           // rules
 }
 
 type Row map[string]interface{}
 
 var Operators = map[string]QueryOp{
-	"IS":  OpIS,
-	"OR":  OpOR,
-	"AND": OpAND,
-	">":   OpGT,
-	">=":  OpGTEQ,
-	"<":   OpLT,
-	"<=":  OpLTEQ,
+	"IS":      OpIS,
+	"IS NOT":  OpISNOT,
+	"OR":      OpOR,
+	"AND":     OpAND,
+	"BETWEEN": OpBETWEEN,
+	">":       OpGT,
+	">=":      OpGTEQ,
+	"<":       OpLT,
+	"<=":      OpLTEQ,
+	"!=":      OpNTEQ,
 }
 
 func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resultHttpStatus int, resultContent []byte, resultErr error) {
@@ -108,6 +106,7 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resu
 	return http.StatusOK, jsonBytes, resultErr
 }
 
+// verifyQuery has the function of veryfing the query and marks the field and table
 func (t *DB) verifyQuery(query Query, tbl *dbtable.DbTable) (Query, error) {
 	for i, value := range query.Children {
 		if _, found := tbl.TblMain.TableFieldsMetaData.IsField(value.ItemLabel); found {
@@ -120,10 +119,6 @@ func (t *DB) verifyQuery(query Query, tbl *dbtable.DbTable) (Query, error) {
 			}
 			query.Children[i] = child
 			query.Children[i].ItemType = table
-		} else if value.ItemLabel == "$WHERE" {
-			// query.ItemType = Rule
-			// fmt.Println(value.Rules)
-			// value.Rules
 		} else {
 			return Query{}, fmt.Errorf("Query field '%s' does not exist in database", value.ItemLabel)
 		}
@@ -139,7 +134,6 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 	spec := getSpec(query)
 	// get the value if specific item mentioned
 	if spec != -1 {
-		println(" spec")
 		rows, err = tbl.GetTableRows(string(query.Children[spec].ItemValue))
 		if err != nil {
 			return
@@ -161,26 +155,25 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 		res := dbtable.TableRow{}
 
 		for _, child := range query.Children {
-			ArrRows := map[string][]dbtable.TableRow{}
 			if child.ItemType == field {
 				res[child.ItemLabel] = row[child.ItemLabel]
 			} else if child.ItemType == table {
-				temp := []dbtable.TableRow{}
 				tbres := []dbtable.TableRow{}
-				if _, ok := ArrRows[query.ItemLabel]; !ok {
-					ArrRows[query.ItemLabel] = append(temp, row)
+				joinInfo := getJoinInfo(child.Rules)
+				joinInfoArr := setRules(joinInfo, query.ItemLabel, child.ItemLabel)
+				parentRowInfo := row
+				tabRows, err := t.getRowsBytableName(child.ItemLabel)
+				if err != nil {
+					return nil, err
 				}
-				for _, rules := range child.Rules {
-					if rules.Label == "$JOIN" {
-						set := setRules(rules, query.ItemLabel, child.ItemLabel)
-						if err = t.getTablesFromRules(ArrRows, rules.Rule); err != nil {
-							return nil, err
-						}
-						tbres, err = processJoin(ArrRows, set)
-						if err != nil {
-							return nil, err
-						}
+				for _, currentRow := range tabRows {
+					// IF checkAgainstJoinRelations(joinInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
+					if !t.checkAgainstJoinRelations(joinInfoArr, parentRowInfo, currentRow) {
+						continue
 					}
+					//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
+					// make as function (Rules, ArrRows)
+					tbres = append(tbres, currentRow)
 				}
 				res[child.ItemLabel] = tbres
 			}
@@ -189,6 +182,9 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 	}
 	return result, nil
 }
+
+// this function theck the query has any specific values to any field
+// it returns the index of field if has any other wise return -1
 func getSpec(query Query) int {
 	for i, v := range query.Children {
 		if v.ItemType == field {
@@ -213,34 +209,62 @@ func (t *DB) getRowsBytableName(tableName string) (rows []dbtable.TableRow, err 
 }
 
 // getTablesFromRules get the table rows from the rule structure
-func (t *DB) getTablesFromRules(ArrRows map[string][]dbtable.TableRow, ruleAst Rule) error {
-	rul := []*RuleFieldInfo{}
-	for _, rule := range ruleAst {
-		if rl, ok := rule.(RuleFeild); ok {
-			rul := append(rul, rl.LeftRule, rl.RightRule)
-			for _, v := range rul {
-				if v != nil {
-					if _, ok := ArrRows[v.TableName]; !ok {
-						row, err := t.getRowsBytableName(v.TableName)
-						if err != nil {
-							return err
-						}
-						ArrRows[v.TableName] = row
-					}
-				}
-			}
+// this function get all the table row values of tables mentioned in the rules to a map
+// func (t *DB) getTablesFromRules(ArrRows map[string][]dbtable.TableRow, ruleAst Rule) error {
+// 	rul := []*RuleFieldInfo{}
+// 	for _, rule := range ruleAst {
+// 		if rl, ok := rule.(RuleFeild); ok {
+// 			rul := append(rul, rl.LeftRule, rl.RightRule)
+// 			for _, v := range rul {
+// 				if v != nil {
+// 					if _, ok := ArrRows[v.TableName]; !ok {
+// 						row, err := t.getRowsBytableName(v.TableName)
+// 						if err != nil {
+// 							return err
+// 						}
+// 						ArrRows[v.TableName] = row
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// 	return nil
+// }
+func (t *DB) checkAgainstJoinRelations(joinInfoArr setRule, parentRowInfo, currentRowInfo dbtable.TableRow) bool {
+	rel, err := t.getRowsBytableName(joinInfoArr.relation)
+	if err != nil {
+		return false
+	}
+	for _, relRow := range rel {
+		if relRow[joinInfoArr.ref.FieldName] == parentRowInfo[joinInfoArr.ref.FieldName] && relRow[joinInfoArr.res.FieldName] == currentRowInfo[joinInfoArr.res.FieldName] {
+			return true
+		}
+	}
+	return false
+}
+func getJoinInfo(rules []Rules) Rule {
+	for _, rule := range rules {
+		if rule.Label == "$JOIN" {
+			return rule.Rule
 		}
 	}
 	return nil
 }
-func setRules(rule Rules, ref, res string) (set setRule) {
-	// set := setRule{}
-	// ruleAst := rules.Rule
-	// rul := []*RuleFieldInfo{}
+func getWhereInfo(rules []Rules) Rule {
+	for _, rule := range rules {
+		if rule.Label == "$WHERE" {
+			return rule.Rule
+		}
+	}
+	return nil
+}
+
+// setRules sets the ruels set inorder to process query clouses, it find the relation table, w.r.t ref and res
+func setRules(rule Rule, ref, res string) (set setRule) {
 	set.rule = rule
 	set.res = &RuleFieldInfo{res, ""}
 	set.ref = &RuleFieldInfo{ref, ""}
-	for _, rule := range rule.Rule {
+	for _, rule := range rule {
 		if rl, ok := rule.(RuleFeild); ok {
 			if set.ref.FieldName == "" {
 				if set.ref.TableName == rl.LeftRule.TableName {
@@ -268,37 +292,39 @@ func setRules(rule Rules, ref, res string) (set setRule) {
 	return
 }
 
-func processJoin(ArrRows map[string][]dbtable.TableRow, set setRule) ([]dbtable.TableRow, error) {
-	res := []dbtable.TableRow{}
-	if set.relation != "" {
-		if set.ref != nil {
-			res = filteRows(ArrRows[set.ref.TableName], ArrRows[set.relation], set.ref.FieldName)
-			fmt.Println("rela, ", res)
-		} else {
-			return nil, fmt.Errorf("no reference rule found")
-		}
-		if set.res != nil {
-			return filteRows(res, ArrRows[set.res.TableName], set.res.FieldName), nil
-		} else {
-			return nil, fmt.Errorf("no reference rule found")
-		}
-	} else {
-		if set.ref != nil && set.res != nil {
-			return filteRows(ArrRows[set.ref.TableName], ArrRows[set.res.TableName], set.res.FieldName), nil
-		}
-		return nil, fmt.Errorf("no reference rule found")
-	}
-}
-func filteRows(ref, res []dbtable.TableRow, field string) (result []dbtable.TableRow) {
-	for _, refRow := range ref {
-		for _, relRow := range res {
-			if refRow[field] == relRow[field] {
-				result = append(result, relRow)
-			}
-		}
-	}
-	return
-}
+// func processJoin(ArrRows map[string][]dbtable.TableRow, set setRule) ([]dbtable.TableRow, error) {
+// 	res := []dbtable.TableRow{}
+// 	// if the relation mentioned, then it goes to find the relaton rows and then res rows
+// 	if set.relation != "" {
+// 		if set.ref != nil {
+// 			res = filterRows(ArrRows[set.ref.TableName], ArrRows[set.relation], set.ref.FieldName)
+// 		} else {
+// 			return nil, fmt.Errorf("no reference rule found")
+// 		}
+// 		if set.res != nil {
+// 			return filterRows(res, ArrRows[set.res.TableName], set.res.FieldName), nil
+// 		} else {
+// 			return nil, fmt.Errorf("no reference rule found")
+// 		}
+// 	} else {
+// 		if set.ref != nil && set.res != nil {
+// 			return filterRows(ArrRows[set.ref.TableName], ArrRows[set.res.TableName], set.res.FieldName), nil
+// 		}
+// 		return nil, fmt.Errorf("no reference rule found")
+// 	}
+// }
+
+// output of this function will be the matched rows of res with ref with respect to field name
+// func filterRows(ref, res []dbtable.TableRow, field string) (result []dbtable.TableRow) {
+// 	for _, refRow := range ref {
+// 		for _, relRow := range res {
+// 			if refRow[field] == relRow[field] {
+// 				result = append(result, relRow)
+// 			}
+// 		}
+// 	}
+// 	return
+// }
 
 // Process $WHERE
 
