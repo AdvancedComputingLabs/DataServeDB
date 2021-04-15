@@ -58,6 +58,14 @@ type Query struct {
 	Rules     []Rules
 	Children  []Query
 }
+type relInfo struct {
+	relation  *RuleFieldInfo
+	parOrChld *RuleFieldInfo
+}
+type relation struct {
+	relToPar  relInfo
+	relToChld relInfo
+}
 type setRule struct {
 	res      *RuleFieldInfo // result table name
 	ref      *RuleFieldInfo // reference tble name
@@ -160,7 +168,7 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 			} else if child.ItemType == table {
 				tbres := []dbtable.TableRow{}
 				joinInfo := getJoinInfo(child.Rules)
-				joinInfoArr := setRules(joinInfo, query.ItemLabel, child.ItemLabel)
+				joinInfoArr := setRelation(joinInfo, query.ItemLabel, child.ItemLabel)
 				parentRowInfo := row
 				tabRows, err := t.getRowsBytableName(child.ItemLabel)
 				if err != nil {
@@ -208,35 +216,13 @@ func (t *DB) getRowsBytableName(tableName string) (rows []dbtable.TableRow, err 
 	return
 }
 
-// getTablesFromRules get the table rows from the rule structure
-// this function get all the table row values of tables mentioned in the rules to a map
-// func (t *DB) getTablesFromRules(ArrRows map[string][]dbtable.TableRow, ruleAst Rule) error {
-// 	rul := []*RuleFieldInfo{}
-// 	for _, rule := range ruleAst {
-// 		if rl, ok := rule.(RuleFeild); ok {
-// 			rul := append(rul, rl.LeftRule, rl.RightRule)
-// 			for _, v := range rul {
-// 				if v != nil {
-// 					if _, ok := ArrRows[v.TableName]; !ok {
-// 						row, err := t.getRowsBytableName(v.TableName)
-// 						if err != nil {
-// 							return err
-// 						}
-// 						ArrRows[v.TableName] = row
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
-// 	return nil
-// }
-func (t *DB) checkAgainstJoinRelations(joinInfoArr setRule, parentRowInfo, currentRowInfo dbtable.TableRow) bool {
-	rel, err := t.getRowsBytableName(joinInfoArr.relation)
+func (t *DB) checkAgainstJoinRelations(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
+	rel, err := t.getRowsBytableName(joinInfo.relToPar.relation.TableName)
 	if err != nil {
 		return false
 	}
 	for _, relRow := range rel {
-		if relRow[joinInfoArr.ref.FieldName] == parentRowInfo[joinInfoArr.ref.FieldName] && relRow[joinInfoArr.res.FieldName] == currentRowInfo[joinInfoArr.res.FieldName] {
+		if relRow[joinInfo.relToPar.relation.FieldName] == parentRow[joinInfo.relToPar.parOrChld.FieldName] && relRow[joinInfo.relToChld.relation.FieldName] == currentRow[joinInfo.relToChld.parOrChld.FieldName] {
 			return true
 		}
 	}
@@ -259,67 +245,62 @@ func getWhereInfo(rules []Rules) Rule {
 	return nil
 }
 
-// setRules sets the ruels set inorder to process query clouses, it find the relation table, w.r.t ref and res
-func setRules(rule Rule, ref, res string) (set setRule) {
-	set.rule = rule
-	set.res = &RuleFieldInfo{res, ""}
-	set.ref = &RuleFieldInfo{ref, ""}
+func setRelation(rule Rule, par, chld string) (rel relation) {
 	for _, rule := range rule {
-		if rl, ok := rule.(RuleFeild); ok {
-			if set.ref.FieldName == "" {
-				if set.ref.TableName == rl.LeftRule.TableName {
-					set.ref = rl.LeftRule
-				} else if set.ref.TableName == rl.RightRule.TableName {
-					set.ref = rl.RightRule
-				}
+		if rf, ok := rule.(RuleFeild); ok {
+			// set parent relation
+			if par == rf.LeftRule.TableName {
+				rel.relToPar.parOrChld = rf.LeftRule
+				rel.relToPar.relation = rf.RightRule
+			} else if par == rf.RightRule.TableName {
+				rel.relToPar.parOrChld = rf.RightRule
+				rel.relToPar.relation = rf.LeftRule
 			}
-			if set.res.FieldName == "" {
-				if set.res.TableName == rl.LeftRule.TableName {
-					set.res = rl.LeftRule
-				} else if set.ref.TableName == rl.RightRule.TableName {
-					set.res = rl.RightRule
-				}
-			}
-			if set.relation == "" {
-				if rl.LeftRule.TableName != set.ref.TableName && rl.LeftRule.TableName != set.res.TableName {
-					set.relation = rl.LeftRule.TableName
-				} else if rl.RightRule.TableName != set.ref.TableName && rl.RightRule.TableName != set.res.TableName {
-					set.relation = rl.RightRule.TableName
-				}
+			// set child relation
+			if chld == rf.LeftRule.TableName {
+				rel.relToChld.parOrChld = rf.LeftRule
+				rel.relToChld.relation = rf.RightRule
+			} else if chld == rf.RightRule.TableName {
+				rel.relToChld.parOrChld = rf.RightRule
+				rel.relToChld.relation = rf.LeftRule
 			}
 		}
 	}
 	return
 }
 
-// func processJoin(ArrRows map[string][]dbtable.TableRow, set setRule) ([]dbtable.TableRow, error) {
-// 	res := []dbtable.TableRow{}
-// 	// if the relation mentioned, then it goes to find the relaton rows and then res rows
-// 	if set.relation != "" {
-// 		if set.ref != nil {
-// 			res = filterRows(ArrRows[set.ref.TableName], ArrRows[set.relation], set.ref.FieldName)
-// 		} else {
-// 			return nil, fmt.Errorf("no reference rule found")
-// 		}
-// 		if set.res != nil {
-// 			return filterRows(res, ArrRows[set.res.TableName], set.res.FieldName), nil
-// 		} else {
-// 			return nil, fmt.Errorf("no reference rule found")
-// 		}
-// 	} else {
-// 		if set.ref != nil && set.res != nil {
-// 			return filterRows(ArrRows[set.ref.TableName], ArrRows[set.res.TableName], set.res.FieldName), nil
-// 		}
-// 		return nil, fmt.Errorf("no reference rule found")
-// 	}
-// }
+func (t *DB) checkAgainstWhereClauses(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
 
-// output of this function will be the matched rows of res with ref with respect to field name
-// func filterRows(ref, res []dbtable.TableRow, field string) (result []dbtable.TableRow) {
-// 	for _, refRow := range ref {
-// 		for _, relRow := range res {
-// 			if refRow[field] == relRow[field] {
-// 				result = append(result, relRow)
+	return false
+}
+
+// setRules sets the ruels set inorder to process query clouses, it find the relation table, w.r.t ref and res
+// func setRules(rule Rule, ref, res string) (set setRule) {
+// 	set.rule = rule
+// 	set.res = &RuleFieldInfo{res, ""}
+// 	set.ref = &RuleFieldInfo{ref, ""}
+// 	for _, rule := range rule {
+// 		if rl, ok := rule.(RuleFeild); ok {
+// 			if set.ref.FieldName == "" {
+// 				if set.ref.TableName == rl.LeftRule.TableName {
+// 					set.ref = rl.LeftRule
+// 				} else if set.ref.TableName == rl.RightRule.TableName {
+// 					set.ref = rl.RightRule
+// 				}
+// 			}
+// 			if set.res.FieldName == "" {
+// 				if set.res.TableName == rl.LeftRule.TableName {
+// 					set.res = rl.LeftRule
+// 				} else if set.ref.TableName == rl.RightRule.TableName {
+// 					set.res = rl.RightRule
+// 				}
+// 			}
+// 			if set.relation == "" {
+// 				if rl.LeftRule.TableName != set.ref.TableName && rl.LeftRule.TableName != set.res.TableName {
+// 					set.relation = rl.LeftRule.TableName
+// 				} else if rl.RightRule.TableName != set.ref.TableName && rl.RightRule.TableName != set.res.TableName {
+// 					set.relation = rl.RightRule.TableName
+// 				}
 // 			}
 // 		}
 // 	}
