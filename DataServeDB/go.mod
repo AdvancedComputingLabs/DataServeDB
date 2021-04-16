@@ -1,6 +1,6 @@
 module DataServeDB
 
-go 1.14
+go 1.16
 
 require (
 	github.com/AdvancedComputingLabs/httpserv v0.0.0-20200215045526-bb7ce6a0144c
