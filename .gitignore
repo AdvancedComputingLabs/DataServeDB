@@ -1,7 +1,6 @@
 .DS_Store
 node_modules
 /VueProjects/vue-electron-app/dist_electron
-.mod
 
 # local env files
 .env.local
@@ -27,4 +26,5 @@ yarn-error.log*
 
 #go project vendor files
 DataServeDB/vendor
-go.sum
+DataServeDB/go.mod
+DataServeDB/go.sum
