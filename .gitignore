@@ -26,4 +26,4 @@ yarn-error.log*
 
 #go project vendor files
 /vendor
-*.mod
+go.mod
