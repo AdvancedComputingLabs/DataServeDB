@@ -63,8 +63,8 @@ type relInfo struct {
 	parOrChld *RuleFieldInfo
 }
 type relation struct {
-	relToPar  relInfo
-	relToChld relInfo
+	relToPar  *relInfo
+	relToChld *relInfo
 }
 type setRule struct {
 	res      *RuleFieldInfo // result table name
@@ -147,7 +147,6 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 			return
 		}
 	} else {
-		println("no spec")
 		rows, err = tbl.GetTableRows()
 		if err != nil {
 			return
@@ -168,15 +167,17 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 			} else if child.ItemType == table {
 				tbres := []dbtable.TableRow{}
 				joinInfo := getJoinInfo(child.Rules)
-				joinInfoArr := setRelation(joinInfo, query.ItemLabel, child.ItemLabel)
+				joinInfoArr := setJoinRelation(joinInfo, query.ItemLabel, child.ItemLabel)
 				parentRowInfo := row
 				tabRows, err := t.getRowsBytableName(child.ItemLabel)
 				if err != nil {
 					return nil, err
 				}
+				// checkRelation Join
+
 				for _, currentRow := range tabRows {
 					// IF checkAgainstJoinRelations(joinInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
-					if !t.checkAgainstJoinRelations(joinInfoArr, parentRowInfo, currentRow) {
+					if !t.checkIsChild(joinInfoArr, parentRowInfo, currentRow) {
 						continue
 					}
 					//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
@@ -189,6 +190,57 @@ func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
 		result = append(result, res)
 	}
 	return result, nil
+}
+func (t *DB) process(children []Query, parent dbtable.TableRow) (result dbtable.TableRow, err error) {
+	res := dbtable.TableRow{}
+	if children == nil {
+		return parent, nil
+	}
+	for _, child := range children {
+		res[child.ItemLabel], err = t.processQury(child, parent)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+func (t *DB) processQury(query Query, parent dbtable.TableRow) (result interface{}, err error) {
+	rows := []dbtable.TableRow{}
+	if query.ItemType == field {
+		return parent[query.ItemLabel], nil
+	} else if query.ItemType == table {
+		tabres := []dbtable.TableRow{}
+		tbl, err := t.GetTable(query.ItemLabel)
+		if err != nil {
+			return nil, err
+		}
+		spec := getSpec(query)
+		// get the value if specific item mentioned
+		if spec != -1 {
+			rows, err = tbl.GetTableRows(string(query.Children[spec].ItemValue))
+			if err != nil {
+				return nil, nil
+			}
+		} else {
+			rows, err = tbl.GetTableRows()
+			if err != nil {
+				return nil, nil
+			}
+		}
+		for _, row := range rows {
+			if query.Rules != nil {
+
+			} else {
+				res, err := t.process(query.Children, row)
+				if err != nil {
+					return nil, err
+				}
+				tabres = append(tabres, res)
+			}
+		}
+		return tabres, nil
+	}
+	return rows, nil
 }
 
 // this function theck the query has any specific values to any field
@@ -216,13 +268,19 @@ func (t *DB) getRowsBytableName(tableName string) (rows []dbtable.TableRow, err 
 	return
 }
 
-func (t *DB) checkAgainstJoinRelations(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
-	rel, err := t.getRowsBytableName(joinInfo.relToPar.relation.TableName)
-	if err != nil {
-		return false
-	}
-	for _, relRow := range rel {
-		if relRow[joinInfo.relToPar.relation.FieldName] == parentRow[joinInfo.relToPar.parOrChld.FieldName] && relRow[joinInfo.relToChld.relation.FieldName] == currentRow[joinInfo.relToChld.parOrChld.FieldName] {
+func (t *DB) checkIsChild(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
+	if joinInfo.relToChld != nil {
+		rel, err := t.getRowsBytableName(joinInfo.relToPar.relation.TableName)
+		if err != nil {
+			return false
+		}
+		for _, relRow := range rel {
+			if relRow[joinInfo.relToPar.relation.FieldName] == parentRow[joinInfo.relToPar.parOrChld.FieldName] && relRow[joinInfo.relToChld.relation.FieldName] == currentRow[joinInfo.relToChld.parOrChld.FieldName] {
+				return true
+			}
+		}
+	} else {
+		if parentRow[joinInfo.relToPar.parOrChld.FieldName] == currentRow[joinInfo.relToPar.relation.FieldName] {
 			return true
 		}
 	}
@@ -245,34 +303,49 @@ func getWhereInfo(rules []Rules) Rule {
 	return nil
 }
 
-func setRelation(rule Rule, par, chld string) (rel relation) {
-	for _, rule := range rule {
-		if rf, ok := rule.(RuleFeild); ok {
+func setJoinRelation(rule Rule, par, chld string) (rel relation) {
+	for _, rul := range rule {
+		if rf, ok := rul.(RuleFeild); ok {
+			if par == rf.LeftRule.TableName && chld == rf.RightRule.FieldName || chld == rf.LeftRule.TableName && par == rf.RightRule.FieldName {
+				rel.relToPar = &relInfo{rf.RightRule, rf.LeftRule}
+				rel.relToChld = nil
+				return
+			}
+
 			// set parent relation
 			if par == rf.LeftRule.TableName {
-				rel.relToPar.parOrChld = rf.LeftRule
-				rel.relToPar.relation = rf.RightRule
+				rel.relToPar = &relInfo{rf.RightRule, rf.LeftRule}
 			} else if par == rf.RightRule.TableName {
-				rel.relToPar.parOrChld = rf.RightRule
-				rel.relToPar.relation = rf.LeftRule
+				rel.relToPar = &relInfo{rf.LeftRule, rf.RightRule}
 			}
 			// set child relation
 			if chld == rf.LeftRule.TableName {
-				rel.relToChld.parOrChld = rf.LeftRule
-				rel.relToChld.relation = rf.RightRule
+				rel.relToChld = &relInfo{rf.RightRule, rf.LeftRule}
 			} else if chld == rf.RightRule.TableName {
-				rel.relToChld.parOrChld = rf.RightRule
-				rel.relToChld.relation = rf.LeftRule
+				rel.relToChld = &relInfo{rf.LeftRule, rf.RightRule}
 			}
 		}
 	}
 	return
 }
 
-func (t *DB) checkAgainstWhereClauses(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
+// func setWhereInfo(rule Rule) {
+// 	for _, rul := range rule {
+// 		if rf, ok := rul.(RuleFeild); ok {
+// 			if rf.LeftRule == nil {
 
-	return false
-}
+// 			}
+// 		}
+// 		// if rf, ok := rul.(QueryOp); ok {
+// 		// }
+
+// 	}
+// }
+
+// func (t *DB) checkAgainstWhereClauses(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
+
+// 	return false
+// }
 
 // setRules sets the ruels set inorder to process query clouses, it find the relation table, w.r.t ref and res
 // func setRules(rule Rule, ref, res string) (set setRule) {
