@@ -286,13 +286,44 @@ func (t *DB) getRowsBytableName(tableName string) (rows []dbtable.TableRow, err 
 	return
 }
 
+func (t *DB) getSingleRowBytableName(tableName string, fieldName string, value interface{}) (row dbtable.TableRow, err error) {
+	tbl, err := t.GetTable(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err = tbl.GetTableSingleRow(fieldName, value)
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+//func (t *DB) checkIsChild(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
+//	if joinInfo.relToChld != nil {
+//		rel, err := t.getRowsBytableName(joinInfo.relToPar.relation.TableName)
+//		if err != nil {
+//			return false
+//		}
+//		for _, relRow := range rel {
+//			if relRow[joinInfo.relToPar.relation.FieldName] == parentRow[joinInfo.relToPar.parOrChld.FieldName] && relRow[joinInfo.relToChld.relation.FieldName] == currentRow[joinInfo.relToChld.parOrChld.FieldName] {
+//				return true
+//			}
+//		}
+//	} else {
+//		if parentRow[joinInfo.relToPar.parOrChld.FieldName] == currentRow[joinInfo.relToPar.relation.FieldName] {
+//			return true
+//		}
+//	}
+//	return false
+//}
+
 func (t *DB) checkIsChild(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
 	if joinInfo.relToChld != nil {
-		rel, err := t.getRowsBytableName(joinInfo.relToPar.relation.TableName)
+		relRow, err := t.getSingleRowBytableName(joinInfo.relToChld.relation.TableName, joinInfo.relToChld.relation.FieldName, currentRow[joinInfo.relToChld.parOrChld.FieldName])
 		if err != nil {
 			return false
-		}
-		for _, relRow := range rel {
+		} else {
 			if relRow[joinInfo.relToPar.relation.FieldName] == parentRow[joinInfo.relToPar.parOrChld.FieldName] && relRow[joinInfo.relToChld.relation.FieldName] == currentRow[joinInfo.relToChld.parOrChld.FieldName] {
 				return true
 			}
@@ -304,6 +335,7 @@ func (t *DB) checkIsChild(joinInfo relation, parentRow, currentRow dbtable.Table
 	}
 	return false
 }
+
 func getJoinInfo(rules []Rules) Rule {
 	if rules == nil {
 		return nil

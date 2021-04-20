@@ -216,6 +216,43 @@ func (t *DbTable) Get(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, r
 
 	return
 }
+
+func (t *DbTable) GetTableSingleRow(fieldName string, value interface{}) (row TableRow, err error) {
+	// NOTE: SingleRow is used to avoid mistakes between Row and Rows.
+	//TODO: need to add support for index.
+
+	fieldInternalId, fieldExists := t.TblMain.TableFieldsMetaData.IsField(fieldName)
+	if !fieldExists {
+		return nil, errors.New("FieldDoesNotExist")
+	}
+
+	//for later if casting is required.
+	/*
+		fType, fTypeProps := t.TblMain.getFieldType(fieldInternalId)
+
+		valueCasted, e := fType.ConvertValue(value, fTypeProps)
+		if e != nil {
+			return nil, e
+		}
+	*/
+
+	for _, rowInternalIds := range t.TblData.Rows {
+
+		rowValue := rowInternalIds[fieldInternalId]
+
+		if rowValue == value {
+			if rowWithFieldNames, e2 := toLabeledByFieldNames(rowInternalIds, t.TblMain); e2 == nil {
+				return rowWithFieldNames, nil
+
+			} else {
+				return nil, e2
+			}
+		}
+	}
+
+	return nil, errors.New("NotFound")
+}
+
 func (t *DbTable) GetTableRows(pkValue ...interface{}) (rows []TableRow, err error) {
 	if pkValue != nil {
 		for _, v := range pkValue {

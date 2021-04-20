@@ -67,7 +67,12 @@ func newTableMain(tableInternalId int, tableName string) *tableMain {
 	return &t
 }
 
+func (t *tableMain) getFieldType(fieldInternalId int) (dbtypes.DbTypeI, dbtypes.DbTypePropertiesI) {
+	//NOTE: does not need error checking since these are internal operations, all fields ids should be there.
+	fieldInternal := t.TableFieldsMetaData.FieldInternalIdToFieldMetaData[fieldInternalId]
+	return fieldInternal.FieldType, fieldInternal.FieldTypeProps
+}
+
 func (t *tableMain) getPkType() (dbtypes.DbTypeI, dbtypes.DbTypePropertiesI) {
-	pkFieldInternal := t.TableFieldsMetaData.FieldInternalIdToFieldMetaData[t.PkPos]
-	return pkFieldInternal.FieldType, pkFieldInternal.FieldTypeProps
+	return t.getFieldType(t.PkPos)
 }
