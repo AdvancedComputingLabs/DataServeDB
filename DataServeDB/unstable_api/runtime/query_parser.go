@@ -99,7 +99,6 @@ func DecodeJSON(dst []byte) (resultHttpStatus int, query *db.Query, err error) {
 	}
 
 	fieldRef := getFieldRef(string(dst))
-	fmt.Println("fmt", fieldRef)
 	err = json.Unmarshal(dst, &result)
 	if err != nil {
 		//TODO: set http error
@@ -108,19 +107,27 @@ func DecodeJSON(dst []byte) (resultHttpStatus int, query *db.Query, err error) {
 	}
 
 	query = &db.Query{}
+	children, err := getUsersStuctFields(result, fieldRef)
+	fmt.Println("fmt", children)
+	for _, v := range children {
 
-	for i, field := range fieldRef {
-		value, ok := result[field]
-		if ok {
-			query.ItemLabel = field
-			query.ItemValue = string(dst)
-			children, err := getUsersStuctFields(value, fieldRef[i+1:])
-			if err != nil {
-				return http.StatusForbidden, query, err
-			}
-			query.Children = append(query.Children, children...)
-		}
+		b, _ := json.Marshal(v)
+		println("here we go", string(b))
 	}
+
+	// for i, field := range fieldRef {
+	// 	value, ok := result[field]
+	// 	if ok {
+	// 		query.ItemLabel = field
+	// 		query.ItemValue = string(dst)
+	// 		children, err := getUsersStuctFields(value, fieldRef[i+1:])
+	// 		fmt.Println("fmt", children)
+	// 		if err != nil {
+	// 			return http.StatusForbidden, query, err
+	// 		}
+	// 		query.Children = append(query.Children, children...)
+	// 	}
+	// }
 	resultHttpStatus = http.StatusOK
 	return
 }

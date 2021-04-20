@@ -72,6 +72,10 @@ type setRule struct {
 	relation string         // relation table name
 	rule     Rule           // rules
 }
+type parentRowInfo struct {
+	name string
+	row  dbtable.TableRow
+}
 
 type Row map[string]interface{}
 
@@ -89,7 +93,9 @@ var Operators = map[string]QueryOp{
 }
 
 func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resultHttpStatus int, resultContent []byte, resultErr error) {
+	fmt.Println("here-> ", query)
 	tbl, err := t.GetTable(query.ItemLabel)
+	println(query.ItemLabel)
 	if err != nil {
 		resultErr = err
 		return
@@ -133,68 +139,69 @@ func (t *DB) verifyQuery(query Query, tbl *dbtable.DbTable) (Query, error) {
 	}
 	return query, nil
 }
-func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
-	rows := []dbtable.TableRow{}
-	tbl, err := t.GetTable(query.ItemLabel)
-	if err != nil {
-		return
-	}
-	spec := getSpec(query)
-	// get the value if specific item mentioned
-	if spec != -1 {
-		rows, err = tbl.GetTableRows(string(query.Children[spec].ItemValue))
-		if err != nil {
-			return
-		}
-	} else {
-		rows, err = tbl.GetTableRows()
-		if err != nil {
-			return
-		}
-	}
 
-	// if there is no sub bracnches
-	if query.Children == nil {
-		result = rows
-		return
-	}
-	for _, row := range rows {
-		res := dbtable.TableRow{}
+// func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
+// 	rows := []dbtable.TableRow{}
+// 	tbl, err := t.GetTable(query.ItemLabel)
+// 	if err != nil {
+// 		return
+// 	}
+// 	spec := getSpec(query)
+// 	// get the value if specific item mentioned
+// 	if spec != -1 {
+// 		rows, err = tbl.GetTableRows(string(query.Children[spec].ItemValue))
+// 		if err != nil {
+// 			return
+// 		}
+// 	} else {
+// 		rows, err = tbl.GetTableRows()
+// 		if err != nil {
+// 			return
+// 		}
+// 	}
 
-		for _, child := range query.Children {
-			if child.ItemType == field {
-				res[child.ItemLabel] = row[child.ItemLabel]
-			} else if child.ItemType == table {
-				tbres := []dbtable.TableRow{}
-				joinInfo := getJoinInfo(child.Rules)
-				joinInfoArr := setJoinRelation(joinInfo, query.ItemLabel, child.ItemLabel)
-				parentRowInfo := row
-				tabRows, err := t.getRowsBytableName(child.ItemLabel)
-				if err != nil {
-					return nil, err
-				}
-				// checkRelation Join
+// 	// if there is no sub bracnches
+// 	if query.Children == nil {
+// 		result = rows
+// 		return
+// 	}
+// 	for _, row := range rows {
+// 		res := dbtable.TableRow{}
 
-				for _, currentRow := range tabRows {
-					// IF checkAgainstJoinRelations(joinInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
-					if !t.checkIsChild(joinInfoArr, parentRowInfo, currentRow) {
-						continue
-					}
-					//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
-					// make as function (Rules, ArrRows)
-					tbres = append(tbres, currentRow)
-				}
-				res[child.ItemLabel] = tbres
-			}
-		}
-		result = append(result, res)
-	}
-	return result, nil
-}
-func (t *DB) process(children []Query, parent dbtable.TableRow) (result dbtable.TableRow, err error) {
+// 		for _, child := range query.Children {
+// 			if child.ItemType == field {
+// 				res[child.ItemLabel] = row[child.ItemLabel]
+// 			} else if child.ItemType == table {
+// 				tbres := []dbtable.TableRow{}
+// 				joinInfo := getJoinInfo(child.Rules)
+// 				joinInfoArr := setJoinRelation(joinInfo, query.ItemLabel, child.ItemLabel)
+// 				parentRowInfo := row
+// 				tabRows, err := t.getRowsBytableName(child.ItemLabel)
+// 				if err != nil {
+// 					return nil, err
+// 				}
+// 				// checkRelation Join
+
+// 				for _, currentRow := range tabRows {
+// 					// IF checkAgainstJoinRelations(joinInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
+// 					if !t.checkIsChild(joinInfoArr, parentRowInfo, currentRow) {
+// 						continue
+// 					}
+// 					//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
+// 					// make as function (Rules, ArrRows)
+// 					tbres = append(tbres, currentRow)
+// 				}
+// 				res[child.ItemLabel] = tbres
+// 			}
+// 		}
+// 		result = append(result, res)
+// 	}
+// 	return result, nil
+// }
+func (t *DB) process(children []Query, parent parentRowInfo) (result dbtable.TableRow, err error) {
 	res := dbtable.TableRow{}
 	if children == nil {
-		return parent, nil
+		return parent.row, nil
 	}
 	for _, child := range children {
 		res[child.ItemLabel], err = t.processQury(child, parent)
@@ -204,11 +211,13 @@ func (t *DB) process(children []Query, parent dbtable.TableRow) (result dbtable.
 	}
 	return res, nil
 }
-func (t *DB) processQury(query Query, parent dbtable.TableRow) (result interface{}, err error) {
+func (t *DB) processQury(query Query, parent parentRowInfo) (result interface{}, err error) {
 	rows := []dbtable.TableRow{}
 	if query.ItemType == field {
-		return parent[query.ItemLabel], nil
+		return parent.row[query.ItemLabel], nil
 	} else if query.ItemType == table {
+		joinInfo := getJoinInfo(query.Rules)
+		joinInfoArr := setJoinRelation(joinInfo, parent.name, query.ItemLabel)
 		tabres := []dbtable.TableRow{}
 		tbl, err := t.GetTable(query.ItemLabel)
 		if err != nil {
@@ -228,15 +237,24 @@ func (t *DB) processQury(query Query, parent dbtable.TableRow) (result interface
 			}
 		}
 		for _, row := range rows {
+			res, err := t.process(query.Children, parentRowInfo{query.ItemLabel, row})
+			if err != nil {
+				return nil, err
+			}
 			if query.Rules != nil {
 
-			} else {
-				res, err := t.process(query.Children, row)
-				if err != nil {
-					return nil, err
+				// for _, currentRow := range tabRows {
+				// 	// IF checkAgainstJoinRelations(joinInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
+				if !t.checkIsChild(joinInfoArr, parent.row, row) {
+					continue
 				}
-				tabres = append(tabres, res)
+				// 	//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
+				// 	// make as function (Rules, ArrRows)
+				// 	tbres = append(tbres, currentRow)
+				// }
+				// res[child.ItemLabel] = tbres
 			}
+			tabres = append(tabres, res)
 		}
 		return tabres, nil
 	}
@@ -287,6 +305,9 @@ func (t *DB) checkIsChild(joinInfo relation, parentRow, currentRow dbtable.Table
 	return false
 }
 func getJoinInfo(rules []Rules) Rule {
+	if rules == nil {
+		return nil
+	}
 	for _, rule := range rules {
 		if rule.Label == "$JOIN" {
 			return rule.Rule
@@ -295,6 +316,9 @@ func getJoinInfo(rules []Rules) Rule {
 	return nil
 }
 func getWhereInfo(rules []Rules) Rule {
+	if rules == nil {
+		return nil
+	}
 	for _, rule := range rules {
 		if rule.Label == "$WHERE" {
 			return rule.Rule
@@ -304,6 +328,9 @@ func getWhereInfo(rules []Rules) Rule {
 }
 
 func setJoinRelation(rule Rule, par, chld string) (rel relation) {
+	if rule == nil {
+		return
+	}
 	for _, rul := range rule {
 		if rf, ok := rul.(RuleFeild); ok {
 			if par == rf.LeftRule.TableName && chld == rf.RightRule.FieldName || chld == rf.LeftRule.TableName && par == rf.RightRule.FieldName {
