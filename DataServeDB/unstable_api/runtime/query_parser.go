@@ -14,6 +14,7 @@ package runtime
 
 import (
 	"DataServeDB/unstable_api/db"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -36,12 +37,12 @@ func (mr *malformedRequest) Error() string {
 	return mr.msg
 }
 
-func decodeJSONBody(w http.ResponseWriter, r *http.Request) (resultHttpStatus int, query *db.Query, err error) {
+func decodeJSONBody(w http.ResponseWriter, r *http.Request) (resultHttpStatus int, query []db.Query, err error) {
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
 		if value != "application/json" {
 			msg := "content-Type header is not application/json"
-			return http.StatusBadRequest, &db.Query{}, &malformedRequest{status: http.StatusUnsupportedMediaType, msg: msg}
+			return http.StatusBadRequest, nil, &malformedRequest{status: http.StatusUnsupportedMediaType, msg: msg}
 		}
 	}
 
@@ -59,7 +60,7 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request) (resultHttpStatus in
 	}
 	return
 }
-func DecodeJSON(dst []byte) (resultHttpStatus int, query *db.Query, err error) {
+func DecodeJSON(dst []byte) (resultHttpStatus int, query []db.Query, err error) {
 	var result map[string]interface{}
 
 	err = json.Unmarshal(dst, &result)
@@ -98,36 +99,19 @@ func DecodeJSON(dst []byte) (resultHttpStatus int, query *db.Query, err error) {
 		}
 	}
 
-	fieldRef := getFieldRef(string(dst))
 	err = json.Unmarshal(dst, &result)
 	if err != nil {
-		//TODO: set http error
 		resultHttpStatus = http.StatusNotAcceptable
 		return
 	}
 
-	query = &db.Query{}
-	children, err := getUsersStuctFields(result, fieldRef)
-	fmt.Println("fmt", children)
-	for _, v := range children {
-
-		b, _ := json.Marshal(v)
-		println("here we go", string(b))
+	fieldRef := getFieldRef(dst)
+	query, err = getUsersStuctFields(result, fieldRef)
+	if err != nil {
+		resultHttpStatus = http.StatusNotAcceptable
+		return
 	}
 
-	// for i, field := range fieldRef {
-	// 	value, ok := result[field]
-	// 	if ok {
-	// 		query.ItemLabel = field
-	// 		query.ItemValue = string(dst)
-	// 		children, err := getUsersStuctFields(value, fieldRef[i+1:])
-	// 		fmt.Println("fmt", children)
-	// 		if err != nil {
-	// 			return http.StatusForbidden, query, err
-	// 		}
-	// 		query.Children = append(query.Children, children...)
-	// 	}
-	// }
 	resultHttpStatus = http.StatusOK
 	return
 }
@@ -156,40 +140,37 @@ func getUsersStuctFields(dst interface{}, fieldRef []string) (query []db.Query, 
 }
 func getStruct(dst map[string]interface{}, fieldRef []string) (query []db.Query, err error) {
 	// re := regexp.MustCompile(`(?m)(\[(\s*|)\{(\s*|))([\D\d]*)((\s*|)\}(\s*|)\])`)
+	refmap := map[string]bool{}
 	for i, field := range fieldRef {
 		nxtRef := fieldRef[i+1:]
-		value, ok := dst[field]
-		if ok {
-			var Qry db.Query = db.Query{}
-			Qry.ItemLabel = field
+		if _, ok := refmap[field]; !ok {
+			if value, ok := dst[field]; ok {
+				var Qry db.Query = db.Query{}
+				Qry.ItemLabel = field
 
-			data, err := json.Marshal(value)
-			if err != nil {
-				return query, err
-			}
-			if string(data) != "{}" && string(data) != "[{}]" {
-				println("field", field, "ref", nxtRef[0])
-				Qry.ItemValue = string(data)
-				// if re.Find(data) != nil {
-				// 	getRules(data)
-
-				// } else {
-				if nxtRef[0] == "$WHERE" || nxtRef[0] == "$JOIN" {
-					// println("a-> ", field)
-					Qry.Rules, _ = getRules(value)
-					Qry.Children = nil
-				} else {
-					qry, err := getUsersStuctFields(value, nxtRef)
-					if err != nil {
-						return query, err
-					}
-					Qry.Children = qry
+				data, err := json.Marshal(value)
+				if err != nil {
+					return query, err
 				}
-			} else {
-				Qry.ItemValue = ""
-				Qry.Children = nil
+				if string(data) != "{}" && string(data) != "[{}]" {
+					Qry.ItemValue = string(data)
+					if nxtRef[0] == "$WHERE" || nxtRef[0] == "$JOIN" {
+						Qry.Rules, _ = getRules(value)
+						Qry.Children = nil
+					} else {
+						qry, err := getUsersStuctFields(value, nxtRef)
+						if err != nil {
+							return query, err
+						}
+						Qry.Children = qry
+					}
+				} else {
+					Qry.ItemValue = ""
+					Qry.Children = nil
+				}
+				query = append(query, Qry)
+				refmap[field] = true
 			}
-			query = append(query, Qry)
 		}
 	}
 
@@ -199,8 +180,10 @@ func getArrayStruct(dst []interface{}, fieldRef []string) (query []db.Query, err
 	return getUsersStuctFields(dst[0], fieldRef)
 }
 
-func getFieldRef(dst string) (fieldRef []string) {
-	dec := json.NewDecoder(strings.NewReader(dst))
+func getFieldRef(dst []byte) (fieldRef []string) {
+	// ref := []string{}
+	// data := dst
+	dec := json.NewDecoder(bytes.NewReader(dst))
 	for {
 		t, err := dec.Token()
 		if err == io.EOF {
@@ -213,8 +196,40 @@ func getFieldRef(dst string) (fieldRef []string) {
 			fieldRef = append(fieldRef, d)
 		}
 	}
+	// var result map[string]interface{}
+	// fmt.Println("data", string(data), "ref-> ", ref)
+	// err := json.Unmarshal(data, &result)
+	// if err != nil {
+	// 	return
+	// }
+	// return getRef(result, ref)
 	return
 }
+
+// func getRef(result interface{}, ref []string) (fieldRef []string) {
+// 	refmap := map[string]bool{}
+// 	// for i, r := range ref {
+// 	for i, r := range ref {
+// 		if res, ok := result.(map[string]interface{}); ok {
+// 			if _, ok := refmap[r]; !ok {
+// 				if v, ok := res[r]; ok {
+// 					// TODO :- delete r from ref
+// 					ref = utils.DeleteArrayElement(ref, r)
+// 					fieldRef = append(fieldRef, r)
+// 					if _, ok := v.(map[string]interface{}); ok {
+// 						fieldRef = append(fieldRef, getRef(v, ref)...)
+// 					}
+// 					refmap[r] = true
+// 				}
+// 			}
+// 		} else if _, ok := result.([]interface{}); ok {
+// 			ref = utils.DeleteArrayElement(ref, r)
+// 			fieldRef = append(fieldRef, r)
+// 			fmt.Println("arr", i, r, fieldRef)
+// 		}
+// 	}
+// 	return
+// }
 
 func parseRules(str string) (rule db.RuleFeild) {
 	re := regexp.MustCompile(`(?m)([A-z]*[.][A-z]*)|( [<>=A-Z]{1,4} )|(\w[\w]*)`)
@@ -259,7 +274,6 @@ func getTableInfo(str string) *db.RuleFieldInfo {
 func getRules(dst interface{}) (rules []db.Rules, err error) {
 	rule := db.Rules{}
 	if rl, ok := dst.([]interface{}); ok {
-		println(len(rl))
 		for _, v := range rl {
 			if v1, ok := v.(map[string]interface{}); ok {
 				// Unmarshal or Decode the JSON to the user struct.

@@ -221,7 +221,7 @@ func QueryRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 	if err != nil {
 		return http.StatusNotFound, nil, err
 	}
-	resultHttpStatus, resultContent, resultErr = db.TablesQueryGet(dbReqCtx, *query)
+	resultHttpStatus, resultContent, resultErr = db.TablesQueryGet(dbReqCtx, query)
 	println(string(resultContent))
 
 	return

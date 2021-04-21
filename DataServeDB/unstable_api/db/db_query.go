@@ -3,10 +3,7 @@ package db
 import (
 	"DataServeDB/commtypes"
 	"DataServeDB/dbtable"
-	"encoding/json"
 	"fmt"
-
-	"net/http"
 )
 
 type QueryOp int
@@ -92,51 +89,54 @@ var Operators = map[string]QueryOp{
 	"!=":      OpNTEQ,
 }
 
-func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query Query) (resultHttpStatus int, resultContent []byte, resultErr error) {
+func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query []Query) (resultHttpStatus int, resultContent []byte, resultErr error) {
 	fmt.Println("here-> ", query)
-	tbl, err := t.GetTable(query.ItemLabel)
-	println(query.ItemLabel)
-	if err != nil {
-		resultErr = err
-		return
+	for _, qry := range query {
+		tbl, err := t.GetTable(qry.ItemLabel)
+		if err != nil {
+			resultErr = err
+			return
+		}
+		qry, err = t.verifyQuery(qry, tbl)
+		if err != nil {
+			resultErr = err
+			return
+		}
+		fmt.Println("here", qry)
 	}
-	query, err = t.verifyQuery(query, tbl)
-	if err != nil {
-		resultErr = err
-		return
-	}
-	result, err := t.processQuery(query)
-	if err != nil {
-		resultErr = err
-		return
-	}
-
-	jsonBytes, err := json.Marshal(result)
-	if err != nil {
-		resultErr = fmt.Errorf("error decoding result: %V", err)
-		//TODO: make error result more user friendly.
-		return
-	}
-	return http.StatusOK, jsonBytes, resultErr
+	t.process(query, nil)
+	//
+	return
 }
 
 // verifyQuery has the function of veryfing the query and marks the field and table
 func (t *DB) verifyQuery(query Query, tbl *dbtable.DbTable) (Query, error) {
-	for i, value := range query.Children {
-		if _, found := tbl.TblMain.TableFieldsMetaData.IsField(value.ItemLabel); found {
-			/* TODO make itemtype as macro */
-			query.Children[i].ItemType = field
-		} else if tbl, e := t.GetTable(value.ItemLabel); e == nil {
-			child, err := t.verifyQuery(query.Children[i], tbl)
+	if tb, e := t.GetTable(query.ItemLabel); e == nil {
+		query.ItemType = table
+		for i, qry := range query.Children {
+			// if _, found := tbl.TblMain.TableFieldsMetaData.IsField(value.ItemLabel); found {
+			// 	/* TODO make itemtype as macro */
+			// 	query.Children[i].ItemType = field
+			// } else if tbl, e := t.GetTable(value.ItemLabel); e == nil {
+			child, err := t.verifyQuery(qry, tb)
 			if err != nil {
 				return Query{}, err
 			}
 			query.Children[i] = child
-			query.Children[i].ItemType = table
-		} else {
-			return Query{}, fmt.Errorf("Query field '%s' does not exist in database", value.ItemLabel)
+			// } else {
+			// 	return Query{}, fmt.Errorf("Query field '%s' does not exist in database", value.ItemLabel)
+			// }
 		}
+	} else if tbl != nil {
+		if _, found := tbl.TblMain.TableFieldsMetaData.IsField(query.ItemLabel); found {
+			query.ItemType = field
+		} else {
+			return Query{}, fmt.Errorf("Query field '%s' does not exist in database", query.ItemLabel)
+		}
+	} else {
+		return Query{}, fmt.Errorf("Query field '%s' does not exist in database", query.ItemLabel)
 	}
+
 	return query, nil
 }
 
