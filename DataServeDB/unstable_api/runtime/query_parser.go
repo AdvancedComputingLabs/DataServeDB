@@ -54,7 +54,6 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request) (resultHttpStatus in
 	}
 
 	resultHttpStatus, query, err = DecodeJSON(data)
-	fmt.Println(query)
 	if err != nil {
 		return
 	}
@@ -290,10 +289,8 @@ func getRules(dst interface{}) (rules []db.Rules, err error) {
 					rules = append(rules, rule)
 				}
 			}
-			// getRule(v)
 		}
 	}
-	fmt.Println(rules)
 	return
 }
 func getRuleStr(value interface{}) (string, error) {

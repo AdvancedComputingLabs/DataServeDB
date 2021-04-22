@@ -3,7 +3,9 @@ package db
 import (
 	"DataServeDB/commtypes"
 	"DataServeDB/dbtable"
+	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 type QueryOp int
@@ -90,8 +92,7 @@ var Operators = map[string]QueryOp{
 }
 
 func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query []Query) (resultHttpStatus int, resultContent []byte, resultErr error) {
-	fmt.Println("here-> ", query)
-	for _, qry := range query {
+	for i, qry := range query {
 		tbl, err := t.GetTable(qry.ItemLabel)
 		if err != nil {
 			resultErr = err
@@ -102,10 +103,18 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query []Query) (re
 			resultErr = err
 			return
 		}
-		fmt.Println("here", qry)
+		query[i] = qry
 	}
-	t.process(query, nil)
-	//
+	result, err := t.processRoot(query)
+	if err != nil {
+		resultHttpStatus = http.StatusNoContent
+		return resultHttpStatus, nil, err
+	}
+	resultContent, resultErr = json.Marshal(result)
+	if resultErr != nil {
+		resultHttpStatus = http.StatusNoContent
+		return resultHttpStatus, nil, resultErr
+	}
 	return
 }
 
@@ -114,18 +123,11 @@ func (t *DB) verifyQuery(query Query, tbl *dbtable.DbTable) (Query, error) {
 	if tb, e := t.GetTable(query.ItemLabel); e == nil {
 		query.ItemType = table
 		for i, qry := range query.Children {
-			// if _, found := tbl.TblMain.TableFieldsMetaData.IsField(value.ItemLabel); found {
-			// 	/* TODO make itemtype as macro */
-			// 	query.Children[i].ItemType = field
-			// } else if tbl, e := t.GetTable(value.ItemLabel); e == nil {
 			child, err := t.verifyQuery(qry, tb)
 			if err != nil {
 				return Query{}, err
 			}
 			query.Children[i] = child
-			// } else {
-			// 	return Query{}, fmt.Errorf("Query field '%s' does not exist in database", value.ItemLabel)
-			// }
 		}
 	} else if tbl != nil {
 		if _, found := tbl.TblMain.TableFieldsMetaData.IsField(query.ItemLabel); found {
@@ -140,65 +142,22 @@ func (t *DB) verifyQuery(query Query, tbl *dbtable.DbTable) (Query, error) {
 	return query, nil
 }
 
-// func (t *DB) processQuery(query Query) (result []dbtable.TableRow, err error) {
-// 	rows := []dbtable.TableRow{}
-// 	tbl, err := t.GetTable(query.ItemLabel)
-// 	if err != nil {
-// 		return
-// 	}
-// 	spec := getSpec(query)
-// 	// get the value if specific item mentioned
-// 	if spec != -1 {
-// 		rows, err = tbl.GetTableRows(string(query.Children[spec].ItemValue))
-// 		if err != nil {
-// 			return
-// 		}
-// 	} else {
-// 		rows, err = tbl.GetTableRows()
-// 		if err != nil {
-// 			return
-// 		}
-// 	}
+func (t *DB) processRoot(queries []Query) (dbtable.TableRow, error) {
+	result := dbtable.TableRow{}
+	for _, query := range queries {
+		if query.ItemType != table {
+			return nil, fmt.Errorf("ivalid item type or orphen")
+		}
+		res, err := t.processQury(query, parentRowInfo{})
+		if err != nil {
+			return nil, err
+		}
+		result[query.ItemLabel] = res
+	}
 
-// 	// if there is no sub bracnches
-// 	if query.Children == nil {
-// 		result = rows
-// 		return
-// 	}
-// 	for _, row := range rows {
-// 		res := dbtable.TableRow{}
-
-// 		for _, child := range query.Children {
-// 			if child.ItemType == field {
-// 				res[child.ItemLabel] = row[child.ItemLabel]
-// 			} else if child.ItemType == table {
-// 				tbres := []dbtable.TableRow{}
-// 				joinInfo := getJoinInfo(child.Rules)
-// 				joinInfoArr := setJoinRelation(joinInfo, query.ItemLabel, child.ItemLabel)
-// 				parentRowInfo := row
-// 				tabRows, err := t.getRowsBytableName(child.ItemLabel)
-// 				if err != nil {
-// 					return nil, err
-// 				}
-// 				// checkRelation Join
-
-// 				for _, currentRow := range tabRows {
-// 					// IF checkAgainstJoinRelations(joinInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
-// 					if !t.checkIsChild(joinInfoArr, parentRowInfo, currentRow) {
-// 						continue
-// 					}
-// 					//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
-// 					// make as function (Rules, ArrRows)
-// 					tbres = append(tbres, currentRow)
-// 				}
-// 				res[child.ItemLabel] = tbres
-// 			}
-// 		}
-// 		result = append(result, res)
-// 	}
-// 	return result, nil
-// }
-func (t *DB) process(children []Query, parent parentRowInfo) (result dbtable.TableRow, err error) {
+	return result, nil
+}
+func (t *DB) processChild(children []Query, parent parentRowInfo) (result dbtable.TableRow, err error) {
 	res := dbtable.TableRow{}
 	if children == nil {
 		return parent.row, nil
@@ -214,7 +173,10 @@ func (t *DB) process(children []Query, parent parentRowInfo) (result dbtable.Tab
 func (t *DB) processQury(query Query, parent parentRowInfo) (result interface{}, err error) {
 	rows := []dbtable.TableRow{}
 	if query.ItemType == field {
-		return parent.row[query.ItemLabel], nil
+		if parent.row != nil {
+			return parent.row[query.ItemLabel], nil
+		}
+		return nil, fmt.Errorf("ivalid item type or orphen")
 	} else if query.ItemType == table {
 		joinInfo := getJoinInfo(query.Rules)
 		joinInfoArr := setJoinRelation(joinInfo, parent.name, query.ItemLabel)
@@ -237,10 +199,8 @@ func (t *DB) processQury(query Query, parent parentRowInfo) (result interface{},
 			}
 		}
 		for _, row := range rows {
-			res, err := t.process(query.Children, parentRowInfo{query.ItemLabel, row})
-			if err != nil {
-				return nil, err
-			}
+			res := dbtable.TableRow{}
+
 			if query.Rules != nil {
 
 				// for _, currentRow := range tabRows {
@@ -249,10 +209,14 @@ func (t *DB) processQury(query Query, parent parentRowInfo) (result interface{},
 					continue
 				}
 				// 	//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
-				// 	// make as function (Rules, ArrRows)
-				// 	tbres = append(tbres, currentRow)
-				// }
-				// res[child.ItemLabel] = tbres
+			}
+			if query.Children != nil {
+				res, err = t.processChild(query.Children, parentRowInfo{query.ItemLabel, row})
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				res = row
 			}
 			tabres = append(tabres, res)
 		}
@@ -298,25 +262,6 @@ func (t *DB) getSingleRowBytableName(tableName string, fieldName string, value i
 	}
 	return
 }
-
-//func (t *DB) checkIsChild(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
-//	if joinInfo.relToChld != nil {
-//		rel, err := t.getRowsBytableName(joinInfo.relToPar.relation.TableName)
-//		if err != nil {
-//			return false
-//		}
-//		for _, relRow := range rel {
-//			if relRow[joinInfo.relToPar.relation.FieldName] == parentRow[joinInfo.relToPar.parOrChld.FieldName] && relRow[joinInfo.relToChld.relation.FieldName] == currentRow[joinInfo.relToChld.parOrChld.FieldName] {
-//				return true
-//			}
-//		}
-//	} else {
-//		if parentRow[joinInfo.relToPar.parOrChld.FieldName] == currentRow[joinInfo.relToPar.relation.FieldName] {
-//			return true
-//		}
-//	}
-//	return false
-//}
 
 func (t *DB) checkIsChild(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
 	if joinInfo.relToChld != nil {
@@ -517,17 +462,3 @@ func setJoinRelation(rule Rule, par, chld string) (rel relation) {
 // 			// prev = temp
 // 		}
 // 	}
-
-// 	return tbres, nil
-// }
-
-// func isFunc(left, right interface{}) {
-
-// }
-
-// func doOp(left, right interface{}, opr QueryOp) {
-// 	if opr == OpIS {
-// 		isFunc(left, right)
-// 	}
-
-// }

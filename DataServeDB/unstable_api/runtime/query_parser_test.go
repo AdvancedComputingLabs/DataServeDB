@@ -20,7 +20,7 @@ import (
 
 func TestDecodeJSON(t *testing.T) {
 	query := `{"Users": {
-		"Id": {},
+		"Id": 1,
 		"UserName": {},
 		"Properties": [
 		   	{
@@ -30,7 +30,7 @@ func TestDecodeJSON(t *testing.T) {
 			 "$WHERE": "(Users.Tag IS Properties.Tag) AND (Users.Id >= 2)"
 		   	}
 		 ]
-	   	}, 
+	   	} 
 	}
 		`
 
