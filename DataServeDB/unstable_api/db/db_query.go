@@ -142,13 +142,15 @@ func (t *DB) verifyQuery(query Query, tbl *dbtable.DbTable) (Query, error) {
 	return query, nil
 }
 
+// processRoot process the array of query
+// initial process of  query array, loops throug the queries and collects the results
 func (t *DB) processRoot(queries []Query) (dbtable.TableRow, error) {
 	result := dbtable.TableRow{}
 	for _, query := range queries {
 		if query.ItemType != table {
 			return nil, fmt.Errorf("ivalid item type or orphen")
 		}
-		res, err := t.processQury(query, parentRowInfo{})
+		res, err := t.processQuery(query, parentRowInfo{})
 		if err != nil {
 			return nil, err
 		}
@@ -157,36 +159,41 @@ func (t *DB) processRoot(queries []Query) (dbtable.TableRow, error) {
 
 	return result, nil
 }
+
+// process child is to loop the children and process each one to processQuery function and returns the result
 func (t *DB) processChild(children []Query, parent parentRowInfo) (result dbtable.TableRow, err error) {
 	res := dbtable.TableRow{}
-	if children == nil {
-		return parent.row, nil
-	}
 	for _, child := range children {
-		res[child.ItemLabel], err = t.processQury(child, parent)
+		res[child.ItemLabel], err = t.processQuery(child, parent)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return res, nil
 }
-func (t *DB) processQury(query Query, parent parentRowInfo) (result interface{}, err error) {
-	rows := []dbtable.TableRow{}
+func (t *DB) processQuery(query Query, parent parentRowInfo) (result interface{}, err error) {
+	// if get the field item
+	// else if get the table item, processing sub tables in the query
 	if query.ItemType == field {
 		if parent.row != nil {
 			return parent.row[query.ItemLabel], nil
 		}
 		return nil, fmt.Errorf("ivalid item type or orphen")
 	} else if query.ItemType == table {
+		tabres := []dbtable.TableRow{}
+		rows := []dbtable.TableRow{}
+
+		// collecting the rules Info (JOIN and WHERE)
 		joinInfo := getJoinInfo(query.Rules)
 		joinInfoArr := setJoinRelation(joinInfo, parent.name, query.ItemLabel)
-		tabres := []dbtable.TableRow{}
+		whereInfo := getWhereInfo(query.Rules)
+
 		tbl, err := t.GetTable(query.ItemLabel)
 		if err != nil {
 			return nil, err
 		}
 		spec := getSpec(query)
-		// get the value if specific item mentioned
+		// get the value if specific value mentioned for any children for filtering, then those roes oly will return on passing the index or value
 		if spec != -1 {
 			rows, err = tbl.GetTableRows(string(query.Children[spec].ItemValue))
 			if err != nil {
@@ -200,29 +207,37 @@ func (t *DB) processQury(query Query, parent parentRowInfo) (result interface{},
 		}
 		for _, row := range rows {
 			res := dbtable.TableRow{}
-
 			if query.Rules != nil {
-
-				// for _, currentRow := range tabRows {
-				// 	// IF checkAgainstJoinRelations(joinInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
-				if !t.checkIsChild(joinInfoArr, parent.row, row) {
-					continue
+				// IF checkAgainstJoinRelations(joinInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
+				if joinInfo != nil {
+					if !t.checkIsChild(joinInfoArr, parent.row, row) {
+						continue
+					}
 				}
-				// 	//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
+
+				//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
+				if whereInfo != nil {
+					if !whereClouse(whereInfo, row) {
+						continue
+					}
+				}
+
 			}
+			// will process the chldren after passing JOIN and WHERE clouse,
 			if query.Children != nil {
 				res, err = t.processChild(query.Children, parentRowInfo{query.ItemLabel, row})
 				if err != nil {
 					return nil, err
 				}
 			} else {
+				// get whole row as the result if there is no rules and children to process
 				res = row
 			}
 			tabres = append(tabres, res)
 		}
 		return tabres, nil
 	}
-	return rows, nil
+	return
 }
 
 // this function theck the query has any specific values to any field
@@ -263,6 +278,7 @@ func (t *DB) getSingleRowBytableName(tableName string, fieldName string, value i
 	return
 }
 
+//
 func (t *DB) checkIsChild(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
 	if joinInfo.relToChld != nil {
 		relRow, err := t.getSingleRowBytableName(joinInfo.relToChld.relation.TableName, joinInfo.relToChld.relation.FieldName, currentRow[joinInfo.relToChld.parOrChld.FieldName])
@@ -281,6 +297,7 @@ func (t *DB) checkIsChild(joinInfo relation, parentRow, currentRow dbtable.Table
 	return false
 }
 
+// returns if $JOIN rule found
 func getJoinInfo(rules []Rules) Rule {
 	if rules == nil {
 		return nil
@@ -292,6 +309,8 @@ func getJoinInfo(rules []Rules) Rule {
 	}
 	return nil
 }
+
+// returns if $WHERE rule found
 func getWhereInfo(rules []Rules) Rule {
 	if rules == nil {
 		return nil
@@ -304,6 +323,7 @@ func getWhereInfo(rules []Rules) Rule {
 	return nil
 }
 
+// sets the rlation on join rule
 func setJoinRelation(rule Rule, par, chld string) (rel relation) {
 	if rule == nil {
 		return
@@ -333,6 +353,19 @@ func setJoinRelation(rule Rule, par, chld string) (rel relation) {
 	return
 }
 
+func whereClouse(rule Rule, currentRow dbtable.TableRow) bool {
+	for _, rul := range rule {
+		if rf, ok := rul.(RuleFeild); ok {
+			if rf.LeftRule != nil {
+				// rf.LeftRule.TableName !=
+			}
+		}
+
+	}
+
+	return true
+}
+
 // func setWhereInfo(rule Rule) {
 // 	for _, rul := range rule {
 // 		if rf, ok := rul.(RuleFeild); ok {
@@ -349,39 +382,6 @@ func setJoinRelation(rule Rule, par, chld string) (rel relation) {
 // func (t *DB) checkAgainstWhereClauses(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
 
 // 	return false
-// }
-
-// setRules sets the ruels set inorder to process query clouses, it find the relation table, w.r.t ref and res
-// func setRules(rule Rule, ref, res string) (set setRule) {
-// 	set.rule = rule
-// 	set.res = &RuleFieldInfo{res, ""}
-// 	set.ref = &RuleFieldInfo{ref, ""}
-// 	for _, rule := range rule {
-// 		if rl, ok := rule.(RuleFeild); ok {
-// 			if set.ref.FieldName == "" {
-// 				if set.ref.TableName == rl.LeftRule.TableName {
-// 					set.ref = rl.LeftRule
-// 				} else if set.ref.TableName == rl.RightRule.TableName {
-// 					set.ref = rl.RightRule
-// 				}
-// 			}
-// 			if set.res.FieldName == "" {
-// 				if set.res.TableName == rl.LeftRule.TableName {
-// 					set.res = rl.LeftRule
-// 				} else if set.ref.TableName == rl.RightRule.TableName {
-// 					set.res = rl.RightRule
-// 				}
-// 			}
-// 			if set.relation == "" {
-// 				if rl.LeftRule.TableName != set.ref.TableName && rl.LeftRule.TableName != set.res.TableName {
-// 					set.relation = rl.LeftRule.TableName
-// 				} else if rl.RightRule.TableName != set.ref.TableName && rl.RightRule.TableName != set.res.TableName {
-// 					set.relation = rl.RightRule.TableName
-// 				}
-// 			}
-// 		}
-// 	}
-// 	return
 // }
 
 // Process $WHERE
