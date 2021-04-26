@@ -10,6 +10,7 @@ import (
 
 type QueryOp int
 type ItemType int
+type QueryOprnd interface{}
 
 const (
 	OpNone = iota // starting with 0
@@ -20,6 +21,7 @@ const (
 	OpBETWEEN
 	OpGT
 	OpGTEQ
+	opEQ
 	OpLT
 	OpLTEQ
 	OpNTEQ
@@ -71,7 +73,7 @@ type setRule struct {
 	relation string         // relation table name
 	rule     Rule           // rules
 }
-type parentRowInfo struct {
+type rowInfo struct {
 	name string
 	row  dbtable.TableRow
 }
@@ -92,7 +94,9 @@ var Operators = map[string]QueryOp{
 }
 
 func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query []Query) (resultHttpStatus int, resultContent []byte, resultErr error) {
+	// verify query one by one
 	for i, qry := range query {
+		// getting table by query item label for verify
 		tbl, err := t.GetTable(qry.ItemLabel)
 		if err != nil {
 			resultErr = err
@@ -110,6 +114,7 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query []Query) (re
 		resultHttpStatus = http.StatusNoContent
 		return resultHttpStatus, nil, err
 	}
+	// convert the result to json format, and store as bytes
 	resultContent, resultErr = json.Marshal(result)
 	if resultErr != nil {
 		resultHttpStatus = http.StatusNoContent
@@ -118,7 +123,7 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query []Query) (re
 	return
 }
 
-// verifyQuery has the function of veryfing the query and marks the field and table
+// verifyQuery has the function of verifying the query and marks the field and table
 func (t *DB) verifyQuery(query Query, tbl *dbtable.DbTable) (Query, error) {
 	if tb, e := t.GetTable(query.ItemLabel); e == nil {
 		query.ItemType = table
@@ -150,7 +155,7 @@ func (t *DB) processRoot(queries []Query) (dbtable.TableRow, error) {
 		if query.ItemType != table {
 			return nil, fmt.Errorf("ivalid item type or orphen")
 		}
-		res, err := t.processQuery(query, parentRowInfo{})
+		res, err := t.processQuery(query, rowInfo{})
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +166,7 @@ func (t *DB) processRoot(queries []Query) (dbtable.TableRow, error) {
 }
 
 // process child is to loop the children and process each one to processQuery function and returns the result
-func (t *DB) processChild(children []Query, parent parentRowInfo) (result dbtable.TableRow, err error) {
+func (t *DB) processChild(children []Query, parent rowInfo) (result dbtable.TableRow, err error) {
 	res := dbtable.TableRow{}
 	for _, child := range children {
 		res[child.ItemLabel], err = t.processQuery(child, parent)
@@ -171,7 +176,7 @@ func (t *DB) processChild(children []Query, parent parentRowInfo) (result dbtabl
 	}
 	return res, nil
 }
-func (t *DB) processQuery(query Query, parent parentRowInfo) (result interface{}, err error) {
+func (t *DB) processQuery(query Query, parent rowInfo) (result interface{}, err error) {
 	// if get the field item
 	// else if get the table item, processing sub tables in the query
 	if query.ItemType == field {
@@ -217,7 +222,7 @@ func (t *DB) processQuery(query Query, parent parentRowInfo) (result interface{}
 
 				//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
 				if whereInfo != nil {
-					if !whereClouse(whereInfo, row) {
+					if !whereClouse(whereInfo, parent, rowInfo{query.ItemLabel, row}) {
 						continue
 					}
 				}
@@ -225,7 +230,7 @@ func (t *DB) processQuery(query Query, parent parentRowInfo) (result interface{}
 			}
 			// will process the chldren after passing JOIN and WHERE clouse,
 			if query.Children != nil {
-				res, err = t.processChild(query.Children, parentRowInfo{query.ItemLabel, row})
+				res, err = t.processChild(query.Children, rowInfo{query.ItemLabel, row})
 				if err != nil {
 					return nil, err
 				}
@@ -278,7 +283,7 @@ func (t *DB) getSingleRowBytableName(tableName string, fieldName string, value i
 	return
 }
 
-//
+// check join relation of parent and child rows
 func (t *DB) checkIsChild(joinInfo relation, parentRow, currentRow dbtable.TableRow) bool {
 	if joinInfo.relToChld != nil {
 		relRow, err := t.getSingleRowBytableName(joinInfo.relToChld.relation.TableName, joinInfo.relToChld.relation.FieldName, currentRow[joinInfo.relToChld.parOrChld.FieldName])
@@ -353,14 +358,64 @@ func setJoinRelation(rule Rule, par, chld string) (rel relation) {
 	return
 }
 
-func whereClouse(rule Rule, currentRow dbtable.TableRow) bool {
+func whereClouse(rule Rule, parent, child rowInfo) bool {
 	for _, rul := range rule {
+		var res bool
+		var opPrevs bool
+		var left, right interface{}
+		var operator QueryOp
 		if rf, ok := rul.(RuleFeild); ok {
-			if rf.LeftRule != nil {
-				// rf.LeftRule.TableName !=
-			}
+			left, right = getOperands(rf, parent, child)
+			operator = rf.Operator
+			res = ruleOperator(left, right, operator)
+		} else if rl, ok := rul.(Rule); ok {
+			res = whereClouse(rl, parent, child)
+		} else if operator, ok := rul.(QueryOp); ok {
+			opPrevs = true
+			continue
 		}
+		// TODO operaton
 
+		// should be last line
+		opPrevs = false
+	}
+
+	return true
+}
+func getOperands(rf RuleFeild, parent, child rowInfo) (left, right interface{}) {
+	if rf.LeftRule != nil {
+		if rf.LeftRule.TableName == parent.name {
+			left = parent.row[rf.LeftRule.FieldName]
+		} else if rf.LeftRule.TableName == child.name {
+			left = child.row[rf.LeftRule.FieldName]
+		}
+	} else {
+		left = rf.LeftOperand
+	}
+	if rf.RightRule != nil {
+		if rf.RightRule.TableName == parent.name {
+			right = parent.row[rf.RightRule.FieldName]
+		} else if rf.RightRule.TableName == child.name {
+			right = child.row[rf.RightRule.FieldName]
+		}
+	} else {
+		right = rf.RightOperand
+	}
+	return
+}
+func ruleOperator(left, right QueryOprnd, operator QueryOp) bool {
+
+	switch operator {
+	case opEQ:
+		return left == right
+	case OpNTEQ:
+		return left != right
+	case OpGTEQ:
+		le, leOk := left.(int)
+		ri, riOk := right.(int)
+		if leOk && riOk {
+			return le <= ri
+		}
 	}
 
 	return true
