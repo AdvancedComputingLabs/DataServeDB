@@ -27,7 +27,7 @@ func TestQuary(t *testing.T) {
 		"Properties": [
 		   {
 			 "$JOIN": "Users.Id IS UserProperties.Id AND Properties.SlNum IS UserProperties.SlNum",
-			 "$WHERE": "Properties.SlNum >= 2"
+			 "$WHERE": "(Users.Id >= 2 AND Users.Id <= 5) OR Users.Id == 1"
 		   }
 		 ]
 	   	}}`,

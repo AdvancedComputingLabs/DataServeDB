@@ -86,6 +86,7 @@ var Operators = map[string]QueryOp{
 	"OR":      OpOR,
 	"AND":     OpAND,
 	"BETWEEN": OpBETWEEN,
+	"==":      opEQ,
 	">":       OpGT,
 	">=":      OpGTEQ,
 	"<":       OpLT,
@@ -222,7 +223,9 @@ func (t *DB) processQuery(query Query, parent rowInfo) (result interface{}, err 
 
 				//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
 				if whereInfo != nil {
-					if !whereClouse(whereInfo, parent, rowInfo{query.ItemLabel, row}) {
+					ok := whereClouse(whereInfo, parent, rowInfo{query.ItemLabel, row})
+					fmt.Println("result-->  ", ok)
+					if !ok {
 						continue
 					}
 				}
@@ -300,125 +303,6 @@ func (t *DB) checkIsChild(joinInfo relation, parentRow, currentRow dbtable.Table
 		}
 	}
 	return false
-}
-
-// returns if $JOIN rule found
-func getJoinInfo(rules []Rules) Rule {
-	if rules == nil {
-		return nil
-	}
-	for _, rule := range rules {
-		if rule.Label == "$JOIN" {
-			return rule.Rule
-		}
-	}
-	return nil
-}
-
-// returns if $WHERE rule found
-func getWhereInfo(rules []Rules) Rule {
-	if rules == nil {
-		return nil
-	}
-	for _, rule := range rules {
-		if rule.Label == "$WHERE" {
-			return rule.Rule
-		}
-	}
-	return nil
-}
-
-// sets the rlation on join rule
-func setJoinRelation(rule Rule, par, chld string) (rel relation) {
-	if rule == nil {
-		return
-	}
-	for _, rul := range rule {
-		if rf, ok := rul.(RuleFeild); ok {
-			if par == rf.LeftRule.TableName && chld == rf.RightRule.FieldName || chld == rf.LeftRule.TableName && par == rf.RightRule.FieldName {
-				rel.relToPar = &relInfo{rf.RightRule, rf.LeftRule}
-				rel.relToChld = nil
-				return
-			}
-
-			// set parent relation
-			if par == rf.LeftRule.TableName {
-				rel.relToPar = &relInfo{rf.RightRule, rf.LeftRule}
-			} else if par == rf.RightRule.TableName {
-				rel.relToPar = &relInfo{rf.LeftRule, rf.RightRule}
-			}
-			// set child relation
-			if chld == rf.LeftRule.TableName {
-				rel.relToChld = &relInfo{rf.RightRule, rf.LeftRule}
-			} else if chld == rf.RightRule.TableName {
-				rel.relToChld = &relInfo{rf.LeftRule, rf.RightRule}
-			}
-		}
-	}
-	return
-}
-
-func whereClouse(rule Rule, parent, child rowInfo) bool {
-	for _, rul := range rule {
-		var res bool
-		var opPrevs bool
-		var left, right interface{}
-		var operator QueryOp
-		if rf, ok := rul.(RuleFeild); ok {
-			left, right = getOperands(rf, parent, child)
-			operator = rf.Operator
-			res = ruleOperator(left, right, operator)
-		} else if rl, ok := rul.(Rule); ok {
-			res = whereClouse(rl, parent, child)
-		} else if operator, ok := rul.(QueryOp); ok {
-			opPrevs = true
-			continue
-		}
-		// TODO operaton
-
-		// should be last line
-		opPrevs = false
-	}
-
-	return true
-}
-func getOperands(rf RuleFeild, parent, child rowInfo) (left, right interface{}) {
-	if rf.LeftRule != nil {
-		if rf.LeftRule.TableName == parent.name {
-			left = parent.row[rf.LeftRule.FieldName]
-		} else if rf.LeftRule.TableName == child.name {
-			left = child.row[rf.LeftRule.FieldName]
-		}
-	} else {
-		left = rf.LeftOperand
-	}
-	if rf.RightRule != nil {
-		if rf.RightRule.TableName == parent.name {
-			right = parent.row[rf.RightRule.FieldName]
-		} else if rf.RightRule.TableName == child.name {
-			right = child.row[rf.RightRule.FieldName]
-		}
-	} else {
-		right = rf.RightOperand
-	}
-	return
-}
-func ruleOperator(left, right QueryOprnd, operator QueryOp) bool {
-
-	switch operator {
-	case opEQ:
-		return left == right
-	case OpNTEQ:
-		return left != right
-	case OpGTEQ:
-		le, leOk := left.(int)
-		ri, riOk := right.(int)
-		if leOk && riOk {
-			return le <= ri
-		}
-	}
-
-	return true
 }
 
 // func setWhereInfo(rule Rule) {
