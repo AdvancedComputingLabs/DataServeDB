@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"strconv"
 )
 
@@ -29,50 +28,56 @@ func (s *Stack) Pop() (bool, bool) {
 }
 
 // postfixNotation converts the Rule to postfix notation inorder to perform stack methodb
+// the evaluated result of RuleField and operation form arrey are strored like stack
 func postfixNotation(rules Rule, parent, child rowInfo) (pfn []interface{}) {
 	var opr QueryOp
 	oprFlag := false
 	for _, rule := range rules {
 		switch t := rule.(type) {
 		case Rule:
+			// incase of nested Rule element from Rule recursive call for postfixNotation
 			pfn = append(pfn, postfixNotation(t, parent, child)...)
 		case RuleFeild:
 			left, right := getOperands(t, parent, child)
+			// append ruleOperation result
 			pfn = append(pfn, ruleOperations(left, right, t.Operator))
-			fmt.Println("pfn-->>", pfn)
-			if oprFlag {
-				pfn = append(pfn, opr)
-				oprFlag = false
-			}
+
 		case QueryOp:
 			opr = t
 			oprFlag = true
 			continue
 		}
+		if oprFlag {
+			pfn = append(pfn, opr)
+			oprFlag = false
+		}
 	}
 	return
 }
+
+// whereClouse evaluate the Where Rules
+// convert to postfixNotation and then evaluate it by using stack
+// on occurence of operand it push to stack,
+// on occurence of oeration pop last to operands and then evaluate
 func whereClouse(rule Rule, parent, child rowInfo) bool {
 	var stack Stack
 
-	fmt.Println(rule...)
-	res := postfixNotation(rule, parent, child)
-	for _, rl := range res {
+	pfn := postfixNotation(rule, parent, child)
+	for _, rl := range pfn {
 		if v, ok := rl.(bool); ok {
 			stack.Push(v)
 		} else if v, ok := rl.(QueryOp); ok {
 			rval, empt := stack.Pop()
-			if empt != false {
+			if !empt {
 				return true
 			}
 			lval, empt := stack.Pop()
-			if empt != false {
+			if !empt {
 				return true
 			}
 			fval := boolOperaiton(lval, rval, v)
 			stack.Push(fval)
 		}
-		fmt.Println(stack)
 	}
 	if result, ok := stack.Pop(); ok {
 		return result
@@ -80,6 +85,8 @@ func whereClouse(rule Rule, parent, child rowInfo) bool {
 
 	return false
 }
+
+// get operand filds the operand value of both left and right child of ruleField
 func getOperands(rf RuleFeild, parent, child rowInfo) (left, right interface{}) {
 	if rf.LeftRule != nil {
 		if rf.LeftRule.TableName == parent.name {
@@ -106,7 +113,6 @@ func ruleOperations(left, right QueryOprnd, operator QueryOp) bool {
 	switch operator {
 	case opEQ:
 		if lVal, rVal, ok := getInt(left, right); ok {
-			println(lVal, rVal)
 			return lVal == rVal
 		}
 		if lVal, rVal, ok := getStr(left, right); ok {
@@ -147,11 +153,12 @@ func ruleOperations(left, right QueryOprnd, operator QueryOp) bool {
 		if lVal, rVal, ok := getStr(left, right); ok {
 			return lVal <= rVal
 		}
-
 	}
 
 	return true
 }
+
+// bool operations
 func boolOperaiton(left, right bool, operator QueryOp) bool {
 	switch operator {
 	case opEQ:
@@ -167,6 +174,8 @@ func boolOperaiton(left, right bool, operator QueryOp) bool {
 	return true
 }
 
+// getInt gets the value if the interface basetype is int32
+// if the one of the left or right from string type then it converts to int32
 func getInt(left, right interface{}) (lval, rval int32, ok bool) {
 	lval, lOk := left.(int32)
 	rval, rOk := right.(int32)
@@ -189,6 +198,8 @@ func getInt(left, right interface{}) (lval, rval int32, ok bool) {
 	}
 	return lval, rval, false
 }
+
+// getStr gets the value if the interface basetype is string
 func getStr(left, right interface{}) (lval, rval string, ok bool) {
 	lval, lOk := left.(string)
 	rval, rOk := right.(string)
