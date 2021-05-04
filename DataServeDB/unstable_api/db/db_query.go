@@ -224,7 +224,6 @@ func (t *DB) processQuery(query Query, parent rowInfo) (result interface{}, err 
 				//	IF checkAgainstWhereClauses(whereInfoArr, parentRowInfo, currentRowInfo) == FALSE: continue;
 				if whereInfo != nil {
 					ok := whereClouse(whereInfo, parent, rowInfo{query.ItemLabel, row})
-					fmt.Println("result-->  ", ok)
 					if !ok {
 						continue
 					}

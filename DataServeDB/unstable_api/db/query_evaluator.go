@@ -247,7 +247,6 @@ func setJoinRelation(rule Rule, par, chld string) (rel relation) {
 				rel.relToChld = nil
 				return
 			}
-
 			// set parent relation
 			if par == rf.LeftRule.TableName {
 				rel.relToPar = &relInfo{rf.RightRule, rf.LeftRule}
