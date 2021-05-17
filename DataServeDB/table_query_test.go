@@ -81,6 +81,7 @@ func TestQuary(t *testing.T) {
 		if testSet.result != string(res) {
 			t.Errorf("error, test Failed")
 		} else {
+			fmt.Println(string(res))
 			fmt.Println("OK! test passed ")
 		}
 	}

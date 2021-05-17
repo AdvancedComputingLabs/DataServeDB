@@ -198,6 +198,7 @@ func commonHttpServReqHandler(w http.ResponseWriter, r *http.Request) {
 	resultHttpStatus, resultContent, resultErr := dbrouter.MatchPathAndCallHandler(w, r, reqPath, r.Method)
 
 	if resultErr == nil && resultHttpStatus == http.StatusOK {
+		println(string(resultContent))
 		w.Write(resultContent)
 	}
 
@@ -222,7 +223,6 @@ func QueryRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 		return http.StatusNotFound, nil, err
 	}
 	resultHttpStatus, resultContent, resultErr = db.TablesQueryGet(dbReqCtx, query)
-	println(string(resultContent))
 
 	return
 }

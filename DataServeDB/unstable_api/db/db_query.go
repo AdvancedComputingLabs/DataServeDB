@@ -121,6 +121,7 @@ func (t *DB) TablesQueryGet(dbReqCtx *commtypes.DbReqContext, query []Query) (re
 		resultHttpStatus = http.StatusNoContent
 		return resultHttpStatus, nil, resultErr
 	}
+	resultHttpStatus = http.StatusOK
 	return
 }
 
