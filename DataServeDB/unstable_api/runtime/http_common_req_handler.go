@@ -13,6 +13,7 @@
 package runtime
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -201,7 +202,23 @@ func commonHttpServReqHandler(w http.ResponseWriter, r *http.Request) {
 		println(string(resultContent))
 		w.Write(resultContent)
 	}
-
+	if resultErr != nil {
+		http.Error(w, resultErr.Error(), http.StatusNotFound)
+	}
+	return
+	// return
+}
+func DbNameListPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName, targetName string, targetDbResTypeId constants.DbResTypes) (resultHttpStatus int, resultContent []byte, resultErr error) {
+	dbList, err := ListDb()
+	if err != nil {
+		return http.StatusNotFound, nil, err
+	}
+	resultContent, resultErr = json.Marshal(dbList)
+	if resultErr != nil {
+		resultHttpStatus = http.StatusNoContent
+		return resultHttpStatus, nil, resultErr
+	}
+	resultHttpStatus = http.StatusOK
 	return
 }
 func QueryRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName, targetName string, targetDbResTypeId constants.DbResTypes) (resultHttpStatus int, resultContent []byte, resultErr error) {

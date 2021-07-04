@@ -16,7 +16,16 @@ import (
 // 	   }
 // 	 ]
 // 	   }}
+func TestDbList(t *testing.T) {
+	list, err := runtime.ListDb()
+	if err != nil {
+		println(err.Error())
+	}
+	fmt.Println(list)
+}
+
 func TestQuary(t *testing.T) {
+
 	set := []struct {
 		query  string
 		result string

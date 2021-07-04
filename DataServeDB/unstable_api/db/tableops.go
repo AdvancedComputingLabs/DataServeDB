@@ -70,6 +70,7 @@ func (t *DB) CreateTableJSON(jsonStr string) error {
 	}
 
 	tblNameCaseHandled := syscasing(tbl.TblMain.TableName)
+	// t.Tables[]
 
 	//if _, alreadyExists := t.Tables[tblNameCaseHandled]; alreadyExists {
 	//	return errors.New("table name already exits")

@@ -61,6 +61,7 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request) (resultHttpStatus in
 }
 func DecodeJSON(dst []byte) (resultHttpStatus int, query []db.Query, err error) {
 	var result map[string]interface{}
+	fmt.Println(string(dst))
 
 	err = json.Unmarshal(dst, &result)
 	if err != nil {

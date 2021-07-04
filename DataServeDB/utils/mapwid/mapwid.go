@@ -1,6 +1,9 @@
 package mapwid
 
-import "errors"
+import (
+	"DataServeDB/dbtable"
+	"errors"
+)
 
 /*
 	Description: Map with Ids allows changable name with an id that stays same.
@@ -62,6 +65,22 @@ func (t *MapWithId) AddUnsync(id int, nameCaseSen string, object interface{}) er
 	}
 
 	return nil
+}
+
+func (t *MapWithId) GetTableList() (table_list []string) {
+	for _, id := range t.NameToIdMap {
+		if tblI, exists := t.IdMap[id]; exists {
+			var tbl *dbtable.DbTable
+			var ok bool
+			if tbl, ok = tblI.(*dbtable.DbTable); !ok {
+				//TODO: maybe there is better way to do this
+				// log.Fatalf("Casting error while getting table '%s'. This shouldn't happen there is error in the code.\n", tableName)
+				continue
+			}
+			table_list = append(table_list, tbl.TblMain.TableName)
+		}
+	}
+	return table_list
 }
 
 // GetByName get by name
@@ -151,5 +170,5 @@ func (t *MapWithId) HasNameUnsync(nameCaseSen string) bool {
 }
 
 func (t *MapWithId) GetLastIdUnsync() int {
-	return  t.LastId
+	return t.LastId
 }

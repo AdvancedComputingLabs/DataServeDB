@@ -41,6 +41,7 @@ func Start() error {
 	//routing
 	dbrouter.Register("{db_name}/tables/{tbl_name}", TableRestPathHandler)
 	dbrouter.Register("{db_name}/query", QueryRestPathHandler)
+	dbrouter.Register("/dblist", DbNameListPathHandler)
 
 	//http server and rest api routing
 	StartHttpServer()

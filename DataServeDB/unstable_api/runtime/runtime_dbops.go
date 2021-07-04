@@ -187,3 +187,34 @@ func mountDb(dbName, dbPath string) error {
 
 	return nil
 }
+
+func ListDb() (map[string][]string, error) {
+	dbList := make(map[string][]string)
+	// var database *db.DB
+	databases_dir := paths.GetDatabasesMainDirPath()
+
+	if databases_dir == "" {
+		//TODO: test should be fatal.
+		return nil, errors.New("databases dir does not exist")
+	}
+
+	//TODO: logging
+
+	dirItems, e := ioutil.ReadDir(databases_dir)
+	if e != nil {
+		//TODO: refactor to dblog
+		log.Fatal(e)
+	}
+	for _, dirItem := range dirItems {
+		if dirItem.IsDir() && db_rules.DbNameIsValid(dirItem.Name()) {
+			if database, err := GetDb(dirItem.Name()); err == nil {
+				dbList[dirItem.Name()] = database.Tables.GetTableList()
+			}
+			// TODO :- Check error possibilty
+			// dbList[dirItem] = ListTables(dirItem);
+		}
+	}
+
+	return dbList, nil
+
+}
