@@ -1,9 +1,8 @@
 package main
 
 import (
-	"fmt"
-
 	"DataServeDB/unstable_api/runtime"
+	"fmt"
 )
 
 // Concept:
@@ -40,20 +39,19 @@ import (
 // 5) authentication of user access and permissions/rights/roles
 //		- db user name and password also included
 
-
-
 /*
 Paths:
 - db path; data could be spread over mutiple locations
 - db server app working dir path.
 - db server app path
- */
+*/
 
 func init() {
 	//this always runs first, so put any initalizations for the server app here.
 
 	//TODO: error handling
-	runtime.Start()
+	runtime.Start(true)
+
 }
 
 func main() {

@@ -38,49 +38,51 @@ import (
 	* delete table
 */
 
-func (t *DB) GetTable(tableName string) (*dbtable.DbTable, error) {
+func (me *DB) GetTable(tableName string) (*dbtable.DbTable, error) {
 	tblNameCaseHandled := syscasing(tableName)
 
-	_, tblI, e := t.Tables.GetByNameUnsync(tblNameCaseHandled)
+	_, tbl, e := me.Tables.GetByNameUnsync(tblNameCaseHandled)
 	if e != nil {
 		//TODO: handle errors properly.
 		return nil, fmt.Errorf("table '%s' does not exit", tableName)
 	}
 
-	var tbl *dbtable.DbTable
-	var ok bool
-
-	if tbl, ok = tblI.(*dbtable.DbTable); !ok {
-		//TODO: maybe there is better way to do this
-		log.Fatalf("Casting error while getting table '%s'. This shouldn't happen there is error in the code.\n", tableName)
-	}
+	//var tbl *dbtable.DbTable
+	//var ok bool
+	//
+	//if tbl, ok = tblI.(*dbtable.DbTable); !ok {
+	//	//TODO: maybe there is better way to do this
+	//	log.Fatalf("Casting error while getting table '%s'. This shouldn'me happen there is error in the code.\n", tableName)
+	//}
 
 	return tbl, nil
 }
 
-func (t *DB) CreateTableJSON(jsonStr string) error {
+type CreateTableCallback = func(table *dbtable.DbTable) error
+
+func (me *DB) CreateTableJSON(jsonStr string, callback CreateTableCallback) error {
 	//TODO: multi thread syncing
 
 	//create
 	//does not save table to disk
 	//TODO: perf optimization, check if table name has conflict.
-	tbl, e := dbtable.CreateTableJSON(jsonStr, t)
+	tbl, e := dbtable.CreateTableJSON(jsonStr, me)
 	if e != nil {
 		return e
 	}
 
 	tblNameCaseHandled := syscasing(tbl.TblMain.TableName)
 
-	//if _, alreadyExists := t.Tables[tblNameCaseHandled]; alreadyExists {
+	//if _, alreadyExists := me.Tables[tblNameCaseHandled]; alreadyExists {
 	//	return errors.New("table name already exits")
 	//}
-	//t.Tables[tblNameCaseHandled] = tbl
+	//me.Tables[tblNameCaseHandled] = tbl
 
 	//TODO: table id management.
 
 	if tbl.TblMain.TableId < 0 {
 
-		tbl.TblMain.TableId = t.Tables.GetLastIdUnsync()
+		tbl.TblMain.TableId = me.Tables.GetLastIdUnsync()
 		triesCount := 0
 
 		//try 5 times then exit.
@@ -96,26 +98,68 @@ func (t *DB) CreateTableJSON(jsonStr string) error {
 				break
 			}
 
-			if e = t.Tables.AddUnsync(tbl.TblMain.TableId, tblNameCaseHandled, tbl); e == nil {
+			if e = me.Tables.AddUnsync(tbl.TblMain.TableId, tblNameCaseHandled, tbl); e == nil {
 				break
 			}
 		}
 
 	} else {
-		//NOTE: this is create operation so shouldn't have tableid > -1 but I kept it here just in case.
+		//NOTE: this is create operation so shouldn'me have tableid > -1 but I kept it here just in case.
 		// Probably better to check the logic later and remove it.
-		if e = t.Tables.AddUnsync(tbl.TblMain.TableId, tblNameCaseHandled, tbl); e != nil {
+		if e = me.Tables.AddUnsync(tbl.TblMain.TableId, tblNameCaseHandled, tbl); e != nil {
 			//TODO: properly handle and log errors.
 			return errors.New("table name already exits")
 		}
 	}
 
+	if callback != nil {
+		e = callback(tbl)
+		if e != nil {
+			//reverse table operations
+			if _, _, e = me.Tables.RemoveByNameUnsync(tblNameCaseHandled); e != nil {
+				log.Fatalln("CRITICAL_ERROR: Unable to remove table during callback error; error: ", e)
+			}
+			return e
+		}
+	}
+
 	//save to disk
 	//NOTE: table creation only creates metadata which is stored in db metadata
-	e = t.updateDbMetadataOnDisk()
+	e = me.updateDbMetadataOnDisk()
 	if e != nil {
 		return e
 	}
 
 	return nil
 }
+
+func (me *DB) DeleteTable(tableName string) error {
+
+	tblNameCaseHandled := syscasing(tableName)
+
+	//TODO: check if table data needs deleting and dat file cleaning.
+
+	_, tbl, e := me.Tables.RemoveByNameUnsync(tblNameCaseHandled)
+	if e != nil {
+		//TODO: handle errors properly.
+		return fmt.Errorf("table '%s' does not exit", tableName)
+	}
+
+	//probably need later to clean up dat file.
+	_ = tbl
+
+	//update metadata on disk
+	//NOTE: this does not remove data files
+	e = me.updateDbMetadataOnDisk()
+	if e != nil {
+		return e
+	}
+
+	return nil
+}
+
+//Not sure this is needed, but kept it to review later. HY -- 20-Mar-2022
+/*func (t *DB) DeleteTableJSON(jsonStr string) error {
+
+	return nil
+}*/

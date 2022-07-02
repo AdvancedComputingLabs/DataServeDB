@@ -18,7 +18,7 @@ Operations:
 	- Change Operations
 		- Delete Table
 		- Alter Table
- */
+*/
 
 package dbtable
 
@@ -43,6 +43,32 @@ import (
 
 type TableRow map[string]interface{} //it is by field name.
 
+type TableRowWithFieldProperties tableRowByInternalIdsWithFieldProperties
+
+func GetTableRowWithFieldProperties(table *DbTable, rowByInternalIds tableRowByInternalIds) (TableRowWithFieldProperties, error) {
+	var meta = &table.TblMain.TableFieldsMetaData
+	rowWithProps := tableRowByInternalIdsWithFieldProperties{}
+
+	meta.mu.RLock()
+	defer meta.mu.RUnlock()
+
+	for k, v := range rowByInternalIds {
+		if fieldProps, exits := meta.FieldInternalIdToFieldMetaData[k]; exits {
+			//NOTE: this does not need conversion because this will probably come from db internal row and will have correct type.
+			//But check/test.
+			rowWithProps[k] = fieldValueAndPropertiesHolder{v: v, tableFieldInternal: fieldProps} //NOTE: used field name stored.
+		} else {
+			//TODO: Log.
+			//TODO: Test if error or panic operations are atomic.
+			//NOTE: Reason for panic: if this error occurred then there is bug in the code, fix.
+			panic("this is internal error, shouldn't happen")
+			//return nil, errors.New("this is internal error, shouldn't happen")
+		}
+	}
+
+	return rowWithProps, nil
+}
+
 type createTableExternalStruct struct {
 	_dbPtr      comminterfaces.DbPtrI // runtime hence _ prefix used.
 	TableName   string
@@ -57,6 +83,10 @@ type DbTable struct {
 	TblMain              *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
 	TblData              *tableDataContainer
 	createTableStructure createTableExternalStruct
+}
+
+func (t *DbTable) GetId() int {
+	return t.TblMain.TableId
 }
 
 func CreateTableJSON(jsonStr string, dbPtr comminterfaces.DbPtrI) (*DbTable, error) {
@@ -116,7 +146,9 @@ func addIndices(table *DbTable, rowInternalIds tableRowByInternalIds, rowNumber 
 	return nil
 }
 
-func (t *DbTable) InsertRowJSON(jsonStr string) error {
+type InsertRowCallback = func(table *DbTable, row *TableRowWithFieldProperties) error
+
+func (t *DbTable) InsertRowJSON(jsonStr string, callback InsertRowCallback) error {
 
 	var rowDataUnmarshalled TableRow
 	if e := json.Unmarshal([]byte(jsonStr), &rowDataUnmarshalled); e != nil {
@@ -138,6 +170,19 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 		return e
 	}
 
+	if rowWProps, e := GetTableRowWithFieldProperties(t, rowInternalIds); e == nil {
+		if callback != nil {
+			e = callback(t, &rowWProps)
+			if e != nil {
+				//TODO: reverse indices add.
+				return e
+			}
+		}
+	} else {
+		//TODO: reverse indices add.
+		return e
+	}
+
 	//TODO: TblData or Rows was giving error after loading table when data file was not there.
 	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
 	t.TblData.Rows = append(t.TblData.Rows, rowInternalIds)
@@ -152,6 +197,7 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 	err := enc.Encode(t.TblData)
 	if err != nil {
 		//TODO: better handling needed
+		//TODO: clean up event
 		println("error ")
 		log.Fatal("encode error:", err)
 	}

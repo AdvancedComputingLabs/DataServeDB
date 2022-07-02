@@ -28,7 +28,7 @@ func IsInitalized() bool {
 	return isInitalized
 }
 
-func Start() error {
+func Start(disableHttpServer bool) error {
 	//TODO: check if this needs go process to independently initalize db server; there could be hanging issue?
 	fmt.Println("Starting DataServeDB server ...")
 
@@ -41,8 +41,10 @@ func Start() error {
 	//routing
 	dbrouter.Register("{db_name}/tables/{tbl_name}", TableRestPathHandler)
 
-	//http server and rest api routing
-	StartHttpServer()
+	if !disableHttpServer {
+		//http server and rest api routing
+		StartHttpServer()
+	}
 
 	cliProcessor()
 
