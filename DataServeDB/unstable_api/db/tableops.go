@@ -112,6 +112,9 @@ func (me *DB) CreateTableJSON(jsonStr string, callback CreateTableCallback) erro
 		}
 	}
 
+	//TODO: handle error
+	tbl.EventAfterTableIdAssignment()
+
 	if callback != nil {
 		e = callback(tbl)
 		if e != nil {
