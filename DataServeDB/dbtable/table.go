@@ -23,7 +23,7 @@ import (
 type tableMain struct {
 	TableId             int
 	TableName           string
-	PkPos				int
+	PkPos               int
 	TableFieldsMetaData tableFieldsMetadataT
 
 	//TableStringComparer dbstrcmp_base.DbStrCmpInterface
@@ -55,7 +55,7 @@ func newTableMain(tableInternalId int, tableName string) *tableMain {
 	t := tableMain{
 		TableId:   tableInternalId,
 		TableName: tableName,
-		PkPos: 0, //default position is zero
+		PkPos:     0, //default position is zero
 		TableFieldsMetaData: tableFieldsMetadataT{
 			mu:                             sync.RWMutex{},
 			FieldInternalIdToFieldMetaData: make(map[int]*tableFieldStruct),

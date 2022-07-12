@@ -25,5 +25,4 @@ yarn-error.log*
 *.exe
 
 #go project vendor files
-/vendor
-go.mod
+DataServeDB/vendor

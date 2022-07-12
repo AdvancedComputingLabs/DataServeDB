@@ -18,23 +18,19 @@ Operations:
 	- Change Operations
 		- Delete Table
 		- Alter Table
- */
+*/
 
 package dbtable
 
 import (
-	"bytes"
-	"encoding/gob"
+	"DataServeDB/paths"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 
 	"DataServeDB/comminterfaces"
 	"DataServeDB/commtypes"
-	storage "DataServeDB/dbsystem/dbstorage"
-	"DataServeDB/paths"
 )
 
 //TODO: move it to error messages (single location)
@@ -44,9 +40,10 @@ import (
 type TableRow map[string]interface{} //it is by field name.
 
 type createTableExternalStruct struct {
-	_dbPtr      comminterfaces.DbPtrI // runtime hence _ prefix used.
-	TableName   string
-	TableFields []string
+	_dbPtr       comminterfaces.DbPtrI // runtime hence _ prefix used.
+	TableName    string
+	TableStorers []StorerBasic
+	TableFields  []string
 }
 
 func (t *createTableExternalStruct) AssignDb(dbPtr comminterfaces.DbPtrI) {
@@ -57,6 +54,10 @@ type DbTable struct {
 	TblMain              *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
 	TblData              *tableDataContainer
 	createTableStructure createTableExternalStruct
+}
+
+func (t *DbTable) GetId() int {
+	return t.TblMain.TableId
 }
 
 func CreateTableJSON(jsonStr string, dbPtr comminterfaces.DbPtrI) (*DbTable, error) {
@@ -75,9 +76,17 @@ func CreateTableJSON(jsonStr string, dbPtr comminterfaces.DbPtrI) (*DbTable, err
 		PkToRowMapper: map[interface{}]int64{},
 	}
 
-	//TODO: use globabl const, better practice
+	//TODO: use global const, better practice
 	//NOTE: it is creating table so id is -1.
-	return createTable(-1, &createTableData, tdc)
+	dbTable, err := createTable(-1, &createTableData, tdc)
+	if err != nil {
+		return dbTable, err
+	}
+
+	//TODO: dbTable.createTableStructure.TableStorers and createTableData.TableStorers are different instances after assignment.
+	// FIX, later.
+
+	return dbTable, err
 }
 
 func createTable(tableInternalId int, createTableData *createTableExternalStruct, tblDataContainer *tableDataContainer) (*DbTable, error) {
@@ -116,7 +125,28 @@ func addIndices(table *DbTable, rowInternalIds tableRowByInternalIds, rowNumber 
 	return nil
 }
 
-func (t *DbTable) InsertRowJSON(jsonStr string) error {
+func (t *DbTable) EventAfterTableIdAssignment() error {
+
+	//IMP-NOTE: must be assigned only once when first table id is added.
+	//TODO: check when table storers are mention in creation json.
+	//TODO: check when table structure is loaded from disk.
+	if len(t.createTableStructure.TableStorers) == 0 {
+		fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
+		path := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
+
+		diskStorePtr, err := NewDiskStoreV1(fileName, path)
+		if err != nil {
+			return err
+		}
+		t.createTableStructure.TableStorers = append(t.createTableStructure.TableStorers, diskStorePtr)
+	}
+
+	return nil
+}
+
+//type InsertRowCallback = func(table *DbTable, row *TableRowWithFieldProperties) error
+
+func (t *DbTable) InsertRowJSON(jsonStr string /*, callback InsertRowCallback*/) error {
 
 	var rowDataUnmarshalled TableRow
 	if e := json.Unmarshal([]byte(jsonStr), &rowDataUnmarshalled); e != nil {
@@ -142,22 +172,36 @@ func (t *DbTable) InsertRowJSON(jsonStr string) error {
 	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
 	t.TblData.Rows = append(t.TblData.Rows, rowInternalIds)
 
-	//TODO: path for table needs its own function?
-	fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
-	path := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
+	////TODO: path for table needs its own function?
+	//fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
+	//path := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
+	//
+	////TODO: refector this into own function with binary or json option.
+	//var buf bytes.Buffer
+	//enc := gob.NewEncoder(&buf)
+	//err := enc.Encode(t.TblData)
+	//if err != nil {
+	//	//TODO: better handling needed
+	//	//TODO: clean up event
+	//	println("error ")
+	//	log.Fatal("encode error:", err)
+	//}
+	//
+	////TODO: disk error handling is needed.
+	//storage.SaveToDisk(buf.Bytes(), path)
 
-	//TODO: refector this into own function with binary or json option.
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(t.TblData)
-	if err != nil {
-		//TODO: better handling needed
-		println("error ")
-		log.Fatal("encode error:", err)
+	rowWProps, e := GetTableRowWithFieldProperties(t, rowInternalIds)
+	if e != nil {
+		return e
 	}
 
-	//TODO: disk error handling is needed.
-	storage.SaveToDisk(buf.Bytes(), path)
+	//TODO: see below (memstore needs some thinking of indexing issues). Indices should be part of memstore or table's base structure?
+	//WARNING AND NOTE: currently there is no memstore in the list, when there is this need to be handled differently.
+	for _, store := range t.createTableStructure.TableStorers {
+		//TODO: need to handle rollbacks
+		//TODO: handle error
+		store.Insert(rowWProps, t.TblData) //NOTE: t.TblData is a pointer.
+	}
 
 	return nil
 }

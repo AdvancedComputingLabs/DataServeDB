@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"DataServeDB/utils/mapwid"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -11,6 +10,8 @@ import (
 	db_rules "DataServeDB/dbsystem/rules"
 	"DataServeDB/paths"
 	"DataServeDB/unstable_api/db"
+	//"DataServeDB/utils/mapwid"
+	"DataServeDB/utils/mapwidgen"
 )
 
 //TODO:
@@ -20,12 +21,12 @@ import (
 // - RenameDb fn
 // Note: right now goal is to get 1 db, tables, and their joined queries working.
 
-// var mapOfDatabases = make(map[string]*db.DB)
-var databases *mapwid.MapWithId
+//var databases *mapwid.MapWithId
+var databases *mapwidgen.MapWithId[*db.DB]
 var rwguardDbOps sync.RWMutex
 
 func init() {
-	databases = mapwid.New()
+	databases = mapwidgen.New[*db.DB]()
 }
 
 func GetDb(dbName string) (*db.DB, error) {
@@ -36,20 +37,12 @@ func GetDb(dbName string) (*db.DB, error) {
 
 	//TODO: log error; needs to be here?
 	//TODO: error on log needs dbId?
-	_, DbAsInterface, e := databases.GetByNameUnsync(dbNameCasingHandled)
-
 	//TODO: better handle errors
+	_, database, e := databases.GetByNameUnsync(dbNameCasingHandled)
 	if e == nil {
-		database, ok := DbAsInterface.(*db.DB)
-		if ok {
-			return database, nil
-		}
+		return database, nil
 	}
 
-	/*
-		if data, ok := mapOfDatabases[dbNameCasingHandled]; ok {
-			return data, nil
-		}*/
 	return nil, errors.New("database not found")
 }
 
@@ -165,6 +158,8 @@ func mountDb(dbName, dbPath string) error {
 	}
 
 	//add to db map
+
+	//TODO: I see issues. This is runtime id, permanant guid would be better?
 
 	dbId := databases.GetLastIdUnsync()
 	triesCount := 0

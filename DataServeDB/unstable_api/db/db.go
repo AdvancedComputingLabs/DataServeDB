@@ -20,7 +20,7 @@ import (
 	"DataServeDB/dbsystem/dbstorage"
 	"DataServeDB/dbtable"
 	"DataServeDB/paths"
-	"DataServeDB/utils/mapwid"
+	"DataServeDB/utils/mapwidgen"
 )
 
 //TODO: can somethings can be private?
@@ -37,7 +37,7 @@ type DB struct {
 	dbPath       string //runtime at the moment
 	DbInternalID int    //runtime at the moment
 	//Tables       TablesMap
-	Tables *mapwid.MapWithId //loaded at runtime, but not sure TableId is persistant.
+	Tables *mapwidgen.MapWithId[*dbtable.DbTable] //loaded at runtime, but not sure TableId is persistant.
 }
 
 type DatabaseMetaSaveStructure struct {
@@ -46,12 +46,16 @@ type DatabaseMetaSaveStructure struct {
 
 var syscasing = dbsystem.SystemCasingHandler.Convert
 
-func (t *DB) DbPath() string {
-	return t.dbPath
+func (me *DB) DbPath() string {
+	return me.dbPath
 }
 
-func (t *DB) loadDbMetadata() error {
-	dbMetaPath := paths.Combine(t.dbPath, dbMetadataJson)
+func (me *DB) GetId() int {
+	return me.DbInternalID
+}
+
+func (me *DB) loadDbMetadata() error {
+	dbMetaPath := paths.Combine(me.dbPath, dbMetadataJson)
 
 	dbMetaBuf, e := dbstorage.LoadFromDisk(dbMetaPath)
 	if e != nil {
@@ -70,7 +74,7 @@ func (t *DB) loadDbMetadata() error {
 
 		//NOTE: table name validation happens 'LoadFromTableSaveStructure' so it is not needed here.
 
-		stbl.DbTableCreationStructure.AssignDb(t)
+		stbl.DbTableCreationStructure.AssignDb(me)
 		dtbl, e := dbtable.LoadFromTableSaveStructure(stbl) //could be called attach table data
 		if e != nil {
 			//TODO: handle error better
@@ -78,10 +82,10 @@ func (t *DB) loadDbMetadata() error {
 		}
 
 		//no need to check if table already exits in the map, since this is at load time.
-		//t.Tables[syscasing(dtbl.TblMain.TableName)] = dtbl
+		//me.Tables[syscasing(dtbl.TblMain.TableName)] = dtbl
 
 		//TODO: here table loaded from disk is added to the map, error can happen with add to map operation.
-		t.Tables.AddUnsync(dtbl.TblMain.TableId, syscasing(dtbl.TblMain.TableName), dtbl)
+		me.Tables.AddUnsync(dtbl.TblMain.TableId, syscasing(dtbl.TblMain.TableName), dtbl)
 	}
 
 	//at the moment there are only tables
@@ -89,38 +93,44 @@ func (t *DB) loadDbMetadata() error {
 	return nil
 }
 
-func (t *DB) Init(dbName, dbsPath string) (*DB, error) {
+func (me *DB) Init(dbName, dbsPath string) (*DB, error) {
 
-	t.DbName = dbName
+	me.DbName = dbName
 
-	//t.Tables = make(TablesMap)
-	t.Tables = mapwid.New()
+	//me.Tables = make(TablesMap)
+	me.Tables = mapwidgen.New[*dbtable.DbTable]()
 
-	t.dbPath = paths.ConstructDbPath(dbName, dbsPath)
+	me.dbPath = paths.ConstructDbPath(dbName, dbsPath)
 
 	// ! for dev time stuff
 	//fmt.Println(dbMetaPath)
-	//t.createDbMetadata()
+	//me.createDbMetadata()
+	//me.createDbMetadataGeneric()
 
-	e := t.loadDbMetadata()
+	e := me.loadDbMetadata()
 	if e != nil {
 		return nil, e
 	}
 
-	return t, nil
+	return me, nil
 }
 
-func (t *DB) getTablesSaveStructureJson() string {
+func (me *DB) getTablesSaveStructureJson() string {
 	//todo: synching
 
 	var result string
 	dbMeta := DatabaseMetaSaveStructure{}
 
-	for _, tblI := range t.Tables.GetItemsUnsync() {
-		if tbl, ok := tblI.(*dbtable.DbTable); ok {
-			tblStructure := dbtable.GetTableStorageStructure(tbl)
-			dbMeta.Tables = append(dbMeta.Tables, tblStructure)
-		}
+	//for _, tblI := range me.Tables.GetItemsUnsync() {
+	//	if tbl, ok := tblI.(*dbtable.DbTable); ok {
+	//		tblStructure := dbtable.GetTableStorageStructure(tbl)
+	//		dbMeta.Tables = append(dbMeta.Tables, tblStructure)
+	//	}
+	//}
+
+	for _, tbl := range me.Tables.GetItemsUnsync() {
+		tblStructure := dbtable.GetTableStorageStructure(tbl)
+		dbMeta.Tables = append(dbMeta.Tables, tblStructure)
 	}
 
 	{
@@ -135,11 +145,11 @@ func (t *DB) getTablesSaveStructureJson() string {
 	return result
 }
 
-func (t *DB) updateDbMetadataOnDisk() error {
+func (me *DB) updateDbMetadataOnDisk() error {
 	//TODO: perhaps it requires some optimization.
 
-	tablesStructureJson := t.getTablesSaveStructureJson()
-	dbMetaPath := paths.Combine(t.dbPath, dbMetadataJson)
+	tablesStructureJson := me.getTablesSaveStructureJson()
+	dbMetaPath := paths.Combine(me.dbPath, dbMetadataJson)
 	e := dbstorage.SaveToDisk([]byte(tablesStructureJson), dbMetaPath)
 	if e != nil {
 		return e
@@ -148,7 +158,7 @@ func (t *DB) updateDbMetadataOnDisk() error {
 }
 
 //mocks for dev only
-func (t *DB) createDbMetadata() {
+func (me *DB) createDbMetadata() {
 
 	createTable01JSON := `{
 	  "TableName": "Tbl01",
@@ -169,26 +179,55 @@ func (t *DB) createDbMetadata() {
 	  ]
 	}`
 
-	tbl01, e := dbtable.CreateTableJSON(createTable01JSON, t)
+	tbl01, e := dbtable.CreateTableJSON(createTable01JSON, me)
 	_ = e
-	//t.Tables[tbl01.TblMain.TableName] = tbl01
+	//me.Tables[tbl01.TblMain.TableName] = tbl01
 	tbl01.TblMain.TableId = 0
-	t.Tables.AddUnsync(tbl01.TblMain.TableId, tbl01.TblMain.TableName, tbl01)
+	me.Tables.AddUnsync(tbl01.TblMain.TableId, tbl01.TblMain.TableName, tbl01)
 
-	tbl02, e := dbtable.CreateTableJSON(createTable02JSON, t)
+	tbl02, e := dbtable.CreateTableJSON(createTable02JSON, me)
 	_ = e
-	//t.Tables[tbl02.TblMain.TableName] = tbl02
+	//me.Tables[tbl02.TblMain.TableName] = tbl02
 	tbl02.TblMain.TableId = 0
-	t.Tables.AddUnsync(tbl02.TblMain.TableId, tbl02.TblMain.TableName, tbl02)
+	me.Tables.AddUnsync(tbl02.TblMain.TableId, tbl02.TblMain.TableName, tbl02)
 
 	//TODO: make it save all the tables
 	//TODO: change map to table pointer
 	//TODO: using tableid instead of name
 	//does dbtable stores more than 1 table?
 
-	e = t.updateDbMetadataOnDisk()
+	e = me.updateDbMetadataOnDisk()
 	if e != nil {
 		fmt.Println(e)
 	}
 
+}
+
+func (me *DB) createDbMetadataGeneric() {
+	createTable01JSON := `{
+	  "TableName": "Tbl01",
+	  "TableFields": [
+		"Id int32 PrimaryKey",
+		"UserName string Length:5..50 !Nullable",
+		"Counter int32 default:Increment(1,1) !Nullable",
+		"DateAdded datetime default:Now() !Nullable",
+		"GlobalId guid default:NewGuid() !Nullable"
+	  ]
+	}`
+
+	tbl01, e := dbtable.CreateTableJSON(createTable01JSON, me)
+	_ = e
+	tbl01.TblMain.TableId = 0
+
+	fmt.Println("Created table id:", tbl01.TblMain.TableId, "Created table name:", tbl01.TblMain.TableName)
+
+	tables := mapwidgen.New[*dbtable.DbTable]()
+
+	tables.AddUnsync(tbl01.TblMain.TableId, tbl01.TblMain.TableName, tbl01)
+
+	//tblNameCaseHandled := syscasing(tbl01.TblMain.TableName)
+
+	tableId, tbl01Getted, _ := tables.GetByNameUnsync(tbl01.TblMain.TableName)
+	fmt.Println("Getted table returned id:", tableId)
+	fmt.Println("Getted table id:", tbl01Getted.TblMain.TableId, "Getted table name:", tbl01Getted.TblMain.TableName)
 }

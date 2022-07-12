@@ -44,11 +44,16 @@ func fromLabeledByFieldNames(row TableRow, tbl *tableMain, fieldCasingHandler db
 func toLabeledByFieldNames(row tableRowByInternalIds, tbl *tableMain) (TableRow, error) {
 	//TODO: Primary key should be first.
 
+	//TODO: race condition? metadata needs to be locked?
+
 	//- check if field exists; covered.
 	//- check if missing field; not covered.
 
 	var meta *tableFieldsMetadataT = &tbl.TableFieldsMetaData
 	rowByNames := make(TableRow)
+
+	meta.mu.RLock()
+	defer meta.mu.RUnlock()
 
 	for k, v := range row {
 		if fieldProps, exits := meta.FieldInternalIdToFieldMetaData[k]; exits {

@@ -1,6 +1,9 @@
-package mapwid
+package mapwidgen
 
-import "errors"
+import (
+	"DataServeDB/constraints"
+	"errors"
+)
 
 /*
 	Description: Map with Ids allows changable name with an id that stays same.
@@ -20,21 +23,21 @@ import "errors"
 //NOTE: Might run into struct export issues, hence, kept the field public. But don't use them outside of the package directly.
 //TODO: Make them private and test.
 
-type MapWithId struct {
-	IdMap       map[int]interface{}
+type MapWithId[T constraints.HasId] struct {
+	IdMap       map[int]T
 	NameToIdMap map[string]int
 	LastId      int
 }
 
-func New() *MapWithId {
-	return &MapWithId{
-		IdMap:       make(map[int]interface{}),
+func New[T constraints.HasId]() *MapWithId[T] {
+	return &MapWithId[T]{
+		IdMap:       make(map[int]T),
 		NameToIdMap: make(map[string]int),
 		LastId:      -1,
 	}
 }
 
-func (t *MapWithId) AddUnsync(id int, nameCaseSen string, object interface{}) error {
+func (t *MapWithId[T]) AddUnsync(id int, nameCaseSen string, object T) error {
 
 	//TODO: error message format needs standardization.
 
@@ -64,28 +67,27 @@ func (t *MapWithId) AddUnsync(id int, nameCaseSen string, object interface{}) er
 	return nil
 }
 
-// GetByName get by name
-func (t *MapWithId) GetByNameUnsync(nameCaseSen string) (int, interface{}, error) {
+func (t *MapWithId[T]) GetByNameUnsync(nameCaseSen string) (int, T, error) {
 	var id int
 	var exists bool
-	var object interface{}
+	var object T
 
 	// for key := range t.NameToIdMap {
 	// 	println("Key:", key)
 	// }
 
 	if id, exists = t.NameToIdMap[nameCaseSen]; !exists {
-		return -1, nil, errors.New("name does not exist") //TODO: make it more user friendly
+		return -1, object, errors.New("name does not exist") //TODO: make it more user friendly
 	}
 
 	if object, exists = t.IdMap[id]; !exists {
-		return -1, nil, errors.New("id does not exist") //TODO: make it more user friendly
+		return -1, object, errors.New("id does not exist") //TODO: make it more user friendly
 	}
 
 	return id, object, nil
 }
 
-func (t *MapWithId) GetIdUnsync(nameCaseSen string) (int, error) {
+func (t *MapWithId[T]) GetIdUnsync(nameCaseSen string) (int, error) {
 	var id int
 	var exists bool
 
@@ -96,21 +98,21 @@ func (t *MapWithId) GetIdUnsync(nameCaseSen string) (int, error) {
 	return id, nil
 }
 
-func (t *MapWithId) GetItemsUnsync() map[int]interface{} {
+func (t *MapWithId[T]) GetItemsUnsync() map[int]T {
 	return t.IdMap
 }
 
-func (t *MapWithId) RemoveByNameUnsync(nameCaseSen string) (int, interface{}, error) {
+func (t *MapWithId[T]) RemoveByNameUnsync(nameCaseSen string) (int, T, error) {
 	var id int
 	var exists bool
-	var object interface{}
+	var object T
 
 	if id, exists = t.NameToIdMap[nameCaseSen]; !exists {
-		return -1, nil, errors.New("name does not exist") //TODO: make it more user friendly
+		return -1, object, errors.New("name does not exist") //TODO: make it more user friendly
 	}
 
 	if object, exists = t.IdMap[id]; !exists {
-		return -1, nil, errors.New("id does not exist") //TODO: make it more user friendly
+		return -1, object, errors.New("id does not exist") //TODO: make it more user friendly
 	}
 
 	//NOTE: deletion from IdMap is first for a reason.
@@ -122,9 +124,9 @@ func (t *MapWithId) RemoveByNameUnsync(nameCaseSen string) (int, interface{}, er
 	return id, object, nil
 }
 
-func (t *MapWithId) UpdateUnsync(nameCurrentCaseSen, nameNewCaseSen string) error {
+func (t *MapWithId[T]) UpdateUnsync(nameCurrentCaseSen, nameNewCaseSen string) error {
 	//COMMENT: do caller need to send id for checking?
-	// It can be checked before calling this through through GetId first.
+	// It can be checked before calling this through GetId first.
 
 	var id int
 	var exists bool
@@ -144,12 +146,12 @@ func (t *MapWithId) UpdateUnsync(nameCurrentCaseSen, nameNewCaseSen string) erro
 	return nil
 }
 
-// HasName finds wether the new entry name has alredy exist or not
-func (t *MapWithId) HasNameUnsync(nameCaseSen string) bool {
+// HasNameUnsync finds wether the new entry name has alredy exist or not
+func (t *MapWithId[T]) HasNameUnsync(nameCaseSen string) bool {
 	_, exists := t.NameToIdMap[nameCaseSen]
 	return exists //TODO: make it more user friendly
 }
 
-func (t *MapWithId) GetLastIdUnsync() int {
-	return  t.LastId
+func (t *MapWithId[T]) GetLastIdUnsync() int {
+	return t.LastId
 }
