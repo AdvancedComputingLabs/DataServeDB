@@ -22,7 +22,7 @@ import (
 const dataDirNameRelative = "Databases"
 const configDirNameRelative = "Config"
 
-//returns true if path was created; panics if there is dir creation error
+// CreatePathIfNotExist returns true if path was created; panics if there is dir creation error
 func CreatePathIfNotExist(path string) bool {
 	path = filepath.Dir(path)
 

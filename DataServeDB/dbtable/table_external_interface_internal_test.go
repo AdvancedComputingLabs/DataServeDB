@@ -26,37 +26,37 @@ func TestCreateTableToAndFromJsonConversions(t *testing.T) {
 	//from json to obj: start
 	//NOTE: also testing if field names in json have different casing.
 	//TODO: code obsolete, need to remake these tests
-//	createTableObj2JSON := `{
-//  "tableName": "Tbl02",
-//  "PrimaryKeyName":"Id",
-//  "tableFields": [
-//    {
-//      "fieldName": "Id",
-//      "fieldType": "int32",
-//      "primaryKey": true
-//    },
-//    {
-//      "FieldName": "UserName",
-//      "FieldType": "string",
-//      "primaryKey": false
-//    }
-//  ]
-//}`
-//
-//	var createTableObj2 createTableExternalStruct
-//	if err := json.Unmarshal([]byte(createTableObj2JSON), &createTableObj2); err != nil {
-//		t.Error(err)
-//	}
-//	fmt.Println(createTableObj2)
-//
-//	createTableObj2Matcher := createTableExternalStruct{
-//		TableName: "Tbl02",
-//		PrimaryKeyName: "Id",
-//		TableFields: []createTableExternalInterfaceFieldInfo{
-//			{FieldName: "Id", FieldType: "int32"},
-//			{FieldName: "UserName", FieldType: "string"},
-//		},
-//	}
+	//	createTableObj2JSON := `{
+	//  "tableName": "Tbl02",
+	//  "PrimaryKeyName":"Id",
+	//  "tableFields": [
+	//    {
+	//      "fieldName": "Id",
+	//      "fieldType": "int32",
+	//      "primaryKey": true
+	//    },
+	//    {
+	//      "FieldName": "UserName",
+	//      "FieldType": "string",
+	//      "primaryKey": false
+	//    }
+	//  ]
+	//}`
+	//
+	//	var createTableObj2 createTableExternalStruct
+	//	if err := json.Unmarshal([]byte(createTableObj2JSON), &createTableObj2); err != nil {
+	//		t.Error(err)
+	//	}
+	//	fmt.Println(createTableObj2)
+	//
+	//	createTableObj2Matcher := createTableExternalStruct{
+	//		TableName: "Tbl02",
+	//		PrimaryKeyName: "Id",
+	//		TableColumns: []createTableExternalInterfaceFieldInfo{
+	//			{FieldName: "Id", FieldType: "int32"},
+	//			{FieldName: "UserName", FieldType: "string"},
+	//		},
+	//	}
 
 	//if reflect.DeepEqual(createTableObj2, createTableObj2Matcher) == false  {
 	//	t.Errorf("Unmarshalling from json has error(s)\n")

@@ -16,31 +16,36 @@ import (
 	"errors"
 	"sync"
 
+	"DataServeDB/commtypes"
 	"DataServeDB/dbstrcmp_base"
-	"DataServeDB/dbtypes"
+	idbstorer "DataServeDB/storers/dbtable_interface_storer"
+	"DataServeDB/utils/rest/dberrors"
+	//"DataServeDB/dbtypes"
 )
 
-type tableFieldStruct struct {
-	FieldInternalId int
-	FieldName       string
-	FieldType       dbtypes.DbTypeI
-	FieldTypeProps  dbtypes.DbTypePropertiesI
-}
+//type tableFieldStruct struct {
+//	FieldInternalId int
+//	FieldName       string
+//	FieldType       dbtypes.DbTypeI
+//	FieldTypeProps  dbtypes.DbTypePropertiesI
+//}
+
+type fieldIdToDFieldMetadata = map[int]*commtypes.TableFieldStruct
 
 type tableFieldsMetadataT struct {
 	mu                             sync.RWMutex
-	FieldInternalIdToFieldMetaData map[int]*tableFieldStruct
+	FieldInternalIdToFieldMetaData fieldIdToDFieldMetadata
 	FieldNameToFieldInternalId     map[string]int
 }
 
-type fieldValueAndPropertiesHolder struct {
-	v                  interface{}
-	tableFieldInternal *tableFieldStruct
-}
+//type fieldValueAndPropertiesHolder struct {
+//	v                  interface{}
+//	tableFieldInternal *tableFieldStruct
+//}
 
 // private static
 
-func getNewInternalId(m map[int]*tableFieldStruct) int {
+func getNewInternalId(m fieldIdToDFieldMetadata) int {
 	i := 0
 	for ; i < len(m); i++ {
 		if _, exists := m[i]; !exists {
@@ -50,8 +55,8 @@ func getNewInternalId(m map[int]*tableFieldStruct) int {
 	return i
 }
 
-func newTableFieldProperties() *tableFieldStruct {
-	fp := tableFieldStruct{FieldInternalId: -1}
+func newTableFieldProperties() *commtypes.TableFieldStruct {
+	fp := commtypes.TableFieldStruct{FieldInternalId: -1}
 	return &fp
 }
 
@@ -59,7 +64,7 @@ func newTableFieldProperties() *tableFieldStruct {
 
 // tableFieldsMetadataT
 
-func (t *tableFieldsMetadataT) add(fmd *tableFieldStruct, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) error {
+func (t *tableFieldsMetadataT) add(fmd *commtypes.TableFieldStruct, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -92,11 +97,11 @@ func (t *tableFieldsMetadataT) add(fmd *tableFieldStruct, fieldCaseHandler dbstr
 }
 
 // for future use, done for loading table but easier was to just store json creation text for now.
-func (t *tableFieldsMetadataT) getCopyOfFieldsMetadataSafe() []tableFieldStruct {
+func (t *tableFieldsMetadataT) getCopyOfFieldsMetadataSafe() []commtypes.TableFieldStruct {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	var result []tableFieldStruct
+	var result []commtypes.TableFieldStruct
 
 	for _, v := range t.FieldInternalIdToFieldMetaData {
 		result = append(result, *v)
@@ -118,9 +123,9 @@ func (t *tableFieldsMetadataT) getFieldInternalId(fieldName, fieldNameKeyCase st
 }
 
 // depricated
-//TODO: only used in field tests; update tests and remove this method.
-//NOTE: named it with internal just in case external interface requires to get field(s) meta data.
-func (t *tableFieldsMetadataT) getFieldMetadataInternal(fieldName string, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) (*tableFieldStruct, error) {
+// TODO: only used in field tests; update tests and remove this method.
+// NOTE: named it with internal just in case external interface requires to get field(s) metadata.
+func (t *tableFieldsMetadataT) getFieldMetadataInternal(fieldName string, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) (*commtypes.TableFieldStruct, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -134,7 +139,7 @@ func (t *tableFieldsMetadataT) getFieldMetadataInternal(fieldName string, fieldC
 		return nil, existsErr
 	}
 
-	var fieldMetadata *tableFieldStruct
+	var fieldMetadata *commtypes.TableFieldStruct
 
 	if fieldMetadata, exists = t.FieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
 		//TODO: Log.
@@ -146,7 +151,14 @@ func (t *tableFieldsMetadataT) getFieldMetadataInternal(fieldName string, fieldC
 	return fieldMetadata, nil
 }
 
-func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow TableRow, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface) (tableRowByInternalIdsWithFieldProperties, error) {
+func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow TableRow, fieldCaseHandler dbstrcmp_base.DbStrCmpInterface, tableOp idbstorer.TableOperationType) (commtypes.TableRowWithFieldProperties, *dberrors.DbError) {
+
+	if !(tableOp == idbstorer.TableOperationInsertRow || tableOp == idbstorer.TableOperationPatchRow ||
+		tableOp == idbstorer.TableOperationReplaceRow) {
+		panic("CodingError: getRowWithFieldMetadataInternal should only be called for insert, patch, " +
+			"or replace operations; see supported row operations in the documentation.")
+	}
+
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -154,7 +166,7 @@ func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow Table
 	var exists bool
 	var existsErr error
 
-	rowByRowIdsWVAP := make(tableRowByInternalIdsWithFieldProperties)
+	rowByRowIdsWVAP := make(commtypes.TableRowWithFieldProperties)
 
 	//goes through user provided fields and values
 	for fieldName, v := range userSentRow {
@@ -162,10 +174,10 @@ func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow Table
 		fieldNameKeyCase := fieldCaseHandler.Convert(fieldName)
 
 		if fieldInternalId, existsErr = t.getFieldInternalId(fieldName, fieldNameKeyCase); existsErr != nil {
-			return nil, existsErr
+			return nil, dberrors.NewDbError(dberrors.InvalidInputColumnNameDoesNotExist, existsErr)
 		}
 
-		var fieldMetadata *tableFieldStruct
+		var fieldMetadata *commtypes.TableFieldStruct
 
 		if fieldMetadata, exists = t.FieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
 			//TODO: Log.
@@ -174,13 +186,41 @@ func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow Table
 			panic("internal field id exists but field's metadata doesn't (this error shouldn't happen if code is correct)")
 		}
 
-		rowByRowIdsWVAP[fieldInternalId] = fieldValueAndPropertiesHolder{v: v, tableFieldInternal: fieldMetadata}
+		if fieldMetadata.FieldTypeProps.IsPrimaryKey() {
+			if tableOp != idbstorer.TableOperationInsertRow {
+				return nil, dberrors.NewDbError(dberrors.InvalidInputPrimaryKeyCannotBeUpdated,
+					errors.New("primary key cannot be updated"))
+			}
+		}
+
+		rowByRowIdsWVAP[fieldInternalId] = commtypes.FieldValueAndPropertiesHolder{V: v, TableFieldInternal: fieldMetadata}
 	}
 
-	//check and fill missing fields
-	for id, p := range t.FieldInternalIdToFieldMetaData {
-		if _, exists := rowByRowIdsWVAP[id]; !exists {
-			rowByRowIdsWVAP[id] = fieldValueAndPropertiesHolder{v: nil, tableFieldInternal: p}
+	if tableOp != idbstorer.TableOperationPatchRow {
+		//check and fill missing fields
+		for fieldId, p := range t.FieldInternalIdToFieldMetaData {
+
+			// for replace update, primary is not added here.
+			// But all the other non-null and default fields are added.
+			// need to check nullable are just add them and they are removed later?
+
+			// if replace operation and field is primary key then skip it
+			if tableOp == idbstorer.TableOperationReplaceRow && p.FieldTypeProps.IsPrimaryKey() {
+				// don't need to add primary key here to avoid validation. It is supposed to be
+				// 		handled in the storer implementation in update row call.
+				continue
+			}
+
+			if p.FieldTypeProps.IsNullable() {
+				// Nullable fields are not added to the row, true for both insert row and replace row.
+				// For non-null fields, they are added if and they should error if value is not there by default, auto, or perhaps from
+				// a column function in the future.
+				continue
+			}
+
+			if _, exists := rowByRowIdsWVAP[fieldId]; !exists {
+				rowByRowIdsWVAP[fieldId] = commtypes.FieldValueAndPropertiesHolder{V: nil, TableFieldInternal: p}
+			}
 		}
 	}
 
@@ -188,7 +228,7 @@ func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow Table
 }
 
 // for future use, done for loading table but easier was to just store json creation text for now.
-func (t *tableFieldsMetadataT) loadFieldsMetadataSafe(fields []tableFieldStruct) error {
+func (t *tableFieldsMetadataT) loadFieldsMetadataSafe(fields []commtypes.TableFieldStruct) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -249,7 +289,7 @@ func (t *tableFieldsMetadataT) updateFieldName(fieldName string, newFieldName st
 	}
 
 	var exists bool
-	var fieldMetadata *tableFieldStruct
+	var fieldMetadata *commtypes.TableFieldStruct
 
 	if fieldMetadata, exists = t.FieldInternalIdToFieldMetaData[fieldInternalId]; !exists {
 		//TODO: Log.
@@ -263,18 +303,4 @@ func (t *tableFieldsMetadataT) updateFieldName(fieldName string, newFieldName st
 	delete(t.FieldNameToFieldInternalId, fieldNameKeyCase)
 
 	return nil
-}
-
-// tableFieldStruct
-
-func (t *fieldValueAndPropertiesHolder) IsPk() bool {
-	return t.tableFieldInternal.FieldTypeProps.IsPrimaryKey()
-}
-
-func (t *fieldValueAndPropertiesHolder) Name() string {
-	return t.tableFieldInternal.FieldName
-}
-
-func (t *fieldValueAndPropertiesHolder) Value() any {
-	return t.v
 }

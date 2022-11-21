@@ -16,9 +16,12 @@ import (
 	"errors"
 	"fmt"
 
+	"DataServeDB/commtypes"
 	"DataServeDB/dbsystem"
 	db_rules "DataServeDB/dbsystem/rules"
 	"DataServeDB/dbtypes"
+	idbstorer "DataServeDB/storers/dbtable_interface_storer"
+	"DataServeDB/utils/rest/dberrors"
 )
 
 //TODO: move it to error messages (single location)
@@ -34,7 +37,7 @@ func validateTableName(tableName string) error {
 	return nil
 }
 
-func validateFieldMetaData(fieldCreationText string, pkIsSet *bool) (*tableFieldStruct, error) {
+func validateFieldMetaData(fieldCreationText string, pkIsSet *bool) (*commtypes.TableFieldStruct, error) {
 
 	fp := newTableFieldProperties()
 
@@ -58,10 +61,10 @@ func validateFieldMetaData(fieldCreationText string, pkIsSet *bool) (*tableField
 	return fp, nil
 }
 
-//validates and creates main object, reasons:
-//1) better code, since adding fields automatically checks certain constraints.
-//2) optimization, since most of the time validation is followed by creation.
-//- HY 26-Dec-2019
+// validates and creates main object, reasons:
+// 1) better code, since adding fields automatically checks certain constraints.
+// 2) optimization, since most of the time validation is followed by creation.
+// - HY 26-Dec-2019
 func validateCreateTableMetaData(tableInternalId int, createTableData *createTableExternalStruct) (*tableMain, error) {
 	//first quick checks
 
@@ -74,10 +77,10 @@ func validateCreateTableMetaData(tableInternalId int, createTableData *createTab
 	pkIsSet := false
 	dbTbl := newTableMain(tableInternalId, createTableData.TableName)
 
-	for _, fieldCreationText := range createTableData.TableFields {
+	for _, fieldCreationText := range createTableData.TableColumns {
 		//_ = i
 
-		var fp *tableFieldStruct
+		var fp *commtypes.TableFieldStruct
 		var e error
 
 		if fp, e = validateFieldMetaData(fieldCreationText, &pkIsSet); e != nil {
@@ -90,7 +93,6 @@ func validateCreateTableMetaData(tableInternalId int, createTableData *createTab
 
 		if fp.FieldTypeProps.IsPrimaryKey() {
 			dbTbl.PkPos = fp.FieldInternalId
-			fmt.Println("Setting primary key on", fp.FieldName, "; position:", dbTbl.PkPos)
 		}
 
 		//NOTE: db type property validation is done during parsing.
@@ -105,15 +107,15 @@ func validateCreateTableMetaData(tableInternalId int, createTableData *createTab
 
 // NOTE: TableRow is a map, so no need to pass it as pointer
 // WARNING: TableRow (by field name) is not returned unless function succeeds. So don't override r in calling function.
-func validateRowData(t *tableMain, r TableRow) (TableRow, tableRowByInternalIds, error) {
-	rowByInternalId, e := fromLabeledByFieldNames(r, t, dbsystem.SystemCasingHandler)
-	if e != nil {
-		return nil, nil, e
+func validateRowData(t *tableMain, r TableRow, tableOp idbstorer.TableOperationType) (TableRow, tableRowByInternalIds, *dberrors.DbError) {
+	rowByInternalId, dberr := fromLabeledByFieldNames(r, t, dbsystem.SystemCasingHandler, tableOp)
+	if dberr != nil {
+		return nil, nil, dberr
 	}
 
-	rowConvertedWithCorrectTypes, e := toLabeledByFieldNames(rowByInternalId, t)
-	if e != nil {
-		return nil, nil, e
+	rowConvertedWithCorrectTypes, dberr := toLabeledByFieldNames(rowByInternalId, t)
+	if dberr != nil {
+		return nil, nil, dberr
 	}
 
 	return rowConvertedWithCorrectTypes, rowByInternalId, nil

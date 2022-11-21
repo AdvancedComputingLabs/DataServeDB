@@ -1,8 +1,11 @@
 package mapwidgen
 
 import (
-	"DataServeDB/constraints"
 	"errors"
+	"fmt"
+
+	"DataServeDB/constraints"
+	"DataServeDB/utils/rest/dberrors"
 )
 
 /*
@@ -23,13 +26,18 @@ import (
 //NOTE: Might run into struct export issues, hence, kept the field public. But don't use them outside of the package directly.
 //TODO: Make them private and test.
 
-type MapWithId[T constraints.HasId] struct {
+type MapWithIdConstraints interface {
+	constraints.HasId
+	constraints.HasDbTypeDisplayName
+}
+
+type MapWithId[T MapWithIdConstraints] struct {
 	IdMap       map[int]T
 	NameToIdMap map[string]int
 	LastId      int
 }
 
-func New[T constraints.HasId]() *MapWithId[T] {
+func New[T MapWithIdConstraints]() *MapWithId[T] {
 	return &MapWithId[T]{
 		IdMap:       make(map[int]T),
 		NameToIdMap: make(map[string]int),
@@ -37,24 +45,24 @@ func New[T constraints.HasId]() *MapWithId[T] {
 	}
 }
 
-func (t *MapWithId[T]) AddUnsync(id int, nameCaseSen string, object T) error {
-
-	//TODO: error message format needs standardization.
+func (t *MapWithId[T]) AddUnsync(id int, nameCaseSen, nameOriginal string, object T) *dberrors.DbError {
 
 	if id < 0 {
-		return errors.New("id cannot be negative")
+		return dberrors.NewDbError(dberrors.InvalidInput, errors.New(fmt.Sprintf("'%s' id cannot be negative", object.GetDbTypeDisplayName())))
 	}
 
+	// TODO: hard coded limit. Should be constant?
 	if id > 1_000_000 {
-		return errors.New("id cannot be greater than 1,000,000")
+		return dberrors.NewDbError(dberrors.InvalidInput, errors.New(fmt.Sprintf("'%s' id cannot be greater than 1,000,000", object.GetDbTypeDisplayName())))
 	}
 
 	if _, exists := t.IdMap[id]; exists {
-		return errors.New("id already exists") //TODO: make it more user friendly
+		//
+		return dberrors.NewDbError(dberrors.TableIdAlreadyExists, errors.New(fmt.Sprintf("'%s' id(%v) already exists", object.GetDbTypeDisplayName(), id)))
 	}
 
 	if _, exists := t.NameToIdMap[nameCaseSen]; exists {
-		return errors.New("name already exists") //TODO: make it more user friendly
+		return dberrors.NewDbError(dberrors.TableNameAlreadyExists, errors.New(fmt.Sprintf("'%s' name('%s') already exists", object.GetDbTypeDisplayName(), nameOriginal)))
 	}
 
 	t.IdMap[id] = object

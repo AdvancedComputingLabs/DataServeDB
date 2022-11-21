@@ -13,23 +13,22 @@
 package dbtable
 
 import (
-	"bytes"
-	"encoding/gob"
+	"DataServeDB/utils/rest/dberrors"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
+	"strings"
 
 	"DataServeDB/comminterfaces"
-	"DataServeDB/dbsystem/dbstorage"
 	"DataServeDB/paths"
+	idbstorer "DataServeDB/storers/dbtable_interface_storer"
 )
 
 // Description: dbtable package saving and loading file.
 
 // !WARNING: unstable api, but this needs to be in dbtable package.
 
-//TODO: const file to put all the consts in one place?
+// TODO: const file to put all the consts in one place?
 const tablesDataPathRelative = "tables_data"
 
 type DatabaseTableRecreation struct {
@@ -37,7 +36,7 @@ type DatabaseTableRecreation struct {
 	DbTableCreationStructure createTableExternalStruct
 }
 
-//!INFO: this is just for demonstration, tune it if you think there is better way to do it.
+// GetTableStorageStructureJson !INFO: this is just for demonstration, tune it if you think there is a better way to do it.
 func GetTableStorageStructureJson(dbtbl *DbTable) (string, error) {
 	slStruct := GetTableStorageStructure(dbtbl)
 
@@ -71,42 +70,132 @@ func LoadFromJson(dbtblJson string, dbPtr comminterfaces.DbPtrI) (*DbTable, erro
 
 func LoadFromTableSaveStructure(slStruct DatabaseTableRecreation) (*DbTable, error) {
 
-	tblData, err2 := loadTableDataFromDisk(&slStruct)
-	if err2 != nil {
-		return nil, err2
+	dbTable, dberr := createTable(slStruct.TableInternalId, &slStruct.DbTableCreationStructure /*, tblData*/)
+	if dberr != nil {
+		return dbTable, dberr.ToError()
 	}
 
-	return createTable(slStruct.TableInternalId, &slStruct.DbTableCreationStructure, tblData)
+	if dberr := applyStorages(dbTable, false); dberr != nil {
+		return dbTable, dberr.ToError()
+	}
+
+	return dbTable, nil
 }
 
-func loadTableDataFromDisk(slStruct *DatabaseTableRecreation) (*tableDataContainer, error) {
-	fileName := fmt.Sprintf("table_%d.dat", slStruct.TableInternalId)
-	path := paths.Combine(slStruct.DbTableCreationStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
+func (t *DbTable) GetTableInfo() (*idbstorer.TableInfo, error) {
+	// TODO: use of PkPos is best? Or there is better method to get the primary key column id?
+	return &idbstorer.TableInfo{TableName: t.TblMain.TableName, PrimaryKeyColId: t.TblMain.PkPos}, nil
+}
 
-	//NOTE: this could be empty if data is not saved.
-	tblDataBytes, err := dbstorage.LoadFromDisk(path)
-	if err != nil {
-		//if path error then empty table
-		if os.IsNotExist(err) {
-			tdc := &tableDataContainer{
-				Rows:          nil,
-				PkToRowMapper: map[interface{}]int64{},
+func applyStorages(t *DbTable, newCreation bool) *dberrors.DbError {
+
+	//check: table is valid
+	if t.TblMain.TableId < 0 {
+		panic("table id cannot be negative, something wrong in code")
+	}
+
+	//table folder path
+	//tableName := t.TblMain.TableName
+	tableFolderName := fmt.Sprintf("table_%d", t.TblMain.TableId)
+	tableFolderPath := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, tableFolderName)
+
+	//TODO: check when table storers are mention in creation json.
+	//TODO: check when table structure is loaded from disk.
+
+	storersNames := strings.Fields(t.createTableStructure.TableStorages)
+
+	if len(storersNames) == 0 {
+		//NOTE: default case when no storages are named at creation of the table.
+		storersNames = append(storersNames, "StorerMemV1")
+		storersNames = append(storersNames, "StorerDiskV1")
+	}
+
+	var stores []idbstorer.StorerBasic
+
+	for _, storerKey := range storersNames {
+		if storeCreator := idbstorer.GetStoreBasic(storerKey); storeCreator != nil {
+			store, dberr := storeCreator(t.TblMain.TableId, tableFolderPath, t)
+			if dberr != nil {
+				return dberr
 			}
-			return tdc, nil
+			stores = append(stores, store)
+		} else {
+			//TODO: panic is correct here?
+			panic(fmt.Sprintf("storage '%s' does not exist", storerKey))
 		}
-		return nil, err
 	}
 
-	var tblData tableDataContainer
-
-	//TODO: can refectored to its own util function?
-	buf := bytes.NewReader(tblDataBytes)
-	dec := gob.NewDecoder(buf)
-
-	err = dec.Decode(&tblData)
-	if err != nil {
-		return nil, err
+	if !newCreation {
+		//need recursion
+		loadStorages(0, stores)
 	}
 
-	return &tblData, nil
+	for i, store := range stores {
+
+		if newCreation {
+			var prevStore, nextStore idbstorer.StorerBasic
+
+			if i > 0 {
+				prevStore = stores[i-1]
+			}
+
+			if (i + 1) < len(stores) {
+				nextStore = stores[i+1]
+			}
+
+			dberr := store.CreateInit(prevStore, nextStore)
+			if dberr != nil {
+				return dberr
+			}
+		} // newCreation
+
+		// for load added here to keep addition of stores in correct order. recursion reverses the order
+		t.createTableStructure._tableStorersInstances = append(t.createTableStructure._tableStorersInstances, store)
+	}
+
+	return nil
+}
+
+func loadStorages(current_idx int, stores []idbstorer.StorerBasic) *idbstorer.StorerLoadResult {
+	//TODO: what if something needs to be passed on to next store?
+
+	if current_idx >= len(stores) {
+		return nil
+	}
+
+	var prevStore, nextStore idbstorer.StorerBasic
+
+	if current_idx > 0 {
+		prevStore = stores[current_idx-1]
+	}
+
+	store := stores[current_idx]
+
+	if (current_idx + 1) < len(stores) {
+		nextStore = stores[current_idx+1]
+	}
+
+	var nextStoreResult *idbstorer.StorerLoadResult = nil
+	var input any = nil
+
+	if (current_idx + 1) < len(stores) {
+		nextStoreResult = loadStorages(current_idx+1, stores)
+	}
+
+	if nextStoreResult != nil {
+		if nextStoreResult.Err != nil {
+			return nextStoreResult
+		}
+
+		input = nextStoreResult.Data
+	}
+
+	result := store.LoadTable(input, prevStore, nextStore)
+	if result != nil {
+		if result.Err != nil {
+			return result
+		}
+	}
+
+	return result
 }

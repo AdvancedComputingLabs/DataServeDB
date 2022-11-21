@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"regexp"
 	"testing"
 	"time"
 
@@ -26,6 +28,10 @@ import (
 //  	2) datetime is inserted automatically, server will insert in Iso8601Utc by default.
 //		3) cases where datetime is not in Iso8601Utc? Currently, imo if user inserted datatime is not in Iso8601Utc format
 //			it should fail.
+
+// Storage Cases:
+// 	1) Save storage.
+// 	2) Load storage after restart, if it is persistant storage.
 
 //Note: did the tests this way because testing needs to chained, maybe there is better built in way to do this.
 
@@ -57,7 +63,7 @@ func TestSaveTableMetadata(t *testing.T) {
 
 	createTableJSON := `{
 	  "TableName": "Tbl01",
-	  "TableFields": [
+	  "TableColumns": [
 		"Id int32 PrimaryKey",
 		"UserName string Length:5..50 !Nullable",
 		"Counter int32 default:Increment(1,1) !Nullable",
@@ -103,14 +109,20 @@ func TestSaveTableMetadata(t *testing.T) {
 	}
 }*/
 
-func testCreateTableJSON(t *testing.T) {
+func TestCreateTableJSON(t *testing.T) {
+
+	// TODO: Remove. This test is in table_external_storage_test.go
+
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	var reTableNameExists = regexp.MustCompile(`(?m)table name '\w+' already exits`)
 
 	//"DateAdded datetime default:Now() !Nullable"
 	// "DateAdded !Nullable"; insert datetime
 
 	createTableJSON := `{
 	  "TableName": "Tbl01",
-	  "TableFields": [
+	  "TableColumns": [
 		"Id int32 PrimaryKey",
 		"UserName string Length:5..50 !Nullable",
 		"Counter int32 default:Increment(1,1) !Nullable",
@@ -127,19 +139,27 @@ func testCreateTableJSON(t *testing.T) {
 		return
 	}
 
-	if err := db.CreateTableJSON(createTableJSON, nil); err == nil {
+	log.Println("creating table...")
+	if dberr := db.CreateTableJSON(createTableJSON, nil); dberr == nil {
 		//fmt.Println(tbl01.DebugPrintInternalFieldsNameMappings())
+		log.Println("table creation successful")
+		log.Println("calling testInsertRowJSON(*)...")
 		testInsertRowJSON(db, t)
 	} else {
-		if err.Error() == "table name already exits" {
+		if reTableNameExists.MatchString(dberr.ToError().Error()) {
+			log.Println(dberr.ToError().Error())
+			log.Println("calling testInsertRowJSON(*)...")
 			testInsertRowJSON(db, t)
 		} else {
-			t.Errorf("%v\n", err)
+			t.Errorf("%v\n", dberr)
 		}
 	}
 }
 
 func testRestApiGet(t *testing.T) {
+
+	// TODO: Remove. This test is in table_rest_api_test.go
+
 	// http://localhost:8080/re_db/tables/Id:1
 
 	for !runtime.IsInitalized() {
@@ -153,12 +173,18 @@ func testRestApiGet(t *testing.T) {
 }
 
 func testByPk(tbl *dbtable.DbTable, t *testing.T) {
+
+	// TODO: Remove. This test is in table_external_storage_test.go
+
 	for i := 0; i < tbl.GetLength(); i++ {
 		testGetRowByPk(tbl, t, i)
 	}
 }
 
 func testInsertRowJSON(db *db.DB, t *testing.T) {
+
+	// TODO: Remove. This test is in table_external_storage_test.go
+
 	tbl, e := db.GetTable("Tbl01")
 	if e != nil {
 		t.Error(e)
@@ -176,23 +202,31 @@ func testInsertRowJSON(db *db.DB, t *testing.T) {
 
 		row01Json, err := json.Marshal(row01)
 		if err != nil {
-			t.Error("erroe converting")
+			t.Error("error converting to json")
 		} else {
+			log.Println("inserting row...")
 			if e := tbl.InsertRowJSON(string(row01Json)); e == nil {
-				fmt.Println("Insert Test Successful")
+				log.Println("Insert Test Successful")
 				testGetRowByPk(tbl, t, row01.Id)
 			} else {
-				t.Errorf("%v\n", e)
+
+				t.Errorf("for row id: %d; error: %v\n", row01.Id, e)
 			}
 		}
 	}
+
+	testDelRowByPk(tbl, t, 5)
 }
 
 func testGetRowByPk(tbl *dbtable.DbTable, t *testing.T, i int) {
+
+	// TODO: Remove. This test is in table_external_storage_test.go
+
 	//TODO: test with multiple types to make sure get function is working properly with different types.
 
 	if row, e := tbl.GetRowByPrimaryKey(i); e == nil {
-		fmt.Println(row)
+		//fmt.Println(row)
+		_ = row // don't need to print this as rowJson is print it.
 		if rowJson, e := tbl.GetRowByPrimaryKeyReturnsJSON(i); e == nil {
 			fmt.Println("Get With Pk Test Successful")
 			fmt.Println(rowJson)
@@ -201,5 +235,15 @@ func testGetRowByPk(tbl *dbtable.DbTable, t *testing.T, i int) {
 		}
 	} else {
 		t.Errorf("%v\n", e)
+	}
+}
+
+func testDelRowByPk(tbl *dbtable.DbTable, t *testing.T, i int) {
+
+	// TODO: Remove. This test is in table_external_storage_test.go
+
+	err := tbl.DeleteRowByPrimaryKey(i)
+	if err != nil {
+		t.Errorf("error@delete: %v\n", err)
 	}
 }

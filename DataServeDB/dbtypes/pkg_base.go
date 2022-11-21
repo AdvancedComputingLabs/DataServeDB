@@ -16,7 +16,7 @@ package dbtypes
 DbType Properties Concept (and rationale for keeping type properties under this package):
 - Keeps property tied to the db type rather than the field. What keywords a table field can support depends on its db type.
 - PrimaryKeyable keeps true value if field is primary key or not, it is for convenience.
- */
+*/
 
 // !WARNING: db type id can change between different compilations.
 // !IMPORTANT: saving to disk use moniker 'dbBool' instead of underlying int value.
@@ -29,7 +29,7 @@ const (
 	dbString
 )
 
-//DbNull is special type, it does not use iterfaces required by other types. In essence, it is not really a type
+// DbNull is special type, it does not use iterfaces required by other types. In essence, it is not really a type
 // but represents non-existance of a value of other types. DbNull is used to differentiate from null in programming.
 // although programming null/nil values from inputs can be (or will be) converted to dbnull in appropriate cases.
 type DbNull struct{}
@@ -38,7 +38,7 @@ func (t DbNull) String() string {
 	return "DbNull"
 }
 
-//private to package
+// private to package
 type dbTypeBase struct {
 	DisplayName string
 	DbTypeId    int
@@ -56,4 +56,5 @@ type DbTypeI interface {
 
 type DbTypePropertiesI interface {
 	IsPrimaryKey() bool
+	IsNullable() bool
 }

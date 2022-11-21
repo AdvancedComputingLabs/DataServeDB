@@ -14,24 +14,21 @@ package runtime
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"DataServeDB/commtypes"
 	"DataServeDB/dbsystem/constants"
 	"DataServeDB/unstable_api/dbrouter"
+	"DataServeDB/utils/rest"
+	"DataServeDB/utils/rest/dberrors"
 )
 
 func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-}
-
-func httpRestPathParser(httpReqPath string) string {
-	//does not include host name, eg: /re_db/tables/users/Id:1
-	//NOTE: kept for future if path needs some parsing, then api doesn't need to change.
-	return httpReqPath
 }
 
 func parseDbAuthStr(authStr string) (scheme, authToken string, e error) {
@@ -63,14 +60,18 @@ func getDbAuthFromHttpHeader(r *http.Request) (scheme, authToken string, e error
 	return parseDbAuthStr(authStrs[0])
 }
 
-func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName, targetName string, targetDbResTypeId constants.DbResTypes) (resultHttpStatus int, resultContent []byte, resultErr error) {
-	//TODO: dbName empty case
+func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []dbrouter.PathLevel) {
+	//TODO: dbName empty test case
 
-	db, e := GetDb(dbName)
+	var resultHttpStatus int
+	var resultContent []byte
+	var resultErr error
 
-	if e != nil {
-		//at the moment it only returns database not found.
-		return http.StatusNotFound, nil, e
+	db, err := GetDb(dbName)
+	if err != nil {
+		resultHttpStatus, resultContent, resultErr = rest.HttpRestDbError(dberrors.NewDbError(dberrors.DatabaseNotFound, err))
+		rest.ResponseWriteHelper(w, resultHttpStatus, resultContent, resultErr)
+		return
 	}
 
 	//TODO: atomic check if db is close.
@@ -94,26 +95,53 @@ func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 	//}
 
 	/*
-		Example:
-			resPath: /re_db/tables/users/Id:1
+		Examples:
+
+		CREATE TABLE:
+			resPath: /re_db/tables
+			matchedPath: /re_db/tables
+			dbName: re_db
+			targetName: tables
+			targetDbResTypeId: constants.DbResTypes_Table
+
+		GET/SELECT ROW:
+			resPath: /re_db/tables/users/Id:1 or /re_db/tables/users/1
 			matchedPath: re_db/tables/users
 			dbName: re_db
 			targetName: users
 			targetDbResTypeId: 1
-	 */
+	*/
 
 	var dbReqCtx *commtypes.DbReqContext
+
 	dbReqCtx = commtypes.NewDbReqContext(
-			httpMethod, resPath, matchedPath,
-			dbName, db, targetName, targetDbResTypeId)
+		httpMethod, resPath, matchedPath,
+		dbName, db, pathLevels)
 
 	switch strings.ToUpper(httpMethod) {
 	case "GET":
 		dbReqCtx.RestMethodId = constants.RestMethodGet
-		return db.TablesGet(dbReqCtx)
+		resultHttpStatus, resultContent, resultErr = db.TablesGet(dbReqCtx)
+	case "POST":
+		dbReqCtx.RestMethodId = constants.RestMethodPost
+		resultHttpStatus, resultContent, resultErr = db.TablesPost(dbReqCtx, r.Body)
+	case "DELETE":
+		dbReqCtx.RestMethodId = constants.RestMethodDelete
+		resultHttpStatus, resultContent, resultErr = db.TablesDelete(dbReqCtx)
+	case "PUT":
+		dbReqCtx.RestMethodId = constants.RestMethodPut
+		resultHttpStatus, resultContent, resultErr = db.TablesPut(dbReqCtx, r.Body)
+	case "PATCH":
+		dbReqCtx.RestMethodId = constants.RestMethodPatch
+		resultHttpStatus, resultContent, resultErr = db.TablesPatch(dbReqCtx, r.Body)
+	default:
+		dbReqCtx.RestMethodId = constants.RestMethodNone
+		resultHttpStatus, resultContent, resultErr = rest.HttpRestDbError(
+			dberrors.NewDbError(dberrors.InvalidInputHttpMethodNotSupported,
+				fmt.Errorf("http method '%s' is not supported", httpMethod)))
 	}
 
-	return
+	rest.ResponseWriteHelper(w, resultHttpStatus, resultContent, resultErr)
 }
 
 func commonHttpServReqHandler(w http.ResponseWriter, r *http.Request) {
@@ -125,51 +153,45 @@ func commonHttpServReqHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//********
-//	path := r.URL.String()
-//
-//	table, key, err := requestParser(path)
-//	if err != nil {
-//		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-//		return
-//	}
-//	if strings.ToUpper(table) == "SIGNIN" {
-//		result, err := Signin(w, r)
-//		if err != nil {
-//			return
-//		}
-//		w.Write(result)
-//		return
-//	} else if strings.ToUpper(table) == "AUTHTOKEN" {
-//		_, err := AuthenticateToken(r)
-//		if err != nil {
-//			w.WriteHeader(http.StatusUnauthorized)
-//			return
-//		}
-//		w.WriteHeader(http.StatusOK)
-//		return
-//	}
-//
-//	/***************************************************************************/
-//	/* session cookie checking
-//	/*******************************************************************************/
-//	// We can obtain the session token from the requests cookies, which come with every request
-//
-//	claimID, err := AuthenticateToken(r)
-//	if err != nil {
-//		w.WriteHeader(http.StatusUnauthorized)
-//		return
-//	}
-//	// after check get data according to authenticated user
+	//	path := r.URL.String()
+	//
+	//	table, key, err := requestParser(path)
+	//	if err != nil {
+	//		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+	//		return
+	//	}
+	//	if strings.ToUpper(table) == "SIGNIN" {
+	//		result, err := Signin(w, r)
+	//		if err != nil {
+	//			return
+	//		}
+	//		w.Write(result)
+	//		return
+	//	} else if strings.ToUpper(table) == "AUTHTOKEN" {
+	//		_, err := AuthenticateToken(r)
+	//		if err != nil {
+	//			w.WriteHeader(http.StatusUnauthorized)
+	//			return
+	//		}
+	//		w.WriteHeader(http.StatusOK)
+	//		return
+	//	}
+	//
+	//	/***************************************************************************/
+	//	/* session cookie checking
+	//	/*******************************************************************************/
+	//	// We can obtain the session token from the requests cookies, which come with every request
+	//
+	//	claimID, err := AuthenticateToken(r)
+	//	if err != nil {
+	//		w.WriteHeader(http.StatusUnauthorized)
+	//		return
+	//	}
+	//	// after check get data according to authenticated user
 
 	//TODO: where does http restful api user authentications go?
 	//TODO: http restful api return results handling.
 
-	reqPath := httpRestPathParser(r.URL.String())
-	resultHttpStatus, resultContent, resultErr := dbrouter.MatchPathAndCallHandler(w, r, reqPath, r.Method)
-
-	if resultErr == nil && resultHttpStatus == http.StatusOK {
-		w.Write(resultContent)
-	}
-
-	return
+	reqPath := rest.HttpRestPathParser(r.URL.String())
+	dbrouter.MatchPathAndCallHandler(w, r, reqPath, r.Method)
 }

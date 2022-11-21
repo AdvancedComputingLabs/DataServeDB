@@ -15,6 +15,7 @@ package dbtable
 import (
 	"sync"
 
+	"DataServeDB/commtypes"
 	"DataServeDB/dbtypes"
 )
 
@@ -30,20 +31,13 @@ type tableMain struct {
 	//TableDataContainersIds map[string]int
 }
 
-//TODO: could go in its own file.
-// Separate, makes it easier to save it separately than table metadata.
-type tableDataContainer struct {
-	Rows          []tableRowByInternalIds
-	PkToRowMapper map[interface{}]int64
-}
-
-//TODO: is this needed here?
+// TODO: is this needed here?
 type tablesMapper struct {
 	tableIdToTable     map[int]tableMain
 	tableNameToTableId map[string]int
 }
 
-//NOTE: Only creates table object, kept this way for unit testing.
+// NOTE: Only creates table object, kept this way for unit testing.
 func newTableMain(tableInternalId int, tableName string) *tableMain {
 
 	//if tableInternalId < 0 {
@@ -58,7 +52,7 @@ func newTableMain(tableInternalId int, tableName string) *tableMain {
 		PkPos:     0, //default position is zero
 		TableFieldsMetaData: tableFieldsMetadataT{
 			mu:                             sync.RWMutex{},
-			FieldInternalIdToFieldMetaData: make(map[int]*tableFieldStruct),
+			FieldInternalIdToFieldMetaData: make(map[int]*commtypes.TableFieldStruct),
 			FieldNameToFieldInternalId:     make(map[string]int),
 		},
 		//TableStringComparer: simpleFold,

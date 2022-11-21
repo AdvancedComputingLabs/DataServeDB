@@ -15,6 +15,7 @@ package commtypes
 import (
 	"DataServeDB/comminterfaces"
 	"DataServeDB/dbsystem/constants"
+	"DataServeDB/unstable_api/dbrouter"
 )
 
 // fields are public, easier.
@@ -29,27 +30,25 @@ import (
 */
 
 type DbReqContext struct {
-	RestMethod        string
-	RestMethodId      constants.RestMethods
-	ResPath           string
-	MatchedPath       string
-	DbName            string
-	Dbi               comminterfaces.DbPtrI
-	TargetName        string
-	TargetDbResTypeId constants.DbResTypes
+	RestMethod   string
+	RestMethodId constants.RestMethods
+	ResPath      string
+	MatchedPath  string
+	DbName       string
+	Dbi          comminterfaces.DbPtrI
+	PathLevels   []dbrouter.PathLevel
 }
 
 func NewDbReqContext(restMethod, resPath, matchedPath, dbName string,
-	dbi comminterfaces.DbPtrI, targetName string, targetDbResTypeId constants.DbResTypes) *DbReqContext {
+	dbi comminterfaces.DbPtrI, pathLevels []dbrouter.PathLevel) *DbReqContext {
 
 	dbreqCtx := DbReqContext{
-		RestMethod:        restMethod,
-		ResPath:           resPath,
-		MatchedPath:       matchedPath,
-		DbName:            dbName,
-		Dbi:               dbi,
-		TargetName:        targetName,
-		TargetDbResTypeId: targetDbResTypeId,
+		RestMethod:  restMethod,
+		ResPath:     resPath,
+		MatchedPath: matchedPath,
+		DbName:      dbName,
+		Dbi:         dbi,
+		PathLevels:  pathLevels,
 	}
 
 	return &dbreqCtx

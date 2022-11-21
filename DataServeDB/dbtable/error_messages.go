@@ -27,5 +27,5 @@ func errRplFieldNameAlreadyExist(fieldName string) error {
 }
 
 func errRplRowDataConversion(fieldName string, conversionError error) error {
-	return fmt.Errorf("error occured for field '%v' : %v", fieldName, conversionError)
+	return fmt.Errorf("error occured for field '%v': %v", fieldName, conversionError)
 }

@@ -29,26 +29,45 @@
 		3) First matching path returns.
 
 	Valid Usage Patterns:
-		TODO
+		TODO:
+			- db name and target place holders are hard coded, it would be better if they are provided during registeration or configuration?
+			- resource type ids are also hard coded.
+			- match path should be case sensitive?
 */
 
 package dbrouter
 
 import (
-	"DataServeDB/dbsystem/constants"
+	"DataServeDB/utils/rest"
 	"errors"
 	"net/http"
 	"regexp"
 	"strings"
 
+	"DataServeDB/dbsystem/constants"
 	rules "DataServeDB/dbsystem/rules"
 )
 
-//function interface for rest api handler
-//NOTE: db is must, hence, db name is extracted by the system before matching.
+//NOTE: placeholders can be here since they don't change.
+
+// keywords, identifiers, and placeholders
+// {DB_NAME} is special name, which is place holder for any db name provided in the path. For example: re_db/tables/users
+// db_name must be validated with db naming rule.
+const (
+	dbNamePlaceHolder  = "{DB_NAME}"
+	tblNamePlaceHolder = "{TBL_NAME}"
+)
+
+type PathLevel struct {
+	PathItem       string
+	PathItemTypeId constants.DbResTypes
+}
+
+// HttpRestApiHandlerFnI function interface for rest api handler
+// NOTE: db is must, hence, db name is extracted by the system before matching.
 type HttpRestApiHandlerFnI = func(w http.ResponseWriter, r *http.Request, httpMethod,
-	resPath /* path remaining after db name */,
-	matchedPath, dbName, targetName string, targetDbResTypeId constants.DbResTypes) (resultHttpStatus int, resultContent []byte, resultErr error)
+	resPath, /* path remaining after db name */
+	matchedPath, dbName string, pathLevels []PathLevel)
 
 // private as it doesn't need to be exposed.
 type reqPathToHandler struct {
@@ -57,15 +76,7 @@ type reqPathToHandler struct {
 	HandlerFn      HttpRestApiHandlerFnI
 }
 
-//NOTE: placeholders can be here since they don't change.
-
-// keywords, identifiers, and placeholders
-// {db_name} is special name, which is place holder for any db name provided in the path. For example: re_db/tables/users
-// db_name must be validated with db naming rule.
-const dbNamePlaceHolder = "{db_name}"
-const tblNamePlaceHolder = "{tbl_name}"
-
-//Array, first match returns. User have to make sure a mapping doesn't override other mappings
+// Array, first match returns. User have to make sure a mapping doesn't override other mappings
 var pathsToHandlers []reqPathToHandler
 
 // TODO: save path to handler mappings upon changes
@@ -74,15 +85,19 @@ func init() {
 	//TODO: load path to handler mappings
 }
 
+func NewPathLevel(pathItem string, pathItemTypeId constants.DbResTypes) PathLevel {
+	return PathLevel{PathItem: pathItem, PathItemTypeId: pathItemTypeId}
+}
+
 func Register(matchPath string, handlerFn HttpRestApiHandlerFnI) error {
 
 	p2h := reqPathToHandler{}
 
-	p2h.MatchPath = matchPath
+	p2h.MatchPath = strings.ToUpper(matchPath)
 
 	sMatchPathForRegEx := strings.Replace(matchPath, dbNamePlaceHolder, rules.DbNameValidatorRuleReStrBasic, 1)
 	sMatchPathForRegEx = strings.Replace(sMatchPathForRegEx, tblNamePlaceHolder, rules.TableNameValidatorRuleReStrBasic, 1)
-	p2h.matchPathRegEx = regexp.MustCompile(sMatchPathForRegEx)
+	p2h.matchPathRegEx = regexp.MustCompile("(?i)" + sMatchPathForRegEx) // (?i) makes it case-insensitive
 
 	p2h.HandlerFn = handlerFn
 
@@ -93,14 +108,14 @@ func Register(matchPath string, handlerFn HttpRestApiHandlerFnI) error {
 	return nil
 }
 
-func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath string, httpMethod string) (resultHttpStatus int, resultContent []byte, resultErr error) {
+func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath string, httpMethod string) {
+
 	if pathsToHandlers == nil {
-		return http.StatusNotFound, nil, errors.New("no matching path found")
+		rest.ResponseWriteHelper(w, http.StatusTeapot, nil, errors.New("CodingError: pathsToHandlers is nil"))
+		return
 	}
 
 	var dbName string
-	var targetResName string
-	var targetDbResTypeid constants.DbResTypes = constants.DbResTypeNone
 
 	//find matching path, first match returns
 	for _, m := range pathsToHandlers {
@@ -111,19 +126,26 @@ func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath str
 			matchPathSplit := strings.Split(m.MatchPath, "/")
 			pathSplit := strings.Split(path, "/")
 
+			// path levels
+			var pathLevels []PathLevel
+
 			for i := 0; i < len(matchPathSplit) && i < len(pathSplit); i++ {
 				switch matchPathSplit[i] {
 				case dbNamePlaceHolder:
 					dbName = pathSplit[i]
+				case "TABLES":
+					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeTablesNamespace))
 				case tblNamePlaceHolder:
-					targetDbResTypeid = constants.DbResTypeTable
-					targetResName = pathSplit[i]
+					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeTable))
+				default: // suppose to lower level like row.
+					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeUndefined))
 				}
 			}
 
-			return m.HandlerFn(w, r, httpMethod, reqPath, path, dbName, targetResName, targetDbResTypeid)
+			m.HandlerFn(w, r, httpMethod, reqPath, path, dbName, pathLevels)
+			return
 		}
 	}
 
-	return http.StatusNotFound, nil, errors.New("no matching path found")
+	rest.ResponseWriteHelper(w, http.StatusNotFound, nil, errors.New("no matching rest path found"))
 }

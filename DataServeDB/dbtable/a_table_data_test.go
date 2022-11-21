@@ -20,6 +20,12 @@ import (
 	"DataServeDB/dbtypes"
 )
 
+// NOTE: now for testing row append only. But is it needed here?
+type tableDataContainer struct {
+	Rows          []tableRowByInternalIds
+	PkToRowMapper map[interface{}]int64
+}
+
 func TestAddData_Normal(t *testing.T) {
 
 	dbFieldRule := tableFieldStruct{

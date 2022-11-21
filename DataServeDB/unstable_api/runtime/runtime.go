@@ -39,7 +39,9 @@ func Start(disableHttpServer bool) error {
 	loadDatabases()
 
 	//routing
-	dbrouter.Register("{db_name}/tables/{tbl_name}", TableRestPathHandler)
+	dbrouter.Register("{DB_NAME}/tables/{TBL_NAME}/{1}.*", TableRestPathHandler)
+	dbrouter.Register("{DB_NAME}/tables/{TBL_NAME}", TableRestPathHandler)
+	dbrouter.Register("{DB_NAME}/tables", TableRestPathHandler)
 
 	if !disableHttpServer {
 		//http server and rest api routing

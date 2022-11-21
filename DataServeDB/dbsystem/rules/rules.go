@@ -25,16 +25,16 @@ import (
 
 // NOTE: Naming is very restrictive to make changes forward compatible. It is easier to relax rules compared to tightening rules which will make previous naming incompatible.
 
-//TODO: refactor it to types package
+// TODO: refactor it to types package
 type zeroMem struct{}
 
-//It will take a little more memory and cpu cycle, but the convience worth it.
+// It will take a little more memory and cpu cycle, but the convience worth it.
 var syscasing = dbsystem.SystemCasingHandler.Convert
 
 // Database naming rules
 // -
 
-//NOTE: used in db router so must be public.
+// DbNameValidatorRuleReStrBasic NOTE: used in db router so must be public.
 const DbNameValidatorRuleReStrBasic = "[A-Za-z][_0-9A-Za-z]{2,49}"
 
 var dbNameValidatorRe = regexp.MustCompile(fmt.Sprintf("^%s$", DbNameValidatorRuleReStrBasic))
@@ -61,10 +61,11 @@ func DbNameIsValid(name string) bool {
 // - Reserved Words: table, tables
 
 const TableNameValidatorRuleReStrBasic = "[A-Za-z][0-9A-Za-z]{2,49}"
+
 var tblNameValidatorRe = regexp.MustCompile(fmt.Sprintf("^%s$", TableNameValidatorRuleReStrBasic))
 
 var tableNameReservedWords = map[string]zeroMem{
-	syscasing("table"): {},
+	syscasing("table"):  {},
 	syscasing("tables"): {},
 }
 
@@ -87,7 +88,7 @@ func TableNameIsValid(s string) bool {
 
 var tableFieldNameReservedWords = map[string]zeroMem{
 	syscasing("PartitionKey"): {},
-	syscasing("Timestamp"): {},
+	syscasing("Timestamp"):    {},
 }
 
 func TableFieldNameIsValid(s string) bool {
@@ -99,4 +100,3 @@ func TableFieldNameIsValid(s string) bool {
 	}
 	return true
 }
-

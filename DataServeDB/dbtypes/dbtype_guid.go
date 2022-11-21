@@ -33,7 +33,7 @@ type dbTypeGuidFp = func() guid.Guid
 type dbTypeGuidValueOrFun struct {
 	// Go doesn't have discriminated union so this will do.
 	guid *guid.Guid
-	fun    dbTypeGuidFp
+	fun  dbTypeGuidFp
 }
 
 type DbTypeGuidProperties struct {
@@ -116,6 +116,10 @@ func (t dbTypeGuid) GetDbTypeId() int {
 
 // public DbTypeGuidProperties
 
+func (t *DbTypeGuidProperties) IsNullable() bool {
+	return t.Nullable.True()
+}
+
 func (t *DbTypeGuidProperties) IsPrimaryKey() bool {
 	return t.IsPrimarykey
 }
@@ -149,7 +153,7 @@ func defaultDbTypeGuidProperties() *DbTypeGuidProperties {
 	return &DbTypeGuidProperties{
 		PrimaryKeyable: dbtype_props.PrimaryKeyable{IsPrimarykey: false},
 		Indexing:       dbtype_props.Indexing{IndexType: dbtype_props.IndexingNone, Supports: dbtype_props.UniqueIndex},
-		Nullable: dbtype_props.Nullable{State: dbtype_props.NullableFalseDefault},
+		Nullable:       dbtype_props.Nullable{State: dbtype_props.NullableFalseDefault},
 	}
 }
 

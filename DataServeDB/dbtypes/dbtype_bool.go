@@ -64,6 +64,10 @@ func (t dbTypeBool) defaultDbTypeProperties() DbTypePropertiesI {
 	return defaultDbTypeBoolProperties()
 }
 
+func (t *DbTypeBoolProperties) IsNullable() bool {
+	return t.Nullable.True()
+}
+
 func (t *DbTypeBoolProperties) IsPrimaryKey() bool {
 	return false
 }
@@ -101,4 +105,3 @@ func getDbTypeBoolPropertiesIndirect(p interface{}) *DbTypeBoolProperties {
 // Section: <dbTypeBoolValueOrFun>
 
 // </dbTypeBoolValueOrFun>
-

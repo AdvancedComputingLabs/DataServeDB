@@ -2,6 +2,12 @@
 
 [comment]: <> (> **NOTE**: domain 'dataserv.db' is only used as an example.)
 
+TODO: 'STRICT' profile.
+
+TODO: Some builtin keywords and function names are not overridable, e.g. 'STRICT', '$CREATE', '$CREATE("TableName")', '$INSERT_ROW'.
+
+TODO: RESTEXPORT (in server side programming language)
+
 ### External Interface
 1. #### Creating Table
     ```go
@@ -18,13 +24,22 @@
     tbl01 := dbtable.CreateTableJSON(createTableJSON)
     
     // Rest Api 
-    https://[ip or domain]/db_name/tables/create //post createTableJSON
-    
+    //https://[ip or domain]/db_name/tables (post createTableJSON)
+    ```
+   
+2. #### Deleting Table
+    ```go
+    // Go api:
+    database.DeleteTable("Tbl01")
+   
+    // Rest Api
+    //https://[ip or domain]/db_name/tables('Tbl01') (delete)
     ```
 
-2. #### Inserting Rows
-    2.1 Row Insert Api
+3. #### Inserting Rows
+    3.1 Row Insert Api
     ```go
+   
    row01Json := `{
         "Id" : 1,
         "UserName" : "JohnDoe"
@@ -34,10 +49,12 @@
    tbl01.InsertRowJSON(row01Json)
    
    //Rest Api
-   https://[ip or domain]/db_name/tables/tbl01/insert_row //post row01Json
+   //https://[ip or domain]/db_name/tables/tbl01/insert_row (post row01Json)
    
+   //NOTE: Leave primary key field empty to auto generate primary key, if primary key is auto generated.
     ```
-    2.2 Row Data Validation Api
+   
+    3.2 Row Data Validation Api
    ```go
    //At the moment only available inside server in case another go package 
    //needs to validate row data against table properties.
@@ -46,7 +63,7 @@
    tbl01.ValidateRowData(row01Json)
    ```
     
-3. Getting Row(s)
+4. #### Get/Select Row(s)
     ```go
    // ## Get row by key
        
@@ -56,8 +73,8 @@
    tbl01.GetRowByPrimaryKeyReturnsJSON(1)
    
    //Rest api
-   https://[ip or domain]/db_name/tables/tbl01/Id:1 // index_name:value representation
-   https://[ip or domain]/db_name/tables/tbl01/1 //primary key does not require naming
+   //https://[ip or domain]/db_name/tables/tbl01/Id:1 (index_name:value representation)
+   //https://[ip or domain]/db_name/tables/tbl01/1 (primary key does not require naming)
    ```
    > **!WARNING**: Following api not supported at the moment in current version.
    ```go 
@@ -69,21 +86,32 @@
    tbl01.GetRowJSON(1) 
    
    //Rest api
-   https://[ip or domain]/tables/tbl01/row=1 //TODO: row should be reserved word
+   //https://[ip or domain]/tables/tbl01/row=1 (TODO: row should be reserved word)
    ```
 
-4. Updating Row(s)
+5. #### Update Row(s)
    ```go
    //Rest api
    //NOTE1: Update fields are in the body in JSON.
    //NOTE2: Primary key at the moment cannot be updated.
-   https://[ip or domain]/db_name/tables/tbl01/Id:1 // index_name:value representation
-   https://[ip or domain]/db_name/tables/tbl01/1 //post PUT; //primary key does not require naming
+   //https://[ip or domain]/db_name/tables/tbl01/Id:1 (index_name:value representation)
+   //https://[ip or domain]/db_name/tables/tbl01/1 (post PUT; primary key does not require naming)
    ```
 
-5. Deleting Row(s)
+6. #### Delete Row(s)
     ```go
    //Rest api
-   https://[ip or domain]/db_name/tables/tbl01/Id:1 // index_name:value representation
-   https://[ip or domain]/db_name/tables/tbl01/1 //post DELETE; //primary key does not require naming
+   //https://[ip or domain]/db_name/tables/tbl01/Id:1 (index_name:value representation)
+   //https://[ip or domain]/db_name/tables/tbl01/1 (post DELETE; primary key does not require naming)
+   ```
+   
+7. #### Calling Server Side Functions
+   Functions start with $ sign and opening and closing brackets after the function name. 
+   * Current version does not support multiple and nested function calls through rest query.
+   * TODO: function name specification.
+
+   Following is an example of function call through rest api.
+   ```go
+   //Rest api
+   //https://[ip or domain]/db_name/tables/tbl01/$HelloWorld()
    ```

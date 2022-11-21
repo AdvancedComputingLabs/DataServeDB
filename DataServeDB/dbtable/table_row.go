@@ -12,36 +12,43 @@
 
 package dbtable
 
-import "DataServeDB/dbstrcmp_base"
+import (
+	"DataServeDB/commtypes"
+	"DataServeDB/dbstrcmp_base"
+	idbstorer "DataServeDB/storers/dbtable_interface_storer"
+	"DataServeDB/utils/rest/dberrors"
+	"fmt"
+)
 
-type tableRowByInternalIdsWithFieldProperties = map[int]fieldValueAndPropertiesHolder
-type tableRowByInternalIds = map[int]interface{}
+// type tableRowByInternalIdsWithFieldProperties = map[int]fieldValueAndPropertiesHolder
+type tableRowByInternalIds = commtypes.TableRowByFieldsIds
 
-func fromLabeledByFieldNames(row TableRow, tbl *tableMain, fieldCasingHandler dbstrcmp_base.DbStrCmpInterface) (tableRowByInternalIds, error) {
+func fromLabeledByFieldNames(row TableRow, tbl *tableMain, fieldCasingHandler dbstrcmp_base.DbStrCmpInterface, tableOp idbstorer.TableOperationType) (tableRowByInternalIds, *dberrors.DbError) {
 	//TODO: Primary key should be first. Or do this rearrangement on client side?
 
 	var meta = &tbl.TableFieldsMetaData
 	rowById := make(tableRowByInternalIds)
 
-	tmp, e := meta.getRowWithFieldMetadataInternal(row, fieldCasingHandler)
-	if e != nil {
-		return nil, e
+	tmp, dberr := meta.getRowWithFieldMetadataInternal(row, fieldCasingHandler, tableOp)
+	if dberr != nil {
+		return nil, dberr
 	}
 
 	//execute
-	for Id, holder := range tmp {
-		if vConverted, errConversion := holder.tableFieldInternal.FieldType.ConvertValue(holder.v, holder.tableFieldInternal.FieldTypeProps); errConversion == nil {
-			rowById[Id] = vConverted
+	for fieldId, holder := range tmp {
+		if vConverted, errConversion := holder.TableFieldInternal.FieldType.ConvertValue(holder.V, holder.TableFieldInternal.FieldTypeProps); errConversion == nil {
+			rowById[fieldId] = vConverted
 		} else {
-			return nil, errRplRowDataConversion(holder.tableFieldInternal.FieldName, errConversion)
+			// TODO: looks like bad way to insert column name into error message; is there better way and safer way?
+			return nil, dberrors.NewDbError(dberrors.InvalidInput, fmt.Errorf(errConversion.Error(), holder.Name()))
 		}
 	}
 
 	return rowById, nil
 }
 
-//NOTE: tableRowByInternalIds is a map, so no need to pass it as pointer
-func toLabeledByFieldNames(row tableRowByInternalIds, tbl *tableMain) (TableRow, error) {
+// NOTE: tableRowByInternalIds is a map, so no need to pass it as pointer
+func toLabeledByFieldNames(row tableRowByInternalIds, tbl *tableMain) (TableRow, *dberrors.DbError) {
 	//TODO: Primary key should be first.
 
 	//TODO: race condition? metadata needs to be locked?

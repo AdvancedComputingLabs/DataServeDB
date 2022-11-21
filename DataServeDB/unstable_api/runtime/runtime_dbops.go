@@ -21,7 +21,7 @@ import (
 // - RenameDb fn
 // Note: right now goal is to get 1 db, tables, and their joined queries working.
 
-//var databases *mapwid.MapWithId
+// var databases *mapwid.MapWithId
 var databases *mapwidgen.MapWithId[*db.DB]
 var rwguardDbOps sync.RWMutex
 
@@ -175,7 +175,7 @@ func mountDb(dbName, dbPath string) error {
 
 		//TODO: properly handle this, currently it assumes it is just id already exists.
 		//TODO: need to check error type too.
-		if e := databases.AddUnsync(dbId, dbNameCaseHandled, database); e == nil {
+		if e := databases.AddUnsync(dbId, dbNameCaseHandled, dbName, database); e == nil {
 			break
 		}
 	}

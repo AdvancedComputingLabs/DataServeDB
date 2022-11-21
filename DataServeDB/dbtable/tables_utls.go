@@ -5,27 +5,59 @@ import (
 	"strings"
 )
 
-func parseKeyValue(resPath string) (key string, value string, err error) {
-	pos := strings.LastIndex(resPath, "/") + 1
+//TODO: make extraction function of keyword or function name and return its type.
+// Above is better than below?
 
-	if pos == 0 {
-		err = errors.New("key path is in wrong format")
-		return
+func isFunction(key string) bool {
+	//a function is that starts with a '$' sign, has  a '(' sign before ')', and ends with ')'.
+	// e.g. $func_name(arg1, arg2, arg3)
+	// e.g. (not supported at the moment) $func_name(arg1, arg2, arg3, $func_name2(arg1, arg2, arg3))
+
+	// check if it is function
+	if len(key) < 3 {
+		return false
 	}
 
-	if pos >= len(resPath) {
-		err = errors.New("key or value is not provided")
-		return
+	if key[0] != '$' {
+		return false
 	}
 
-	splitted := strings.SplitN(resPath[pos:], ":", 2)
-
-	if len(splitted) == 1 {
-		value = splitted[0]
-	} else {
-		key = splitted[0]
-		value = splitted[1]
+	if key[len(key)-1] != ')' {
+		return false
 	}
 
-	return
+	// check if it has '('
+	pos := strings.Index(key, "(")
+	if pos == -1 {
+		return false
+	}
+
+	return true
+}
+
+func extractFunctionName(key string) (string, error) {
+	//a function is that starts with a '$' sign, has  a '(' sign before ')', and ends with ')'.
+	// e.g. $func_name(arg1, arg2, arg3)
+	// e.g. (not supported at the moment) $func_name(arg1, arg2, arg3, $func_name2(arg1, arg2, arg3))
+
+	// check if it is function
+	if len(key) < 3 {
+		return "", errors.New("key is not a function")
+	}
+
+	if key[0] != '$' {
+		return "", errors.New("key is not a function")
+	}
+
+	if key[len(key)-1] != ')' {
+		return "", errors.New("key is not a function")
+	}
+
+	// check if it has '('
+	pos := strings.Index(key, "(")
+	if pos == -1 {
+		return "", errors.New("key is not a function")
+	}
+
+	return key[1:pos], nil
 }

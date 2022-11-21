@@ -38,7 +38,7 @@ type dbTypeDateTimeFp = func() dtIso8601Utc.Iso8601Utc
 type dbTypeDateTimeValueOrFun struct {
 	// Go doesn't have discriminated union so this will do.
 	datetime *dtIso8601Utc.Iso8601Utc
-	fun    dbTypeDateTimeFp
+	fun      dbTypeDateTimeFp
 }
 
 type DbTypeDateTimeProperties struct {
@@ -116,6 +116,10 @@ func (t dbTypeDateTime) GetDbTypeId() int {
 }
 
 // public DbTypeDateTimeProperties
+
+func (t *DbTypeDateTimeProperties) IsNullable() bool {
+	return t.Nullable.True()
+}
 
 func (t *DbTypeDateTimeProperties) IsPrimaryKey() bool {
 	return false

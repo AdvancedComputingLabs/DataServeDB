@@ -23,14 +23,15 @@ Operations:
 package dbtable
 
 import (
-	"DataServeDB/paths"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 
 	"DataServeDB/comminterfaces"
 	"DataServeDB/commtypes"
+	idbstorer "DataServeDB/storers/dbtable_interface_storer"
+	"DataServeDB/utils/rest"
+	"DataServeDB/utils/rest/dberrors"
 )
 
 //TODO: move it to error messages (single location)
@@ -38,13 +39,19 @@ import (
 //TODO: table main and table data are public now. Can be private?
 
 type TableRow map[string]interface{} //it is by field name.
+//type TableRowWithFieldProperties tableRowByInternalIdsWithFieldProperties
 
 type createTableExternalStruct struct {
-	_dbPtr       comminterfaces.DbPtrI // runtime hence _ prefix used.
-	TableName    string
-	TableStorers []StorerBasic
-	TableFields  []string
+	_dbPtr                 comminterfaces.DbPtrI // runtime hence _ prefix used.
+	_tableStorersInstances []idbstorer.StorerBasic
+	TableName              string
+	TableStorages          string
+	TableColumns           []string
 }
+
+// ## Public:
+
+// ### JSON?:
 
 func (t *createTableExternalStruct) AssignDb(dbPtr comminterfaces.DbPtrI) {
 	t._dbPtr = dbPtr
@@ -52,7 +59,6 @@ func (t *createTableExternalStruct) AssignDb(dbPtr comminterfaces.DbPtrI) {
 
 type DbTable struct {
 	TblMain              *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
-	TblData              *tableDataContainer
 	createTableStructure createTableExternalStruct
 }
 
@@ -60,48 +66,69 @@ func (t *DbTable) GetId() int {
 	return t.TblMain.TableId
 }
 
-func CreateTableJSON(jsonStr string, dbPtr comminterfaces.DbPtrI) (*DbTable, error) {
+func (t *DbTable) GetDbTypeDisplayName() string {
+	return "dbtable"
+}
+
+func CreateTableJSON(jsonStr string, dbPtr comminterfaces.DbPtrI) (*DbTable, *dberrors.DbError) {
 
 	var createTableData createTableExternalStruct
 	if err := json.Unmarshal([]byte(jsonStr), &createTableData); err != nil {
 		//log error for system auditing. This error logging message can be technical.
 		//TODO: make error result more user friendly.
-		return nil, errors.New("error found in table creation json")
+		return nil, dberrors.NewDbError(dberrors.InvalidInput, errors.New("error found in table creation json"))
 	}
 
 	createTableData._dbPtr = dbPtr
 
-	tdc := &tableDataContainer{
-		Rows:          nil,
-		PkToRowMapper: map[interface{}]int64{},
-	}
-
 	//TODO: use global const, better practice
 	//NOTE: it is creating table so id is -1.
-	dbTable, err := createTable(-1, &createTableData, tdc)
-	if err != nil {
-		return dbTable, err
+	dbTable, dberr := createTable(-1, &createTableData)
+	if dberr != nil {
+		return dbTable, dberr
 	}
 
-	//TODO: dbTable.createTableStructure.TableStorers and createTableData.TableStorers are different instances after assignment.
+	//TODO: dbTable.createTableStructure._tableStorersInstances and createTableData._tableStorersInstances are different instances after assignment.
 	// FIX, later.
 
-	return dbTable, err
+	return dbTable, dberr
 }
 
-func createTable(tableInternalId int, createTableData *createTableExternalStruct, tblDataContainer *tableDataContainer) (*DbTable, error) {
+func DeleteTable(table *DbTable) *dberrors.DbError {
+
+	numberOfStores := len(table.createTableStructure._tableStorersInstances)
+
+	if numberOfStores > 0 {
+		var storerResults = make([]*idbstorer.StorerDeleteTableResult, numberOfStores)
+
+		for j := numberOfStores - 1; j >= 0; j-- {
+			result := table.createTableStructure._tableStorersInstances[j].DeleteTable(j, storerResults)
+			storerResults[j] = &result
+			if result.DbErr != nil {
+				if dberr := deleteTableRollback(table, storerResults, j); dberr != nil {
+					// TODO: invalid state marker for table.
+					return dberr
+				}
+				// TODO: which error to return? There are errors from multiple storages? Maybe not as first error is returned?
+				return result.DbErr
+			}
+		}
+	}
+
+	return nil
+}
+
+func createTable(tableInternalId int, createTableData *createTableExternalStruct) (*DbTable, *dberrors.DbError) {
 	// TODO: could be moved to table file. Name could be better.
 	// I think it better belongs here than table.go as it is creating DbTable
 
 	tbl := DbTable{}
 
 	if tblMain, err := validateCreateTableMetaData(tableInternalId, createTableData); err != nil {
-		return nil, err
+		return nil, dberrors.NewDbError(dberrors.InvalidInput, err)
 	} else {
 		tbl.TblMain = tblMain
 	}
-
-	tbl.TblData = tblDataContainer
 
 	tbl.createTableStructure = *createTableData
 
@@ -112,170 +139,347 @@ func (t *DbTable) DebugPrintInternalFieldsNameMappings() string {
 	return fmt.Sprintf("%#v", t.TblMain.TableFieldsMetaData.FieldNameToFieldInternalId)
 }
 
-func addIndices(table *DbTable, rowInternalIds tableRowByInternalIds, rowNumber int64) error {
-	//NOTE: tableRowByInternalIds is passed by reference. -HY 22-Apr-2020
-
-	// check the duplicate primary key before insert
-	if _, ok := table.TblData.PkToRowMapper[rowInternalIds[table.TblMain.PkPos]]; ok {
-		return errors.New("duplicate primary key")
-	}
-
-	table.TblData.PkToRowMapper[rowInternalIds[table.TblMain.PkPos]] = rowNumber
-
-	return nil
-}
-
-func (t *DbTable) EventAfterTableIdAssignment() error {
-
+// EventAfterTableIdAssignment It is called from db package, hence, exported. It must be
+// called from the db package, because table id is assigned there at table creation time.
+func (t *DbTable) EventAfterTableIdAssignment() *dberrors.DbError {
 	//IMP-NOTE: must be assigned only once when first table id is added.
-	//TODO: check when table storers are mention in creation json.
-	//TODO: check when table structure is loaded from disk.
-	if len(t.createTableStructure.TableStorers) == 0 {
-		fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
-		path := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
 
-		diskStorePtr, err := NewDiskStoreV1(fileName, path)
-		if err != nil {
-			return err
-		}
-		t.createTableStructure.TableStorers = append(t.createTableStructure.TableStorers, diskStorePtr)
+	//NOTE: dberr not returned directly; future-proof when it may have more than one function call.
+	if dberr := applyStorages(t, true); dberr != nil {
+		return dberr
 	}
 
 	return nil
 }
 
-//type InsertRowCallback = func(table *DbTable, row *TableRowWithFieldProperties) error
+func GetTableRowWithFieldProperties(table *DbTable, rowByInternalIds tableRowByInternalIds) (commtypes.TableRowWithFieldProperties, error) {
+	var meta = &table.TblMain.TableFieldsMetaData
+	rowWithProps := commtypes.TableRowWithFieldProperties{}
 
-func (t *DbTable) InsertRowJSON(jsonStr string /*, callback InsertRowCallback*/) error {
+	meta.mu.RLock()
+	defer meta.mu.RUnlock()
 
-	var rowDataUnmarshalled TableRow
-	if e := json.Unmarshal([]byte(jsonStr), &rowDataUnmarshalled); e != nil {
-		_ = e
+	for k, v := range rowByInternalIds {
+		if fieldProps, exits := meta.FieldInternalIdToFieldMetaData[k]; exits {
+			//NOTE: this does not need conversion because this will probably come from db internal row and will have correct type.
+			//But check/test.
+			rowWithProps[k] = commtypes.FieldValueAndPropertiesHolder{V: v, TableFieldInternal: fieldProps} //NOTE: used field name stored.
+		} else {
+			//TODO: Log.
+			//TODO: Test if error or panic operations are atomic.
+			//NOTE: Reason for panic: if this error occurred then there is bug in the code, fix.
+			panic("this is internal error, shouldn't happen")
+			//return nil, errors.New("this is internal error, shouldn't happen")
+		}
+	}
+
+	return rowWithProps, nil
+}
+
+// delete row json from table.
+
+func (t *DbTable) DeleteRowByPrimaryKey(pkValue any) *dberrors.DbError {
+
+	dbType, dbTypeProps := t.TblMain.getPkType()
+
+	//TODO: 'castPkValue' seems to do samething. Check and remove.
+	pkValueCasted, err := dbType.ConvertValue(pkValue, dbTypeProps)
+	if err != nil {
+		return dberrors.NewDbError(dberrors.InvalidInput, err)
+	}
+
+	numberOfStores := len(t.createTableStructure._tableStorersInstances)
+
+	if numberOfStores > 0 {
+		var storerResults = make([]*idbstorer.StorerDeleteResult, numberOfStores)
+
+		pkColId := t.TblMain.PkPos // currently only pk is supported for indexing.
+
+		for i, store := range t.createTableStructure._tableStorersInstances {
+			result := store.Delete(pkColId, pkValueCasted, i, storerResults)
+			storerResults[i] = &result
+
+			//TODO: check if these errors are correct to pass to user or they are internal errors?
+
+			if result.DbErr != nil {
+				dberr := deleteRowRollback(t, pkColId, storerResults, i)
+				if dberr != nil {
+					//TODO: invalid state marker for table.
+					return dberr
+				}
+				//TODO: probably last error is returned. Error from which store should be returned?
+				return result.DbErr
+			}
+		}
+	}
+
+	return nil
+}
+
+func (t *DbTable) UpdateRowJsonByPk(pkValue any, jsonStr string, updateType idbstorer.TableOperationType) *dberrors.DbError {
+	// TODO: test both patch and replace if there behaviour is according to spec.
+
+	var rowUpdateDataUnmarshalled TableRow
+	if err := json.Unmarshal([]byte(jsonStr), &rowUpdateDataUnmarshalled); err != nil {
 		//log error for system auditing. This error logging message can be technical.
 		//TODO: make error result more user friendly.
-		return errors.New("error occured in parsing row json")
+		return dberrors.NewDbError(dberrors.InvalidInput, errors.New("error found in row update json"))
+	}
+
+	//validate row update data.
+	_, rowUpdateDateInternalIds, dberr := validateRowData(t.TblMain, rowUpdateDataUnmarshalled, updateType)
+	if dberr != nil {
+		return dberr
+	}
+
+	//do row with properties.
+	rowWithProps, err := GetTableRowWithFieldProperties(t, rowUpdateDateInternalIds)
+	if err != nil {
+		return dberrors.NewDbError(dberrors.InternalServerError, err)
+	}
+
+	pkValueCasted, dberr := castPkValue(pkValue, t)
+	if dberr != nil {
+		return dberr
+	}
+
+	numberOfStores := len(t.createTableStructure._tableStorersInstances)
+
+	if numberOfStores > 0 {
+		var storerResults = make([]*idbstorer.StorerUpdateResult, numberOfStores)
+
+		pkColId := t.TblMain.PkPos // currently only pk is supported for indexing.
+
+		for i, store := range t.createTableStructure._tableStorersInstances {
+			result := store.Update(pkColId, pkValueCasted, rowWithProps, updateType, i, storerResults)
+			storerResults[i] = &result
+
+			//TODO: check if these errors are correct to pass to user or they are internal errors?
+
+			if result.DbErr != nil {
+				dberr = updateRowRollback(t, pkColId, storerResults, i)
+				if dberr != nil {
+					//TODO: invalid state marker for table.
+					return dberr
+				}
+				return result.DbErr
+			}
+		}
+	}
+
+	return nil
+}
+
+func (t *DbTable) InsertRowJSON(jsonStr string) *dberrors.DbError {
+
+	var rowDataUnmarshalled TableRow
+	if err := json.Unmarshal([]byte(jsonStr), &rowDataUnmarshalled); err != nil {
+		//log error for system auditing. This error logging message can be technical.
+		//TODO: make error result more user friendly.
+		return dberrors.NewDbError(dberrors.InvalidInput, errors.New("error found in parsing row json"))
 	}
 
 	//returns validated row in the structure of internal ids
-	_, rowInternalIds, e := validateRowData(t.TblMain, rowDataUnmarshalled)
-	if e != nil {
-		return e
+	_, rowInternalIds, dberr := validateRowData(t.TblMain, rowDataUnmarshalled, idbstorer.TableOperationInsertRow)
+	if dberr != nil {
+		return dberr
 	}
 
-	numOfRows := int64(len(t.TblData.Rows))
-
-	if e := addIndices(t, rowInternalIds, numOfRows); e != nil {
-		return e
+	rowWProps, err := GetTableRowWithFieldProperties(t, rowInternalIds)
+	if err != nil {
+		return dberrors.NewDbError(dberrors.InternalServerError, err)
 	}
 
-	//TODO: TblData or Rows was giving error after loading table when data file was not there.
-	//	There empty data case needs to be considered and dat file must be in the db for the table all the time?
-	t.TblData.Rows = append(t.TblData.Rows, rowInternalIds)
+	numberOfStores := len(t.createTableStructure._tableStorersInstances)
 
-	////TODO: path for table needs its own function?
-	//fileName := fmt.Sprintf("table_%d.dat", t.TblMain.TableId)
-	//path := paths.Combine(t.createTableStructure._dbPtr.DbPath(), tablesDataPathRelative, fileName)
-	//
-	////TODO: refector this into own function with binary or json option.
-	//var buf bytes.Buffer
-	//enc := gob.NewEncoder(&buf)
-	//err := enc.Encode(t.TblData)
-	//if err != nil {
-	//	//TODO: better handling needed
-	//	//TODO: clean up event
-	//	println("error ")
-	//	log.Fatal("encode error:", err)
-	//}
-	//
-	////TODO: disk error handling is needed.
-	//storage.SaveToDisk(buf.Bytes(), path)
+	if numberOfStores > 0 {
+		var storerResults = make([]*idbstorer.StorerInsertResult, numberOfStores)
 
-	rowWProps, e := GetTableRowWithFieldProperties(t, rowInternalIds)
-	if e != nil {
-		return e
+		for i, store := range t.createTableStructure._tableStorersInstances {
+			result := store.Insert(rowWProps, i, storerResults)
+			storerResults[i] = &result
+
+			//TODO: check if these errors are correct to pass to user or they are internal errors?
+
+			if result.DbErr != nil {
+				dberr := insertRowRollback(t, storerResults, i)
+				if dberr != nil {
+					//TODO: invalid state marker for table.
+					return dberr
+				}
+				return result.DbErr
+			}
+		}
 	}
 
-	//TODO: see below (memstore needs some thinking of indexing issues). Indices should be part of memstore or table's base structure?
-	//WARNING AND NOTE: currently there is no memstore in the list, when there is this need to be handled differently.
-	for _, store := range t.createTableStructure.TableStorers {
-		//TODO: need to handle rollbacks
-		//TODO: handle error
-		store.Insert(rowWProps, t.TblData) //NOTE: t.TblData is a pointer.
+	return nil
+}
+
+func updateRowRollback(t *DbTable, indexColId int, results []*idbstorer.StorerUpdateResult, i int) *dberrors.DbError {
+
+	storages := t.createTableStructure._tableStorersInstances
+
+	for j := i - 1; j >= 0; j-- {
+		dberr := storages[j].UpdateRollback(indexColId, j, results)
+		if dberr != nil {
+			return dberr
+		}
+	}
+
+	return nil
+}
+
+func deleteRowRollback(t *DbTable, indexColId int, results []*idbstorer.StorerDeleteResult, i int) *dberrors.DbError {
+
+	storages := t.createTableStructure._tableStorersInstances
+
+	for j := i - 1; j >= 0; j-- {
+		dberr := storages[j].DeleteRollback(indexColId, j, results)
+		if dberr != nil {
+			//append error to error list, continue rollback for other storages or return error?
+			//TODO: check back logic
+			return dberr
+		}
+	}
+
+	return nil
+}
+
+func deleteTableRollback(t *DbTable, results []*idbstorer.StorerDeleteTableResult, j int) *dberrors.DbError {
+
+	storages := t.createTableStructure._tableStorersInstances
+
+	for i := j; i < len(storages); i++ {
+		dberr := storages[i].DeleteTableRollback(i, results)
+		if dberr != nil {
+			//append error to error list, continue rollback for other storages or return error?
+			// TODO: check back logic
+			return dberr
+		}
+	}
+
+	return nil
+}
+
+func insertRowRollback(t *DbTable, results []*idbstorer.StorerInsertResult, i int) *dberrors.DbError {
+	storages := t.createTableStructure._tableStorersInstances
+
+	for j := i - 1; j >= 0; j-- {
+		dberr := storages[j].InsertRollback(j, results)
+		if dberr != nil {
+			//append error to error list, continue rollback for other storages or return error?
+			//TODO: check back logic
+			return dberr
+		}
 	}
 
 	return nil
 }
 
 func (t *DbTable) GetLength() int {
-	//TODO: with empty there is potential it to panic with nil
-	return int(int64(len(t.TblData.Rows)))
+
+	//TODO: why first store? is it by convention (first) or must declared?
+	// For now I'm using position 0
+	numOfRows := t.createTableStructure._tableStorersInstances[0].GetNumberOfRows()
+	return numOfRows
 }
 
-func (t *DbTable) GetRowByPrimaryKey(pkValue interface{}) (TableRow, error) {
-	dbType, dbTypeProps := t.TblMain.getPkType()
-
-	pkValueCasted, e := dbType.ConvertValue(pkValue, dbTypeProps)
-	if e != nil {
-		return nil, e
+func (t *DbTable) GetRowByPrimaryKey(pkValue any) (TableRow, *dberrors.DbError) {
+	pkValueCasted, dberr := castPkValue(pkValue, t)
+	if dberr != nil {
+		return nil, dberr
 	}
 
-	rowNum, exists := t.TblData.PkToRowMapper[pkValueCasted]
-	if !exists {
-		return nil, fmt.Errorf("value '%v' not found", pkValue)
+	pkColId := t.TblMain.PkPos // currently only pk is supported for indexing.
+
+	//TODO: why first store? is it by convention (first) or must declared?
+	// For now I'm using position 0
+	_, rowRaw, dberr := t.createTableStructure._tableStorersInstances[0].Get(pkColId, pkValueCasted)
+	if dberr != nil {
+		return nil, dberr
 	}
 
-	row, e := toLabeledByFieldNames(t.TblData.Rows[rowNum], t.TblMain)
-	if e != nil {
-		return nil, e
+	row, dberr := toLabeledByFieldNames(rowRaw, t.TblMain)
+	if dberr != nil {
+		return nil, dberr
 	}
 
 	return row, nil
 }
 
-func (t *DbTable) GetRowByPrimaryKeyReturnsJSON(pkValue interface{}) (string, error) {
+func castPkValue(pkValue any, t *DbTable) (any, *dberrors.DbError) {
+	dbType, dbTypeProps := t.TblMain.getPkType()
+
+	pkValueCasted, err := dbType.ConvertValue(pkValue, dbTypeProps)
+	if err != nil {
+		//TODO: may not be from input, may be from internal error.
+		// Test cases: (1) pk value is not of type of pk column.
+		// TODO: make error code specific to key type mismatch? It would be better to have a specific error code for this?
+		return nil, dberrors.NewDbError(dberrors.InvalidInput, err)
+	}
+	return pkValueCasted, nil
+}
+
+func (t *DbTable) GetRowByPrimaryKeyReturnsJSON(pkValue any) (string, *dberrors.DbError) {
 	//TODO: Not sure this is really needed here.
 
-	// fmt.Printf("here %v\n", t.tblData.Rows)
-	row, e := t.GetRowByPrimaryKey(pkValue)
-	if e != nil {
-		return "", e
+	row, dberr := t.GetRowByPrimaryKey(pkValue)
+	if dberr != nil {
+		return "", dberr
 	}
 
-	jsonBytes, e := json.Marshal(row)
-	if e != nil {
+	jsonBytes, err := json.Marshal(row)
+	if err != nil {
 		//log error for system auditing. This error logging message can be technical.
 		//TODO: make error result more user friendly.
-		return "", fmt.Errorf("error occured while converting row data to json; primary key value '%v'", pkValue)
+		err = fmt.Errorf("error occured while converting row data to json; primary key value '%v'; internal error: %s", pkValue, err.Error())
+		dbErr := dberrors.NewDbError(dberrors.InternalServerError, err)
+		return "", dbErr
 	}
 
 	return string(jsonBytes), nil
 }
 
-func (t *DbTable) Get(dbReqCtx *commtypes.DbReqContext) (resultHttpStatus int, resultContent []byte, resultErr error) {
-	key, value, err := parseKeyValue(dbReqCtx.ResPath)
+func (t *DbTable) Get(dbReqCtx *commtypes.DbReqContext) ([]byte, *dberrors.DbError) {
+
+	// TODO: check all paths are handled.
+
+	key, value, err := rest.ParseKeyValue(dbReqCtx.ResPath)
 	if err != nil {
-		resultErr = err
-		return
+		return nil, dberrors.NewDbError(dberrors.InvalidInput, err)
 	}
 
 	//NOTE: there is no empty index 'indexName:' access at the moment.
 	if value == "" {
-		resultErr = errors.New("value is not provided")
+		return nil, dberrors.NewDbError(dberrors.InvalidInputKeyNotProvided, errors.New("key is not provided"))
 	}
 
 	if key == "" {
-		//primary key
-		row, err := t.GetRowByPrimaryKeyReturnsJSON(value)
-		if err != nil {
-			resultErr = err
-			return
+		//primary key or function
+		if value[0] != '$' {
+			row, dberr := t.GetRowByPrimaryKeyReturnsJSON(value)
+			if dberr != nil {
+				return nil, dberr
+			}
+
+			return []byte(row), nil
+		} else {
+			if isFunction(value) {
+				fnName, err := extractFunctionName(value)
+				if err != nil {
+					return nil, dberrors.NewDbError(dberrors.InvalidInput, err)
+				}
+				return callTableFunction(t, dbReqCtx, fnName)
+			}
+
+			//TODO: add support for $row (keywords)
 		}
 
-		resultContent = []byte(row)
-		resultHttpStatus = http.StatusOK
 	} else {
 		//
+
 	}
 
-	return
+	//TODO: check if nil, nil return is ok?
+	return nil, nil
 }

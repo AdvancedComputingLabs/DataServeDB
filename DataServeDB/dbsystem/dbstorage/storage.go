@@ -13,11 +13,18 @@
 package dbstorage
 
 import (
-	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"DataServeDB/paths"
 )
+
+func DeleteDirFromDisk(path string) error {
+	// TODO: check if it may not remove all the files, then it will create table in inconsistent state.
+	//  Handle it correctly.
+	dir := filepath.Dir(path)
+	return os.RemoveAll(dir)
+}
 
 func SaveToDisk(data []byte, path string) error {
 	//println(string(data))
@@ -29,7 +36,7 @@ func SaveToDisk(data []byte, path string) error {
 	if err != nil {
 		return err
 	}
-	defer fo.Close()
+	defer fo.Close() // TODO: handle error
 
 	_, err = fo.Write(data)
 	if err != nil {
@@ -40,5 +47,5 @@ func SaveToDisk(data []byte, path string) error {
 }
 
 func LoadFromDisk(path string) ([]byte, error) {
-	return ioutil.ReadFile(path)
+	return os.ReadFile(path)
 }

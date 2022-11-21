@@ -84,7 +84,7 @@ func (t dbTypeString) ConvertValue(v interface{}, dbTypeProperties interface{}) 
 		}
 
 		if !p.Nullable.True() {
-			return nil, errors.New("value for this field %s cannot be null")
+			return nil, errors.New("value for column '%s' cannot be null")
 		} else {
 			return v, nil
 		}
@@ -112,6 +112,10 @@ func (t dbTypeString) GetDbTypeDisplayName() string {
 }
 
 // public dbTypeStringProperties
+
+func (t *dbTypeStringProperties) IsNullable() bool {
+	return t.Nullable.True()
+}
 
 func (t *dbTypeStringProperties) IsPrimaryKey() bool {
 	return t.IsPrimarykey

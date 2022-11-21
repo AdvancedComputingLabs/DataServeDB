@@ -122,6 +122,10 @@ func (t dbTypeInt32) GetDbTypeId() int {
 
 // public dbTypeInt32Properties
 
+func (t *dbTypeInt32Properties) IsNullable() bool {
+	return t.Nullable.True()
+}
+
 func (t *dbTypeInt32Properties) IsPrimaryKey() bool {
 	return t.IsPrimarykey
 }
