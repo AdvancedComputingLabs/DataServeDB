@@ -1,7 +1,7 @@
 
 
 
-> **NOTE:** This document is provisional at the moment.
+> **NOTE:** This document is provisional at the moment and subject to changes.
 
 <!---
 <table >
@@ -21,6 +21,14 @@
 --->
 
 # DBRestQL
+
+<!-- toc -->
+
+- [Introduction](#introduction)
+    - [Current Limitations](#current-limitations)
+- [Concepts](#concepts)
+
+<!-- /toc -->
 
 ## Introduction
 
