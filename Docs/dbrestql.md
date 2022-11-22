@@ -20,11 +20,27 @@
 </table>
 --->
 
-# DBRestQL API
+# DBRestQL
 
 ## Introduction
 
 > **TODO:** Introduction. Description. Why create DBRestQL and not use OData or GraphQL?
+
+### Current Limitations
+
+## Concepts
+
+### Namespaces
+
+Database is divided in namespaces for each database structure object type, for example: `db_name/tables` or `db_name/files`. Tables is the namespace for tables, files is the namespace for directories and files in this example.
+
+Namespaces cannot be created or deleted by users. They are part of the database structure. A database should list namespaces it supports or are in use.
+
+### Standard Restful API
+
+DBRestQL standardizes the Restful API for database operations. It is a specification for how a client should request that resources be fetched or modified, and how a server should respond to those requests.
+
+
 
 
 ## GET 
