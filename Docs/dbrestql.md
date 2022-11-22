@@ -44,7 +44,10 @@ Database is divided in namespaces for each database structure object type, for e
 
 Namespaces cannot be created or deleted by users. They are part of the database structure. A database should list namespaces it supports or are in use.
 
-### Standard Restful API
+### Standard RESTful API
 
-DBRestQL standardizes the Restful API for database operations. It is a specification for how a client should request that resources be fetched or modified, and how a server should respond to those requests.
+DBRestQL standardizes the RESTful API for database operations. It is a specification for how a client should request that resources be fetched or modified, and how a server should respond to those requests.
 
+#### DBRestQL RESTful API for individual namespaces are as follows:
+- [`tables`](dbrestql-tables.md)
+- [`files`](dbrestql-files.md)

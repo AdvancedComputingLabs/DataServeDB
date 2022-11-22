@@ -4,15 +4,17 @@
 
 - [Get](#get)
     - [Tables](#tables)
-        - [Request](#request)
+        - [Request](#tables-request)
+        - [Response](#tables-response) 
     - [Table Rows](#table-rows)
-        - [Request](#request-1)
+        - [Request](#table-rows-request)
+        - [Response](#table-rows-response) 
 
 ## GET 
 
 ### **Tables**
 
-* **Request**
+* **Request**<a id="tables-request"></a> 
 
     * **Description:** List all tables in the database, that the user has access to.
         
@@ -43,7 +45,7 @@
 
     * **Request Body:** None.
 
-* **Response**
+* **Response**<a id="tables-response"></a> 
 
     * **Response Format**
 
@@ -95,7 +97,7 @@
 
     **TODO:** Need sequential order by primary key? All tables must have this order or only when a feature is enabled?
 
-* **Request**
+* **Request** <a id="table-rows-request"></a>
 
     * **Request Format**
             
@@ -127,7 +129,7 @@
 
     * **Request Body:** **TODO:** Add details about request body.
 
-* **Response**
+* **Response**<a id="table-rows-response"></a>
 
     * **Response Format**
 
