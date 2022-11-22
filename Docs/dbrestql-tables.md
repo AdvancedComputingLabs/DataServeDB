@@ -1,4 +1,4 @@
-# DBRestQL REST API for Tables Namespace
+# DBRestQL RESTful API for Tables Namespace
 
 ## Table of Contents
 
