@@ -36,7 +36,7 @@
 
 ### Current Limitations
 
-## Concepts
+## Main Concepts
 
 ### Namespaces
 
