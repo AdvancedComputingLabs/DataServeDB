@@ -26,7 +26,7 @@
 
 - [Introduction](#introduction)
     - [Current Limitations](#current-limitations)
-- [Concepts](#concepts)
+- [Main Concepts](#main-concepts)
 
 <!-- /toc -->
 
