@@ -21,6 +21,7 @@ import (
 
 const dataDirNameRelative = "Databases"
 const configDirNameRelative = "Config"
+const fileDirNameRelative = "DBFiles"
 
 // CreatePathIfNotExist returns true if path was created; panics if there is dir creation error
 func CreatePathIfNotExist(path string) bool {
@@ -75,4 +76,12 @@ func GetExeDirPath() string {
 		log.Fatal(e)
 	}
 	return filepath.Dir(exe)
+}
+
+func GetFilesPath() string {
+	path, e := filepath.Abs(fileDirNameRelative)
+	if e != nil {
+		log.Fatal(e)
+	}
+	return path
 }

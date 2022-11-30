@@ -54,8 +54,14 @@ import (
 // {DB_NAME} is special name, which is place holder for any db name provided in the path. For example: re_db/tables/users
 // db_name must be validated with db naming rule.
 const (
+<<<<<<< Updated upstream
 	dbNamePlaceHolder  = "{DB_NAME}"
 	tblNamePlaceHolder = "{TBL_NAME}"
+=======
+	dbNamePlaceHolder   = "{DB_NAME}"
+	tblNamePlaceHolder  = "{TBL_NAME}"
+	fileNamePlaceHolder = "{FIL_NAME}"
+>>>>>>> Stashed changes
 )
 
 type PathLevel struct {
@@ -97,6 +103,10 @@ func Register(matchPath string, handlerFn HttpRestApiHandlerFnI) error {
 
 	sMatchPathForRegEx := strings.Replace(matchPath, dbNamePlaceHolder, rules.DbNameValidatorRuleReStrBasic, 1)
 	sMatchPathForRegEx = strings.Replace(sMatchPathForRegEx, tblNamePlaceHolder, rules.TableNameValidatorRuleReStrBasic, 1)
+<<<<<<< Updated upstream
+=======
+	sMatchPathForRegEx = strings.Replace(sMatchPathForRegEx, fileNamePlaceHolder, rules.FileNameValidator, 1)
+>>>>>>> Stashed changes
 	p2h.matchPathRegEx = regexp.MustCompile("(?i)" + sMatchPathForRegEx) // (?i) makes it case-insensitive
 
 	p2h.HandlerFn = handlerFn
@@ -135,8 +145,17 @@ func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath str
 					dbName = pathSplit[i]
 				case "TABLES":
 					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeTablesNamespace))
+<<<<<<< Updated upstream
 				case tblNamePlaceHolder:
 					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeTable))
+=======
+				case "FILES":
+					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeFileNamespace))
+				case tblNamePlaceHolder:
+					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeTable))
+				case fileNamePlaceHolder:
+					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeFile))
+>>>>>>> Stashed changes
 				default: // suppose to lower level like row.
 					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeUndefined))
 				}

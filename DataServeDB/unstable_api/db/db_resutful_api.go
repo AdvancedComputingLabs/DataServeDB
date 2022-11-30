@@ -224,6 +224,18 @@ func getEffectivePathLevel(levels []dbrouter.PathLevel) dbrouter.PathLevel {
 
 			// any further levels are not needed in the case of table namespace.
 		}
+<<<<<<< Updated upstream
+=======
+	case constants.DbResTypeFileNamespace:
+		{
+			if len(levels) == 1 {
+				return levels[0]
+			}
+			if levels[1].PathItemTypeId == constants.DbResTypeFile {
+				return levels[1]
+			}
+		}
+>>>>>>> Stashed changes
 	}
 
 	// no effective path level found, return empty path level; does this have performance impact? then change it to return nil.

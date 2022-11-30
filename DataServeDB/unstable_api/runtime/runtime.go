@@ -42,6 +42,11 @@ func Start(disableHttpServer bool) error {
 	dbrouter.Register("{DB_NAME}/tables/{TBL_NAME}/{1}.*", TableRestPathHandler)
 	dbrouter.Register("{DB_NAME}/tables/{TBL_NAME}", TableRestPathHandler)
 	dbrouter.Register("{DB_NAME}/tables", TableRestPathHandler)
+<<<<<<< Updated upstream
+=======
+	dbrouter.Register("{DB_NAME}/files/{FIL_NAME}", FileRestPathHandler)
+	dbrouter.Register("{DB_NAME}/files", FileRestPathHandler)
+>>>>>>> Stashed changes
 
 	if !disableHttpServer {
 		//http server and rest api routing

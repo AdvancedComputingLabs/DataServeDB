@@ -155,6 +155,25 @@ func TestCreateTableJSON(t *testing.T) {
 		}
 	}
 }
+func TestDeleteTableJSON(t *testing.T) {
+	db, e := runtime.GetDb("re_db")
+	if e != nil {
+		t.Errorf("%v\n", e)
+		return
+	}
+
+	dberr := db.DeleteTable("Tbl01")
+	if dberr != nil {
+		log.Fatal(dberr)
+	}
+	_, err := db.GetTable("Tbl01")
+	if err == nil {
+		log.Fatal("table should not exist")
+	} else {
+		log.Printf("OK. error message: %v.", err)
+	}
+
+}
 
 func testRestApiGet(t *testing.T) {
 

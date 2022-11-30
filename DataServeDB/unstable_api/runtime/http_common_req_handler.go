@@ -60,6 +60,7 @@ func getDbAuthFromHttpHeader(r *http.Request) (scheme, authToken string, e error
 	return parseDbAuthStr(authStrs[0])
 }
 
+<<<<<<< Updated upstream
 func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []dbrouter.PathLevel) {
 	//TODO: dbName empty test case
 
@@ -67,6 +68,63 @@ func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 	var resultContent []byte
 	var resultErr error
 
+=======
+// File Resr Path Handler
+func FileRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []dbrouter.PathLevel) {
+
+	//TODO: dbName empty test case
+
+	var resultHttpStatus int
+	var resultContent []byte
+	var resultErr error
+
+	db, err := GetDb(dbName)
+	if err != nil {
+		resultHttpStatus, resultContent, resultErr = rest.HttpRestDbError(dberrors.NewDbError(dberrors.DatabaseNotFound, err))
+		rest.ResponseWriteHelper(w, resultHttpStatus, resultContent, resultErr)
+		return
+	}
+	var dbReqCtx *commtypes.DbReqContext
+
+	dbReqCtx = commtypes.NewDbReqContext(
+		httpMethod, resPath, matchedPath,
+		dbName, db, pathLevels)
+
+	switch strings.ToUpper(httpMethod) {
+	case "GET":
+		dbReqCtx.RestMethodId = constants.RestMethodGet
+		//db.getFile(dbReqXtx)
+		resultHttpStatus, resultContent, resultErr = db.FilesGet(dbReqCtx)
+	case "POST":
+		dbReqCtx.RestMethodId = constants.RestMethodPost
+		resultHttpStatus, resultContent, resultErr = db.FilesPost(dbReqCtx, r.MultipartForm)
+	case "DELETE":
+		dbReqCtx.RestMethodId = constants.RestMethodDelete
+		resultHttpStatus, resultContent, resultErr = db.FilesDelete(dbReqCtx)
+	case "PUT":
+		dbReqCtx.RestMethodId = constants.RestMethodPut
+		resultHttpStatus, resultContent, resultErr = db.FilesPutorPatch(dbReqCtx, r.MultipartForm)
+	case "PATCH":
+		dbReqCtx.RestMethodId = constants.RestMethodPatch
+		resultHttpStatus, resultContent, resultErr = db.FilesPutorPatch(dbReqCtx, r.MultipartForm)
+	default:
+		dbReqCtx.RestMethodId = constants.RestMethodNone
+		resultHttpStatus, resultContent, resultErr = rest.HttpRestDbError(
+			dberrors.NewDbError(dberrors.InvalidInputHttpMethodNotSupported,
+				fmt.Errorf("http method '%s' is not supported", httpMethod)))
+	}
+
+	rest.ResponseWriteHelper(w, resultHttpStatus, resultContent, resultErr)
+}
+
+func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []dbrouter.PathLevel) {
+	//TODO: dbName empty test case
+
+	var resultHttpStatus int
+	var resultContent []byte
+	var resultErr error
+
+>>>>>>> Stashed changes
 	db, err := GetDb(dbName)
 	if err != nil {
 		resultHttpStatus, resultContent, resultErr = rest.HttpRestDbError(dberrors.NewDbError(dberrors.DatabaseNotFound, err))

@@ -109,6 +109,10 @@ func TestGetRecordsRApi(t *testing.T) {
 		//log.Fatal(err)
 		log.Println(err)
 	} else {
+<<<<<<< Updated upstream
+=======
+		fmt.Println("tables :- ")
+>>>>>>> Stashed changes
 		log.Println(successResult)
 	}
 
