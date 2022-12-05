@@ -10,10 +10,7 @@ const (
 	DbResTypeTablesNamespace
 	DbResTypeTable
 	DbResTypeFileNamespace
-<<<<<<< Updated upstream
-=======
 	DbResTypeFile
->>>>>>> Stashed changes
 )
 
 const (
@@ -37,11 +34,8 @@ func (dbResType DbResTypes) String() string {
 		return "DbResTypeTable"
 	case DbResTypeFileNamespace:
 		return "DbResTypeFileNamespace"
-<<<<<<< Updated upstream
-=======
 	case DbResTypeFile:
 		return "DbResTypeFile"
->>>>>>> Stashed changes
 	}
 	return "DbResTypeUnknown"
 }

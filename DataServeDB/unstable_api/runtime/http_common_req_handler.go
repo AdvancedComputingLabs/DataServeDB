@@ -60,15 +60,6 @@ func getDbAuthFromHttpHeader(r *http.Request) (scheme, authToken string, e error
 	return parseDbAuthStr(authStrs[0])
 }
 
-<<<<<<< Updated upstream
-func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []dbrouter.PathLevel) {
-	//TODO: dbName empty test case
-
-	var resultHttpStatus int
-	var resultContent []byte
-	var resultErr error
-
-=======
 // File Resr Path Handler
 func FileRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []dbrouter.PathLevel) {
 
@@ -124,7 +115,6 @@ func TableRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, re
 	var resultContent []byte
 	var resultErr error
 
->>>>>>> Stashed changes
 	db, err := GetDb(dbName)
 	if err != nil {
 		resultHttpStatus, resultContent, resultErr = rest.HttpRestDbError(dberrors.NewDbError(dberrors.DatabaseNotFound, err))

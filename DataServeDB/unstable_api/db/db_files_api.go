@@ -6,8 +6,8 @@ import (
 	"mime/multipart"
 
 	"DataServeDB/commtypes"
+	"DataServeDB/dbfile"
 	"DataServeDB/dbsystem/constants"
-	"DataServeDB/files"
 	"DataServeDB/utils/rest"
 	"DataServeDB/utils/rest/dberrors"
 )
@@ -22,7 +22,7 @@ func (d *DB) FilesGet(dbReqCtx *commtypes.DbReqContext) (int, []byte, error) {
 	switch effectivePathLevel.PathItemTypeId {
 	case constants.DbResTypeFileNamespace:
 		{
-			resultContent, err := files.ListFiles()
+			resultContent, err := dbfile.ListFiles()
 			if err != nil {
 				return rest.HttpRestDbError(err)
 			}
@@ -34,7 +34,7 @@ func (d *DB) FilesGet(dbReqCtx *commtypes.DbReqContext) (int, []byte, error) {
 			fileName := effectivePathLevel.PathItem
 			//fmt.Println("filename", fileName)
 
-			resultContent, dberr := files.GetFile(fileName)
+			resultContent, dberr := dbfile.GetFile(fileName)
 			if dberr != nil {
 				return rest.HttpRestDbError(dberr)
 			}
@@ -60,7 +60,7 @@ func (d *DB) FilesPost(dbReqCtx *commtypes.DbReqContext, multipartForm *multipar
 	case constants.DbResTypeFileNamespace:
 		{
 
-			dberr := files.PostFile(multipartForm)
+			dberr := dbfile.PostFile(multipartForm)
 			if dberr != nil {
 				return rest.HttpRestDbError(dberr)
 			}
@@ -83,7 +83,7 @@ func (d *DB) FilesDelete(dbReqCtx *commtypes.DbReqContext) (int, []byte, error) 
 		{
 			fileName := tablePathLevel.PathItem
 
-			if dberr := files.DeleteFile(fileName); dberr != nil {
+			if dberr := dbfile.DeleteFile(fileName); dberr != nil {
 				return rest.HttpRestDbError(dberr)
 			}
 
@@ -103,7 +103,7 @@ func (d *DB) FilesPutorPatch(dbReqCtx *commtypes.DbReqContext, multipartForm *mu
 		{
 			fileName := tablePathLevel.PathItem
 
-			if dberr := files.EditOrUpdateFile(fileName, multipartForm); dberr != nil {
+			if dberr := dbfile.EditOrUpdateFile(fileName, multipartForm); dberr != nil {
 				return rest.HttpRestDbError(dberr)
 			}
 

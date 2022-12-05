@@ -52,7 +52,7 @@ func TestPostFile(t *testing.T) {
 	if _, err := io.Copy(w, file); err != nil {
 		t.Fatal(err)
 	}
-	mw.Close()
+	defer mw.Close()
 
 	successResult, err := restApiCallMu("POST", "re_db/files", mw)
 	if err != nil {
