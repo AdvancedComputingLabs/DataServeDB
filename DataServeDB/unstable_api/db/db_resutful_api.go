@@ -229,9 +229,12 @@ func getEffectivePathLevel(levels []dbrouter.PathLevel) dbrouter.PathLevel {
 			if len(levels) == 1 {
 				return levels[0]
 			}
-			if levels[1].PathItemTypeId == constants.DbResTypeFile {
-				return levels[1]
+			if levels[len(levels)-1].PathItemTypeId == constants.DbResTypeFile {
+				return levels[len(levels)-1]
 			}
+
+			// TODO -: Code For directory levels
+
 		}
 	}
 

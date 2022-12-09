@@ -11,6 +11,7 @@ const (
 	DbResTypeTable
 	DbResTypeFileNamespace
 	DbResTypeFile
+	DbResTypeDirName
 )
 
 const (
@@ -36,6 +37,8 @@ func (dbResType DbResTypes) String() string {
 		return "DbResTypeFileNamespace"
 	case DbResTypeFile:
 		return "DbResTypeFile"
+	case DbResTypeDirName:
+		return "DbResTypeDirName"
 	}
 	return "DbResTypeUnknown"
 }

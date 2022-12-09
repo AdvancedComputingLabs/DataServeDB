@@ -62,9 +62,6 @@ func DbNameIsValid(name string) bool {
 
 const TableNameValidatorRuleReStrBasic = "[A-Za-z][0-9A-Za-z]{2,49}"
 
-// fileName Validator regexp , need to double check
-const FileNameValidator = "([^.]*).(.*)"
-
 var tblNameValidatorRe = regexp.MustCompile(fmt.Sprintf("^%s$", TableNameValidatorRuleReStrBasic))
 
 var tableNameReservedWords = map[string]zeroMem{
@@ -103,3 +100,9 @@ func TableFieldNameIsValid(s string) bool {
 	}
 	return true
 }
+
+// fileName Validator regexp , need to double check
+// const FileNameValidator = "([^.]*).(.*)"
+const FileNameValidator = `(\w{5,50})+\.[A-Za-z0-9]{3}$`
+
+const DirNameValidator = `(\w{5,50})`

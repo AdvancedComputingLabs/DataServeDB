@@ -26,7 +26,7 @@ func TestListfilesRApi(t *testing.T) {
 }
 
 func TestGetFileByNameRApi(t *testing.T) {
-	successResult, err := restApiCall("GET", "re_db/files/new.txt", "")
+	successResult, err := restApiCall("GET", "re_db/files/level1/level2/new12.txt", "")
 	if err != nil {
 		log.Fatal(err)
 	} else {

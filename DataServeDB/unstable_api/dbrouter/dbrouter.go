@@ -40,7 +40,6 @@ package dbrouter
 import (
 	"DataServeDB/utils/rest"
 	"errors"
-	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -58,6 +57,7 @@ const (
 	dbNamePlaceHolder   = "{DB_NAME}"
 	tblNamePlaceHolder  = "{TBL_NAME}"
 	fileNamePlaceHolder = "{FIL_NAME}"
+	dirNamePlaceHolder  = "{DIR_NAME}"
 )
 
 type PathLevel struct {
@@ -100,6 +100,7 @@ func Register(matchPath string, handlerFn HttpRestApiHandlerFnI) error {
 	sMatchPathForRegEx := strings.Replace(matchPath, dbNamePlaceHolder, rules.DbNameValidatorRuleReStrBasic, 1)
 	sMatchPathForRegEx = strings.Replace(sMatchPathForRegEx, tblNamePlaceHolder, rules.TableNameValidatorRuleReStrBasic, 1)
 	sMatchPathForRegEx = strings.Replace(sMatchPathForRegEx, fileNamePlaceHolder, rules.FileNameValidator, 1)
+	sMatchPathForRegEx = strings.Replace(sMatchPathForRegEx, dirNamePlaceHolder, rules.DirNameValidator, 3)
 	p2h.matchPathRegEx = regexp.MustCompile("(?i)" + sMatchPathForRegEx) // (?i) makes it case-insensitive
 
 	p2h.HandlerFn = handlerFn
@@ -144,12 +145,13 @@ func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath str
 					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeTable))
 				case fileNamePlaceHolder:
 					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeFile))
+				case dirNamePlaceHolder:
+					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeDirName))
 				default: // suppose to lower level like row.
 					pathLevels = append(pathLevels, NewPathLevel(pathSplit[i], constants.DbResTypeUndefined))
 				}
 			}
 
-			fmt.Println("hello")
 			m.HandlerFn(w, r, httpMethod, reqPath, path, dbName, pathLevels)
 			return
 		}

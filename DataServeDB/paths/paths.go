@@ -21,7 +21,7 @@ import (
 
 const dataDirNameRelative = "Databases"
 const configDirNameRelative = "Config"
-const fileDirNameRelative = "DBFiles"
+const fileDirNameRelative = "Databases"
 
 // CreatePathIfNotExist returns true if path was created; panics if there is dir creation error
 func CreatePathIfNotExist(path string) bool {
