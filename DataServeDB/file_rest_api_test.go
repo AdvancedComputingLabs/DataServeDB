@@ -12,6 +12,23 @@ import (
 	"testing"
 )
 
+type getTestModel struct {
+	path string
+	exp  error
+}
+type deleteTest struct {
+	arg1 string
+	exp  error
+}
+
+var addTests = []getTestModel{
+	{"level1/level2", nil},
+	{"level1", nil},
+	{"level3", nil},
+	{"level1/level2/new12.txt", nil},
+	{"level1/level2/few12.txt", nil},
+}
+
 func TestListfilesRApi(t *testing.T) {
 	successResult, err := restApiCall("GET", "re_db/files", "")
 	if err != nil {
@@ -26,11 +43,15 @@ func TestListfilesRApi(t *testing.T) {
 }
 
 func TestGetFileByNameRApi(t *testing.T) {
-	successResult, err := restApiCall("GET", "re_db/files/level1/level2/new12.txt", "")
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		log.Println(successResult)
+
+	for i, tc := range addTests {
+		fmt.Println("Test Case ", i)
+		successResult, err := restApiCall("GET", "re_db/files/"+tc.path, "")
+		if err != tc.exp {
+			log.Println(err)
+		} else {
+			log.Println(successResult)
+		}
 	}
 }
 
@@ -57,6 +78,17 @@ func TestPostFile(t *testing.T) {
 	successResult, err := restApiCallMu("POST", "re_db/files", mw)
 	if err != nil {
 		log.Fatal(err)
+	} else {
+		log.Println(successResult)
+	}
+}
+
+func TestDeleteFile(t *testing.T) {
+	successResult, err := restApiCall("DELETE", "re_db/files/level1/level2/new12.txt", "")
+	if err != nil {
+		// not implemented yet
+		//log.Fatal(err)
+		log.Println(err)
 	} else {
 		log.Println(successResult)
 	}

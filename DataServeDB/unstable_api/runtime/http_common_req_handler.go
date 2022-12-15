@@ -64,6 +64,7 @@ func getDbAuthFromHttpHeader(r *http.Request) (scheme, authToken string, e error
 func FileRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []dbrouter.PathLevel) {
 
 	//TODO: dbName empty test case
+	fmt.Println("helle file handler!!")
 
 	var resultHttpStatus int
 	var resultContent []byte
@@ -87,15 +88,30 @@ func FileRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, res
 		//db.getFile(dbReqXtx)
 		resultHttpStatus, resultContent, resultErr = db.FilesGet(dbReqCtx)
 	case "POST":
+		err := r.ParseMultipartForm(32 << 20) // maxMemory 32MB
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		dbReqCtx.RestMethodId = constants.RestMethodPost
 		resultHttpStatus, resultContent, resultErr = db.FilesPost(dbReqCtx, r.MultipartForm)
 	case "DELETE":
 		dbReqCtx.RestMethodId = constants.RestMethodDelete
 		resultHttpStatus, resultContent, resultErr = db.FilesDelete(dbReqCtx)
 	case "PUT":
+		err := r.ParseMultipartForm(32 << 20) // maxMemory 32MB
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		dbReqCtx.RestMethodId = constants.RestMethodPut
 		resultHttpStatus, resultContent, resultErr = db.FilesPutorPatch(dbReqCtx, r.MultipartForm)
 	case "PATCH":
+		err := r.ParseMultipartForm(32 << 20) // maxMemory 32MB
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		dbReqCtx.RestMethodId = constants.RestMethodPatch
 		resultHttpStatus, resultContent, resultErr = db.FilesPutorPatch(dbReqCtx, r.MultipartForm)
 	default:

@@ -1,6 +1,7 @@
 package dbfile
 
 import (
+	rules "DataServeDB/dbsystem/rules"
 	"DataServeDB/paths"
 	"DataServeDB/utils/rest/dberrors"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -44,10 +46,6 @@ func GetFile(path, filename string) (result []byte, dberr *dberrors.DbError) {
 
 	return
 }
-func GetPath(path string) string {
-	path = strings.Replace(path, "files", "files_data", 1)
-	return paths.Combine(paths.GetFilesPath(), path)
-}
 
 func PostFile(path string, multipartForm *multipart.Form) (dberr *dberrors.DbError) {
 	path = GetPath(path)
@@ -78,6 +76,7 @@ func DeleteFile(path string) (dberr *dberrors.DbError) {
 func EditOrUpdateFile(path string, multipartForm *multipart.Form) (dberr *dberrors.DbError) {
 
 	filePath := GetPath(path)
+	//filename := extractFileName(path)
 	for _, fileHeaders := range multipartForm.File {
 		//TO DO-:  detect single file
 		for _, fileHeader := range fileHeaders {
@@ -100,10 +99,10 @@ func EditOrUpdateFile(path string, multipartForm *multipart.Form) (dberr *dberro
 	return nil
 }
 
-func VerifyFilePathLevels(path string) error {
+// func VerifyFilePathLevels(path string) error {
 
-	return nil
-}
+// 	return nil
+// }
 
 func VerifyFileStorage(path, filename string) *dberrors.DbError {
 	var size int64
@@ -135,4 +134,13 @@ func dirSize(path string) (int64, error) {
 		return err
 	})
 	return size, err
+}
+
+func extractFileName(path string) string {
+	re := regexp.MustCompile(rules.FileNameValidator)
+	return re.FindString(path)
+}
+func GetPath(path string) string {
+	path = strings.Replace(path, "files", "files_data", 1)
+	return paths.Combine(paths.GetFilesPath(), path)
 }

@@ -40,6 +40,7 @@ package dbrouter
 import (
 	"DataServeDB/utils/rest"
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -124,6 +125,7 @@ func MatchPathAndCallHandler(w http.ResponseWriter, r *http.Request, reqPath str
 	//find matching path, first match returns
 	for _, m := range pathsToHandlers {
 		if path := m.matchPathRegEx.FindString(reqPath); path != "" {
+			fmt.Println(path, m.MatchPath)
 
 			// placeholders can be in any order, so following loop and matching is used.
 

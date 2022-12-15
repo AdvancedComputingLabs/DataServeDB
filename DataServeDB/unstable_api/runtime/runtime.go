@@ -45,7 +45,10 @@ func Start(disableHttpServer bool) error {
 	// dbrouter.Register("{DB_NAME}/files/{FIL_NAME}", FileRestPathHandler)
 	dbrouter.Register("{DB_NAME}/files/{DIR_NAME}/{DIR_NAME}/{DIR_NAME}/{FIL_NAME}", FileRestPathHandler)
 	dbrouter.Register("{DB_NAME}/files/{DIR_NAME}/{DIR_NAME}/{FIL_NAME}", FileRestPathHandler)
+	dbrouter.Register("{DB_NAME}/files/{DIR_NAME}/{DIR_NAME}/{DIR_NAME}", FileRestPathHandler)
 	dbrouter.Register("{DB_NAME}/files/{DIR_NAME}/{FIL_NAME}", FileRestPathHandler)
+	dbrouter.Register("{DB_NAME}/files/{DIR_NAME}/{DIR_NAME}", FileRestPathHandler)
+	dbrouter.Register("{DB_NAME}/files/{DIR_NAME}", FileRestPathHandler)
 	dbrouter.Register("{DB_NAME}/files", FileRestPathHandler)
 
 	if !disableHttpServer {
