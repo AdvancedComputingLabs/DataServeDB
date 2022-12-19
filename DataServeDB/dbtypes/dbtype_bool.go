@@ -20,11 +20,13 @@ import (
 // section: declarations
 
 type dbTypeBool struct {
-	//private to package
+	// NOTE: cannot be generic, each type should have its own struct.
+	// private to package
 	dbTypeBase
 }
 
 type DbTypeBoolProperties struct {
+	// NOTE: cannot be generic, each type should have its own properties.
 	dbtype_props.Conversion
 	dbtype_props.Nullable
 }
@@ -38,7 +40,7 @@ var Bool = dbTypeBool{
 	},
 }
 
-func (t dbTypeBool) ConvertValue(v interface{}, dbTypeProperties interface{}) (interface{}, error) {
+func (t dbTypeBool) ConvertValue(v any, dbTypeProperties any) (any, error) {
 	p := getDbTypeBoolPropertiesIndirect(dbTypeProperties)
 
 	if p == nil {
@@ -51,29 +53,35 @@ func (t dbTypeBool) ConvertValue(v interface{}, dbTypeProperties interface{}) (i
 }
 
 func (t dbTypeBool) GetDbTypeDisplayName() string {
+	// NOTE: too short for generic function.
 	return t.DisplayName
 }
 
 func (t dbTypeBool) GetDbTypeId() int {
+	// NOTE: too short for generic function.
 	return t.DbTypeId
 }
 
 // public DbTypeBoolProperties
 
-func (t dbTypeBool) defaultDbTypeProperties() DbTypePropertiesI {
-	return defaultDbTypeBoolProperties()
-}
-
 func (t *DbTypeBoolProperties) IsNullable() bool {
+	// NOTE: too short for generic function.
+	// TODO: suitable for generic interface?
 	return t.Nullable.True()
 }
 
 func (t *DbTypeBoolProperties) IsPrimaryKey() bool {
+	// NOTE: too short for generic function.
+	// TODO: suitable for generic interface?
 	return false
 }
 
 // private
 // Section: DbTypeBool
+
+func (t dbTypeBool) defaultDbTypeProperties() DbTypePropertiesI {
+	return defaultDbTypeBoolProperties()
+}
 
 func (t dbTypeBool) onCreateValidateFieldProperties(fieldProperties interface{}) error {
 	//!NotImplemented

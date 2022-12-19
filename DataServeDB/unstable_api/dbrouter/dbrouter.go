@@ -38,7 +38,6 @@
 package dbrouter
 
 import (
-	"DataServeDB/utils/rest"
 	"errors"
 	"net/http"
 	"regexp"
@@ -46,6 +45,7 @@ import (
 
 	"DataServeDB/dbsystem/constants"
 	rules "DataServeDB/dbsystem/rules"
+	"DataServeDB/utils/rest"
 )
 
 //NOTE: placeholders can be here since they don't change.

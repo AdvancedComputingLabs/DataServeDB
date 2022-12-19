@@ -13,7 +13,7 @@ func getLastPathLevel(pathLevels []PathLevel) (lastPathLevel PathLevel) {
 	return
 }
 
-func TableHandlerTester(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []PathLevel) (resultHttpStatus int, resultContent []byte, resultErr error) {
+func TableHandlerTester(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []PathLevel) {
 
 	lastPathLevel := getLastPathLevel(pathLevels)
 
@@ -23,10 +23,9 @@ func TableHandlerTester(w http.ResponseWriter, r *http.Request, httpMethod, resP
 	fmt.Println("dbName:", dbName)
 	fmt.Println("lastPathLevel:", lastPathLevel.PathItem)
 	fmt.Println("lastPathLevel_DbResTypeId:", lastPathLevel.PathItemTypeId.String())
-	return 0, nil, nil
 }
 
-func TablesParentHandlerTester(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []PathLevel) (resultHttpStatus int, resultContent []byte, resultErr error) {
+func TablesParentHandlerTester(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []PathLevel) {
 
 	lastPathLevel := getLastPathLevel(pathLevels)
 
@@ -36,7 +35,6 @@ func TablesParentHandlerTester(w http.ResponseWriter, r *http.Request, httpMetho
 	fmt.Println("dbName:", dbName)
 	fmt.Println("lastPathLevel:", lastPathLevel.PathItem)
 	fmt.Println("lastPathLevel_DbResTypeId:", lastPathLevel.PathItemTypeId.String())
-	return 0, nil, nil
 }
 
 func TestRegister(t *testing.T) {

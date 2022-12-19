@@ -200,10 +200,6 @@ func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow Table
 		//check and fill missing fields
 		for fieldId, p := range t.FieldInternalIdToFieldMetaData {
 
-			// for replace update, primary is not added here.
-			// But all the other non-null and default fields are added.
-			// need to check nullable are just add them and they are removed later?
-
 			// if replace operation and field is primary key then skip it
 			if tableOp == idbstorer.TableOperationReplaceRow && p.FieldTypeProps.IsPrimaryKey() {
 				// don't need to add primary key here to avoid validation. It is supposed to be
@@ -213,8 +209,8 @@ func (t *tableFieldsMetadataT) getRowWithFieldMetadataInternal(userSentRow Table
 
 			if p.FieldTypeProps.IsNullable() {
 				// Nullable fields are not added to the row, true for both insert row and replace row.
-				// For non-null fields, they are added if and they should error if value is not there by default, auto, or perhaps from
-				// a column function in the future.
+				// For non-null fields, they are added, and they should error if value is not there. Value can also come
+				// from default, auto, or perhaps from a column function in the future.
 				continue
 			}
 

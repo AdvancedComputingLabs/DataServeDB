@@ -29,6 +29,7 @@ import (
 // section: declarations
 
 type dbTypeDateTime struct {
+	// NOTE: see bool file.
 	//private to package
 	dbTypeBase
 }
@@ -42,6 +43,7 @@ type dbTypeDateTimeValueOrFun struct {
 }
 
 type DbTypeDateTimeProperties struct {
+	// NOTE: see bool file.
 	dbtype_props.Conversion
 	dbtype_props.Nullable
 	Auto    dbTypeDateTimeValueOrFun
@@ -108,20 +110,24 @@ POST_ToIso8601Utc:
 }
 
 func (t dbTypeDateTime) GetDbTypeDisplayName() string {
+	// NOTE: see bool file.
 	return t.DisplayName
 }
 
 func (t dbTypeDateTime) GetDbTypeId() int {
+	// NOTE: see bool file.
 	return t.DbTypeId
 }
 
 // public DbTypeDateTimeProperties
 
 func (t *DbTypeDateTimeProperties) IsNullable() bool {
+	// NOTE: see bool file.
 	return t.Nullable.True()
 }
 
 func (t *DbTypeDateTimeProperties) IsPrimaryKey() bool {
+	// NOTE: see bool file.
 	return false
 }
 
