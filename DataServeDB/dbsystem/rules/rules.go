@@ -103,5 +103,5 @@ func TableFieldNameIsValid(s string) bool {
 
 // fileName Validator regexp , need to double check
 // const FileNameValidator = "([^.]*).(.*)"
-const FileNameValidator = `(\w{5,50})+\.[A-Za-z0-9]{1,5}$`
-const DirNameValidator = `(\w{5,50})`
+const FileNameValidator = `(\w{1,50})+\.[A-Za-z0-9]{1,5}$`
+const DirNameValidator = `(\w{1,50})`

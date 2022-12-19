@@ -54,6 +54,9 @@ func PostFile(path string, multipartForm *multipart.Form) (dberr *dberrors.DbErr
 			file, _ := fileHeader.Open()
 			//path := fmt.Sprintf("files/%s", fileHeader.Filename)
 			fileName := paths.Combine(path, fileHeader.Filename)
+			if fnerr := matchFileName(fileName); fnerr != nil {
+				return dberrors.NewDbError(dberrors.InvalidInputKeyNotProvided, fnerr)
+			}
 			buf, _ := ioutil.ReadAll(file)
 			err := ioutil.WriteFile(fileName, buf, os.ModePerm)
 			if err != nil {
@@ -143,4 +146,14 @@ func extractFileName(path string) string {
 func GetPath(path string) string {
 	path = strings.Replace(path, "files", "files_data", 1)
 	return paths.Combine(paths.GetFilesPath(), path)
+}
+
+func matchFileName(fileName string) error {
+	re := regexp.MustCompile(rules.FileNameValidator)
+	res := re.FindString(fileName)
+
+	if res == fileName {
+		return nil
+	}
+	return errors.New("file name not accepted")
 }

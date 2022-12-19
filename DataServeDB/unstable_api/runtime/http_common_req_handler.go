@@ -64,7 +64,6 @@ func getDbAuthFromHttpHeader(r *http.Request) (scheme, authToken string, e error
 func FileRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, resPath, matchedPath, dbName string, pathLevels []dbrouter.PathLevel) {
 
 	//TODO: dbName empty test case
-	fmt.Println("helle file handler!!")
 
 	var resultHttpStatus int
 	var resultContent []byte
