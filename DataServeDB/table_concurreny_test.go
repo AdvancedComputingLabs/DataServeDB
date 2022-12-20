@@ -39,7 +39,7 @@ var testCaseArray = []testCase{
 	{"DELETE", "re_db/tables/TestTable03/8", "", nil},
 }
 
-func TestCuncurrency(t *testing.T, f *testing.F) {
+func TestCuncurrency(t *testing.T) {
 
 	for _, testCaseElem := range testCaseArray {
 		go concurrentTesting(t, testCaseElem)
