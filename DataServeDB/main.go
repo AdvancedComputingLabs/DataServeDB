@@ -50,7 +50,7 @@ func init() {
 	//this always runs first, so put any initalizations for the server app here.
 
 	//TODO: error handling
-	runtime.Start(false)
+	runtime.Start(true)
 
 }
 
