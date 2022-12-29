@@ -8,7 +8,10 @@ import (
 	"io"
 	"log"
 	"mime/multipart"
+	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -75,7 +78,7 @@ func TestPostFile(t *testing.T) {
 	}
 	defer mw.Close()
 
-	successResult, err := restApiCallMu("POST", "re_db/files", mw)
+	successResult, err := restApiCallMu("POST", "re_db/files/level1/")
 	if err != nil {
 		log.Fatal(err)
 	} else {
@@ -94,13 +97,39 @@ func TestDeleteFile(t *testing.T) {
 	}
 }
 
-func restApiCallMu(method, path string, mw *multipart.Writer) (string, error) {
-	bodybytes := new(bytes.Buffer)
+func restApiCallMu(method, path string) (string, error) {
+	//bodybytes := new(bytes.Buffer)
+	// file, er := os.ReadFile("./tes.txt")
+	// if er != nil {
+	// 	fmt.Println(er.Error())
+	// }
+	// file, err := os.Open("tes.txt")
+	// if err != nil {
+	// 	//t.Fatal(err)
+	// }
+	// data := url.Values{}
+	// data.Set("name", file.)
+	wbody := &bytes.Buffer{}
+	writer := multipart.NewWriter(wbody)
+	fw, err := writer.CreateFormFile("photo", "token.json")
+	if err != nil {
+	}
+	file, err := os.Open("token.json")
+	if err != nil {
+		panic(err)
+	}
+	_, err = io.Copy(fw, file)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	// Close multipart writer.
+	writer.Close()
 
-	req, w := newHttpReqNResp(method, path, io.NopCloser(bodybytes))
+	req, w := newHttpReqNResp(method, path, bytes.NewReader(wbody.Bytes()))
 
 	reqPath := rest.HttpRestPathParser(req.URL.String())
-	req.Header.Add("Content-Type", mw.FormDataContentType())
+	// req.Header.Add("Content-Type", "multipart/form-data; boundary=<calculated when request is sent>")
+	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	dbrouter.MatchPathAndCallHandler(w, req, reqPath, req.Method)
 
@@ -111,5 +140,22 @@ func restApiCallMu(method, path string, mw *multipart.Writer) (string, error) {
 		return "", fmt.Errorf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, string(body))
 	} else {
 		return fmt.Sprintf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, string(body)), nil
+	}
+}
+func restApiPost(method, path string) (string, error) {
+	file, _ := os.ReadFile("./tes.txt")
+	data := url.Values{}
+	data.Set("name", string(file))
+	//data.Set("surname", "bar")
+
+	client := &http.Client{}
+	r, _ := http.NewRequest(http.MethodPost, path, strings.NewReader(data.Encode())) // URL-encoded payload
+
+	resp, _ := client.Do(r)
+	//body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 && resp.StatusCode < 600 {
+		return "", fmt.Errorf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, "")
+	} else {
+		return fmt.Sprintf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, ""), nil
 	}
 }

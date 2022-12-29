@@ -96,12 +96,14 @@ func TestDeleteTableRApi(t *testing.T) {
 func TestInsertRecordsRApi(t *testing.T) {
 
 	for _, rowJSON := range insertRowJSON {
-		successResult, err := restApiCall("POST", "re_db/tables/TestTable03", rowJSON)
-		if err != nil {
-			log.Fatal(err)
-		} else {
-			log.Println(successResult)
-		}
+		t.Run("test INSERT re_db/tables/TestTable03", func(t *testing.T) {
+			successResult, err := restApiCall("POST", "re_db/tables/TestTable03", rowJSON)
+			if err != nil {
+				log.Fatal(err)
+			} else {
+				log.Println(successResult)
+			}
+		})
 	}
 }
 
@@ -137,15 +139,23 @@ func TestGetRecordsRApi(t *testing.T) {
 
 func TestUpdateRecordsRApi(t *testing.T) {
 
-	updateRowJSON := `{
-		"UserName": "TestUser01InTestTable03Updated"
-	}`
+	updateRowJSON := []testCase{
+		{"PATCH", "re_db/tables/TestTable03/1", `{ "UserName": "TestUser01InTestTable03Updated" }`, nil},
+		{"PATCH", "re_db/tables/TestTable03/2", `{ "UserName": "TestUser02InTestTable03Updated" }`, nil},
+		{"PATCH", "re_db/tables/TestTable03/3", `{ "UserName": "TestUser03InTestTable03Updated" }`, nil},
+		{"PATCH", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser04InTestTable03Updated" }`, nil},
+	}
 
-	successResult, err := restApiCall("PATCH", "re_db/tables/TestTable03/1", updateRowJSON)
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		log.Println(successResult)
+	for _, rowJSON := range updateRowJSON {
+
+		t.Run("test "+rowJSON.method+" "+rowJSON.path, func(t *testing.T) {
+			successResult, err := restApiCall(rowJSON.method, rowJSON.path, rowJSON.body)
+			if err != nil {
+				log.Fatal(err)
+			} else {
+				log.Println(successResult)
+			}
+		})
 	}
 }
 
@@ -158,20 +168,22 @@ func TestReplaceRecordsRApi(t *testing.T) {
 	// 		After deleting the table and recreating it with Rank as nullable, Rank was removed from the record.
 	//		-- HY @ 21-Nov-2022
 
-	updateRowJSON := []string{
-		`{ "UserName": "TestUser01InTestTable03Replaceded" }`,
-		`{ "UserName": "TestUser02InTestTable03Replaceded" }`,
-		`{ "UserName": "TestUser03InTestTable03Replaceded" }`,
-		`{ "UserName": "TestUser04InTestTable03Replaceded" }`,
+	updateRowJSON := []testCase{
+		{"PUT", "re_db/tables/TestTable03/3", `{ "UserName": "TestUser01InTestTable03Replaceded" }`, nil},
+		{"PUT", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser02InTestTable03Replaceded" }`, nil},
+		{"PUT", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser03InTestTable03Replaceded" }`, nil},
+		{"PUT", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser04InTestTable03Replaceded" }`, nil},
 	}
 
-	for i, rowJSON := range updateRowJSON {
-		successResult, err := restApiCall("PUT", "re_db/tables/TestTable03/"+strconv.Itoa(i+1), rowJSON)
-		if err != nil {
-			log.Fatal(err)
-		} else {
-			log.Println(successResult)
-		}
+	for _, rowJSON := range updateRowJSON {
+		t.Run("test "+rowJSON.method+" "+rowJSON.path, func(t *testing.T) {
+			successResult, err := restApiCall(rowJSON.method, rowJSON.path, rowJSON.body)
+			if err != nil {
+				log.Fatal(err)
+			} else {
+				log.Println(successResult)
+			}
+		})
 	}
 
 }
@@ -179,14 +191,15 @@ func TestReplaceRecordsRApi(t *testing.T) {
 func TestDeleteRecordsRApi(t *testing.T) {
 
 	for i := 5; i <= 8; i++ {
-		successResult, err := restApiCall("DELETE", "re_db/tables/TestTable03/"+strconv.Itoa(i), "")
-		if err != nil {
-			t.Error(err)
-		} else {
-			log.Println(successResult)
-		}
+		t.Run("test DELETE re_db/tables/TestTable03/"+strconv.Itoa(i), func(t *testing.T) {
+			successResult, err := restApiCall("DELETE", "re_db/tables/TestTable03/"+strconv.Itoa(i), "")
+			if err != nil {
+				t.Error(err)
+			} else {
+				log.Println(successResult)
+			}
+		})
 	}
-
 }
 
 // ## Sub Level Test Functions

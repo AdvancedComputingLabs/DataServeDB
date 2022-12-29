@@ -30,13 +30,6 @@ import (
 
 */
 
-//	type testCase struct {
-//		method string
-//		path   string
-//		body   string
-//		exp    error
-//	}
-
 type user struct {
 	Id         int64
 	UserName   string
@@ -138,8 +131,6 @@ func TestPer(t *testing.T) {
 	TestCreateTableRApi(t)
 	for _, testCase := range arr {
 		t.Run("test "+testCase.method+" "+testCase.path, func(t *testing.T) {
-			// testCaseEl := testCase
-			// t.Parallel()
 			fmt.Println(testCase.method, testCase.path, testCase.body)
 			successResult, err := restApiCall(testCase.method, testCase.path, testCase.body)
 			if err != testCase.exp {

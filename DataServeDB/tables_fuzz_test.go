@@ -12,7 +12,7 @@ TODO: Devise useful fuzz test cases.
 */
 
 func FuzzHex(f *testing.F) {
-	for i, seed := range generateJSON(500) {
+	for i, seed := range testCaseArray {
 		f.Add(seed.method, seed.path, seed.body)
 		if i == 1000 {
 			break

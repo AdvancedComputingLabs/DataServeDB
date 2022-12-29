@@ -87,8 +87,10 @@ func FileRestPathHandler(w http.ResponseWriter, r *http.Request, httpMethod, res
 		//db.getFile(dbReqXtx)
 		resultHttpStatus, resultContent, resultErr = db.FilesGet(dbReqCtx)
 	case "POST":
+		fmt.Println("hai-----")
 		err := r.ParseMultipartForm(32 << 20) // maxMemory 32MB
 		if err != nil {
+			fmt.Println(err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
