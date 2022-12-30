@@ -1,17 +1,16 @@
 package main
 
 import (
+	"DataServeDB/paths"
 	"DataServeDB/unstable_api/dbrouter"
 	"DataServeDB/utils/rest"
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"mime/multipart"
-	"net/http"
-	"net/url"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -58,65 +57,60 @@ func TestGetFileByNameRApi(t *testing.T) {
 	}
 }
 
+const files_path = "../../../test_files/"
+
 func TestPostFile(t *testing.T) {
-	body := new(bytes.Buffer)
-
-	mw := multipart.NewWriter(body)
-
-	file, err := os.Open("tes.txt")
+	files, err := ioutil.ReadDir(files_path)
 	if err != nil {
-		t.Fatal(err)
+
+		fmt.Println(err.Error())
+		return
 	}
 
-	w, err := mw.CreateFormFile("file", "tes.txt")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := io.Copy(w, file); err != nil {
-		t.Fatal(err)
-	}
-	defer mw.Close()
-
-	successResult, err := restApiCallMu("POST", "re_db/files/level1/")
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		log.Println(successResult)
+	for _, file := range files {
+		t.Run("test POST"+file.Name(), func(t *testing.T) {
+			successResult, err := restApiCallMu("POST", "re_db/files/level1/", file.Name())
+			if err != nil {
+				t.Fatal(err)
+			} else {
+				log.Println(successResult)
+			}
+		})
 	}
 }
 
 func TestDeleteFile(t *testing.T) {
-	successResult, err := restApiCall("DELETE", "re_db/files/level1/level2/new12.txt", "")
+	files, err := ioutil.ReadDir(files_path)
 	if err != nil {
-		// not implemented yet
-		//log.Fatal(err)
-		log.Println(err)
-	} else {
-		log.Println(successResult)
+
+		fmt.Println(err.Error())
+		return
+	}
+
+	for _, file := range files {
+		t.Run("test DELETE"+file.Name(), func(t *testing.T) {
+			successResult, err := restApiCall("DELETE", "re_db/files/level1/"+file.Name(), "")
+			if err != nil {
+				log.Println(err)
+			} else {
+				log.Println(successResult)
+			}
+		})
 	}
 }
 
-func restApiCallMu(method, path string) (string, error) {
-	//bodybytes := new(bytes.Buffer)
-	// file, er := os.ReadFile("./tes.txt")
-	// if er != nil {
-	// 	fmt.Println(er.Error())
-	// }
-	// file, err := os.Open("tes.txt")
-	// if err != nil {
-	// 	//t.Fatal(err)
-	// }
-	// data := url.Values{}
-	// data.Set("name", file.)
+func restApiCallMu(method, path, fileName string) (string, error) {
+
 	wbody := &bytes.Buffer{}
 	writer := multipart.NewWriter(wbody)
-	fw, err := writer.CreateFormFile("photo", "token.json")
+	fw, err := writer.CreateFormFile("file", fileName)
 	if err != nil {
+		fmt.Println(err)
 	}
-	file, err := os.Open("token.json")
+	fileName = paths.Combine(files_path, fileName)
+	file, err := os.Open(fileName)
 	if err != nil {
-		panic(err)
+		fmt.Println(err.Error())
 	}
 	_, err = io.Copy(fw, file)
 	if err != nil {
@@ -128,7 +122,6 @@ func restApiCallMu(method, path string) (string, error) {
 	req, w := newHttpReqNResp(method, path, bytes.NewReader(wbody.Bytes()))
 
 	reqPath := rest.HttpRestPathParser(req.URL.String())
-	// req.Header.Add("Content-Type", "multipart/form-data; boundary=<calculated when request is sent>")
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	dbrouter.MatchPathAndCallHandler(w, req, reqPath, req.Method)
@@ -140,22 +133,5 @@ func restApiCallMu(method, path string) (string, error) {
 		return "", fmt.Errorf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, string(body))
 	} else {
 		return fmt.Sprintf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, string(body)), nil
-	}
-}
-func restApiPost(method, path string) (string, error) {
-	file, _ := os.ReadFile("./tes.txt")
-	data := url.Values{}
-	data.Set("name", string(file))
-	//data.Set("surname", "bar")
-
-	client := &http.Client{}
-	r, _ := http.NewRequest(http.MethodPost, path, strings.NewReader(data.Encode())) // URL-encoded payload
-
-	resp, _ := client.Do(r)
-	//body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 && resp.StatusCode < 600 {
-		return "", fmt.Errorf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, "")
-	} else {
-		return fmt.Sprintf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, ""), nil
 	}
 }

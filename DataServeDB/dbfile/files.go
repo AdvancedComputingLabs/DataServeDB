@@ -53,15 +53,22 @@ func PostFile(path string, multipartForm *multipart.Form) (dberr *dberrors.DbErr
 		for _, fileHeader := range fileHeaders {
 			file, _ := fileHeader.Open()
 			//path := fmt.Sprintf("files/%s", fileHeader.Filename)
-			fileName := paths.Combine(path, fileHeader.Filename)
-			if fnerr := matchFileName(fileName); fnerr != nil {
+			if fnerr := matchFileName(fileHeader.Filename); fnerr != nil {
 				return dberrors.NewDbError(dberrors.InvalidInputKeyNotProvided, fnerr)
 			}
-			buf, _ := ioutil.ReadAll(file)
-			err := ioutil.WriteFile(fileName, buf, os.ModePerm)
+			fileName := paths.Combine(path, fileHeader.Filename)
+			data, _ := ioutil.ReadAll(file)
+
+			fo, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_SYNC|os.O_EXCL, 0755)
 			if err != nil {
 				return dberrors.NewDbError(dberrors.InvalidInputKeyNotProvided, err)
 			}
+			defer fo.Close()
+			_, err = fo.Write(data)
+			if err != nil {
+				return dberrors.NewDbError(dberrors.InvalidInputKeyNotProvided, err)
+			}
+
 		}
 	}
 	return nil
@@ -79,14 +86,13 @@ func DeleteFile(path string) (dberr *dberrors.DbError) {
 func EditOrUpdateFile(path string, multipartForm *multipart.Form) (dberr *dberrors.DbError) {
 
 	filePath := GetPath(path)
-	//filename := extractFileName(path)
 	for _, fileHeaders := range multipartForm.File {
 		//TO DO-:  detect single file
 		for _, fileHeader := range fileHeaders {
 			file, _ := fileHeader.Open()
 			fileName := paths.Combine(filePath, fileHeader.Filename)
 			buf, _ := ioutil.ReadAll(file)
-			f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+			f, err := os.OpenFile(fileName, os.O_RDWR|os.O_TRUNC, 0755)
 			if err != nil {
 				return dberrors.NewDbError(dberrors.InvalidInputKeyNotProvided, err)
 			}
