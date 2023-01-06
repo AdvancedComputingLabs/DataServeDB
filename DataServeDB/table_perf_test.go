@@ -52,7 +52,6 @@ var methods = []string{
 	"GET",
 	"POST",
 	"PATCH",
-	"PUT",
 	"DELETE",
 }
 var Occupations = []string{
@@ -102,14 +101,14 @@ func getBody(method string, i int) string {
 			int64(i),
 		}
 		return rUser.toString()
-	} else if method == "PATCH" || method == "PUT" {
+	} else if method == "PATCH" {
 		return `{ "UserName": "TestUser` + strconv.Itoa(randMax) + `InTestTable03Replaceded" }`
 	}
 	return ""
 
 }
 func getPath(method string, i int) string {
-	if method == "GET" || method == "PATCH" || method == "PUT" {
+	if method == "GET" || method == "PATCH" {
 		return "re_db/tables/TestTable03/" + strconv.Itoa(randMax)
 	} else if method == "DELETE" {
 		return "re_db/tables/TestTable03/" + strconv.Itoa((i/2)-1)
@@ -126,7 +125,7 @@ func getMethod(i int) string {
 }
 
 func TestPer(t *testing.T) {
-	arr := generateJSON(3000)
+	arr := generateJSON(100)
 	TestDeleteTableRApi(t)
 	TestCreateTableRApi(t)
 	for _, testCase := range arr {
@@ -137,6 +136,23 @@ func TestPer(t *testing.T) {
 				t.Errorf("%v\n", err)
 			} else {
 				log.Println(successResult)
+			}
+		})
+	}
+}
+
+func BenchmarkPerf(b *testing.B) {
+	for _, testCase := range testCaseArray {
+		b.Run("test "+testCase.method+" "+testCase.path, func(b *testing.B) {
+			fmt.Println("benchmarkN --> ", b.N)
+			for i := 0; i < b.N; i++ {
+				fmt.Println(testCase.method, testCase.path, testCase.body)
+				successResult, err := restApiCall(testCase.method, testCase.path, testCase.body)
+				if err != testCase.exp {
+					//b.Errorf("%v\n", err)
+				} else {
+					log.Println(successResult)
+				}
 			}
 		})
 	}

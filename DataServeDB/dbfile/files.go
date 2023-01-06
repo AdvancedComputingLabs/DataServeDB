@@ -41,7 +41,7 @@ func GetFile(path, filename string) (result []byte, dberr *dberrors.DbError) {
 	//VerifyFileStorage(filePath, filename)
 	result, err := os.ReadFile(filePath)
 	if err != nil {
-		dberr = dberrors.NewDbError(dberrors.InvalidInputKeyNotProvided, err)
+		dberr = dberrors.NewDbError(dberrors.KeyNotFound, err)
 	}
 
 	return

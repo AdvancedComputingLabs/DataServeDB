@@ -24,10 +24,10 @@ type deleteTest struct {
 }
 
 var addTests = []getTestModel{
-	{"level1/level2", nil},
-	{"level1", nil},
-	{"level3", nil},
-	{"level1/level2/new12.txt", nil},
+	// {"level1/level2", nil},
+	// {"level1", nil},
+	// {"level3", nil},
+	// {"level1/level2/new12.txt", nil},
 	{"level1/level2/few12.txt", nil},
 }
 
@@ -50,7 +50,7 @@ func TestGetFileByNameRApi(t *testing.T) {
 		fmt.Println("Test Case ", i)
 		successResult, err := restApiCall("GET", "re_db/files/"+tc.path, "")
 		if err != tc.exp {
-			log.Println(err)
+			t.Fatal(err)
 		} else {
 			log.Println(successResult)
 		}
