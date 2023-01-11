@@ -3,9 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
+	"os"
 	"strconv"
+	"sync"
 	"testing"
 )
 
@@ -35,6 +38,12 @@ type user struct {
 	UserName   string
 	Occupation string
 	Rank       int64
+}
+type testCase struct {
+	Method string
+	Path   string
+	Body   string
+	Exp    error
 }
 
 var randMIn, randMax int
@@ -91,6 +100,20 @@ func generateJSON(count int) (testCaseArray []testCase) {
 	}
 	return
 }
+func getJson() []testCase {
+	jsonFile, err := os.Open("test_data.json")
+	if err != nil {
+		log.Println(err.Error())
+	}
+	defer jsonFile.Close()
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+
+	var result []testCase
+	json.Unmarshal([]byte(byteValue), &result)
+
+	return result
+
+}
 
 func getBody(method string, i int) string {
 	if method == "POST" {
@@ -125,14 +148,37 @@ func getMethod(i int) string {
 }
 
 func TestPer(t *testing.T) {
-	arr := generateJSON(100)
+	//arr := generateJSON(1000)
+	// for _, v := range arr {
+	// 	b, err := json.Marshal(v)
+	// 	if err != nil {
+	// 		fmt.Printf("Error: %s", err)
+	// 		return
+	// 	}
+	// 	fmt.Println(string(b))
+	// }`
+	// db, err := os.OpenFile("test_data.json", os.O_EXCL|os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	// if err != nil {
+	// 	if !os.IsExist(err) {
+	// 		return
+	// 	}
+	// }
+	// defer db.Close()
+	// enc := json.NewEncoder(db)
+	// err = enc.Encode(&arr)
+	// if err != nil {
+	// 	return
+	// }
+	// return
+	arr := getJson()
+	// }
 	TestDeleteTableRApi(t)
 	TestCreateTableRApi(t)
 	for _, testCase := range arr {
-		t.Run("test "+testCase.method+" "+testCase.path, func(t *testing.T) {
-			fmt.Println(testCase.method, testCase.path, testCase.body)
-			successResult, err := restApiCall(testCase.method, testCase.path, testCase.body)
-			if err != testCase.exp {
+		t.Run("test "+testCase.Method+" "+testCase.Path, func(t *testing.T) {
+			fmt.Println(testCase.Method, testCase.Path, testCase.Body)
+			successResult, err := restApiCall(testCase.Method, testCase.Path, testCase.Body)
+			if err != testCase.Exp {
 				t.Errorf("%v\n", err)
 			} else {
 				log.Println(successResult)
@@ -141,19 +187,30 @@ func TestPer(t *testing.T) {
 	}
 }
 
+type calculation struct {
+	index int
+	mutex sync.Mutex
+}
+
 func BenchmarkPerf(b *testing.B) {
-	for _, testCase := range testCaseArray {
-		b.Run("test "+testCase.method+" "+testCase.path, func(b *testing.B) {
-			fmt.Println("benchmarkN --> ", b.N)
-			for i := 0; i < b.N; i++ {
-				fmt.Println(testCase.method, testCase.path, testCase.body)
-				successResult, err := restApiCall(testCase.method, testCase.path, testCase.body)
-				if err != testCase.exp {
-					//b.Errorf("%v\n", err)
+	array := getJson()
+	c := calculation{}
+
+	b.Run("test ", func(b *testing.B) {
+		fmt.Println("benchmarkN --> ", b.N)
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				c.mutex.Lock()
+				fmt.Println(array[c.index].Method, array[c.index].Path, array[c.index].Body)
+				successResult, err := restApiCall(array[c.index].Method, array[c.index].Path, array[c.index].Body)
+				if err != array[c.index].Exp {
+					b.Errorf("%v\n", err)
 				} else {
 					log.Println(successResult)
 				}
+				c.index++
+				c.mutex.Unlock()
 			}
 		})
-	}
+	})
 }

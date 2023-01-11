@@ -13,7 +13,7 @@ TODO: Devise useful fuzz test cases.
 
 func FuzzTable(f *testing.F) {
 	for _, seed := range testCaseArray {
-		f.Add(seed.method, seed.path, seed.body)
+		f.Add(seed.Method, seed.Path, seed.Body)
 	}
 	f.Fuzz(func(t *testing.T, method, path, body string) {
 		successResult, err := restApiCall(method, path, body)
