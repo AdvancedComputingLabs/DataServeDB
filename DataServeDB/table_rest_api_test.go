@@ -74,7 +74,7 @@ func TestCreateTableRApi(t *testing.T) {
 	  ]
 	}`
 
-	successResult, err := restApiCall("POST", "re_db/tables", createTableJSON)
+	successResult, _, err := restApiCall("POST", "re_db/tables", createTableJSON)
 	if err != nil {
 		log.Fatal(err)
 	} else {
@@ -84,7 +84,7 @@ func TestCreateTableRApi(t *testing.T) {
 
 func TestDeleteTableRApi(t *testing.T) {
 
-	successResult, err := restApiCall("DELETE", "re_db/tables/TestTable03)", "")
+	successResult, _, err := restApiCall("DELETE", "re_db/tables/TestTable03)", "")
 	if err != nil {
 		//log.Fatal(err)
 		log.Println(err)
@@ -97,7 +97,7 @@ func TestInsertRecordsRApi(t *testing.T) {
 
 	for _, rowJSON := range insertRowJSON {
 		t.Run("test INSERT re_db/tables/TestTable03", func(t *testing.T) {
-			successResult, err := restApiCall("POST", "re_db/tables/TestTable03", rowJSON)
+			successResult, _, err := restApiCall("POST", "re_db/tables/TestTable03", rowJSON)
 			if err != nil {
 				log.Fatal(err)
 			} else {
@@ -121,11 +121,16 @@ func TestGetRecordsRApi(t *testing.T) {
 	// }
 
 	// get row
-	successResult, err := restApiCall("GET", "re_db/tables/TestTable03/1", "")
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		log.Println(successResult)
+	for i := 1; i <= 8; i++ {
+
+		t.Run("test INSERT re_db/tables/TestTable03", func(t *testing.T) {
+			successResult, _, err := restApiCall("GET", "re_db/tables/TestTable03/"+strconv.Itoa(i), "")
+			if err != nil {
+				log.Fatal(err)
+			} else {
+				log.Println(successResult)
+			}
+		})
 	}
 
 	// get table function result
@@ -140,16 +145,16 @@ func TestGetRecordsRApi(t *testing.T) {
 func TestUpdateRecordsRApi(t *testing.T) {
 
 	updateRowJSON := []testCase{
-		{"PATCH", "re_db/tables/TestTable03/1", `{ "UserName": "TestUser01InTestTable03Updated" }`, nil},
-		{"PATCH", "re_db/tables/TestTable03/2", `{ "UserName": "TestUser02InTestTable03Updated" }`, nil},
-		{"PATCH", "re_db/tables/TestTable03/3", `{ "UserName": "TestUser03InTestTable03Updated" }`, nil},
-		{"PATCH", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser04InTestTable03Updated" }`, nil},
+		{"PATCH", "re_db/tables/TestTable03/1", `{ "UserName": "TestUser01InTestTable03Updated" }`, 200},
+		{"PATCH", "re_db/tables/TestTable03/2", `{ "UserName": "TestUser02InTestTable03Updated" }`, 200},
+		{"PATCH", "re_db/tables/TestTable03/3", `{ "UserName": "TestUser03InTestTable03Updated" }`, 200},
+		{"PATCH", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser04InTestTable03Updated" }`, 200},
 	}
 
 	for _, rowJSON := range updateRowJSON {
 
 		t.Run("test "+rowJSON.Method+" "+rowJSON.Path, func(t *testing.T) {
-			successResult, err := restApiCall(rowJSON.Method, rowJSON.Path, rowJSON.Body)
+			successResult, _, err := restApiCall(rowJSON.Method, rowJSON.Path, rowJSON.Body)
 			if err != nil {
 				log.Fatal(err)
 			} else {
@@ -169,15 +174,15 @@ func TestReplaceRecordsRApi(t *testing.T) {
 	//		-- HY @ 21-Nov-2022
 
 	updateRowJSON := []testCase{
-		{"PUT", "re_db/tables/TestTable03/3", `{ "UserName": "TestUser01InTestTable03Replaceded" }`, nil},
-		{"PUT", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser02InTestTable03Replaceded" }`, nil},
-		{"PUT", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser03InTestTable03Replaceded" }`, nil},
-		{"PUT", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser04InTestTable03Replaceded" }`, nil},
+		{"PUT", "re_db/tables/TestTable03/3", `{ "UserName": "TestUser01InTestTable03Replaceded" }`, 200},
+		{"PUT", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser02InTestTable03Replaceded" }`, 200},
+		{"PUT", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser03InTestTable03Replaceded" }`, 200},
+		{"PUT", "re_db/tables/TestTable03/4", `{ "UserName": "TestUser04InTestTable03Replaceded" }`, 200},
 	}
 
 	for _, rowJSON := range updateRowJSON {
 		t.Run("test "+rowJSON.Method+" "+rowJSON.Path, func(t *testing.T) {
-			successResult, err := restApiCall(rowJSON.Method, rowJSON.Path, rowJSON.Body)
+			successResult, _, err := restApiCall(rowJSON.Method, rowJSON.Path, rowJSON.Body)
 			if err != nil {
 				log.Fatal(err)
 			} else {
@@ -192,7 +197,7 @@ func TestDeleteRecordsRApi(t *testing.T) {
 
 	for i := 1; i <= 8; i++ {
 		t.Run("test DELETE re_db/tables/TestTable03/"+strconv.Itoa(i), func(t *testing.T) {
-			successResult, err := restApiCall("DELETE", "re_db/tables/TestTable03/"+strconv.Itoa(i), "")
+			successResult, _, err := restApiCall("DELETE", "re_db/tables/TestTable03/"+strconv.Itoa(i), "")
 			if err != nil {
 				t.Error(err)
 			} else {
@@ -212,7 +217,7 @@ func newHttpReqNResp(method, path string, body io.Reader) (*http.Request, *httpt
 	return req, w
 }
 
-func restApiCall(method, path, bodyJson string) (string, error) {
+func restApiCall(method, path, bodyJson string) (string, int, error) {
 
 	req, w := newHttpReqNResp(method, path, io.NopCloser(bytes.NewReader([]byte(bodyJson))))
 
@@ -224,8 +229,8 @@ func restApiCall(method, path, bodyJson string) (string, error) {
 	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 400 && resp.StatusCode < 600 {
-		return "", fmt.Errorf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, string(body))
+		return "", resp.StatusCode, fmt.Errorf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, string(body))
 	} else {
-		return fmt.Sprintf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, string(body)), nil
+		return fmt.Sprintf("\n\tstatus-code: %v\n\tresponse: %v", resp.StatusCode, string(body)), resp.StatusCode, nil
 	}
 }

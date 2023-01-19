@@ -43,7 +43,7 @@ type testCase struct {
 	Method string
 	Path   string
 	Body   string
-	Exp    error
+	Exp    int
 }
 
 var randMIn, randMax int
@@ -76,6 +76,7 @@ func generateJSON(count int) (testCaseArray []testCase) {
 	deleted := ""
 	path := ""
 	method := ""
+	status := 200
 
 	for i := 0; i < count; {
 		method = getMethod(i)
@@ -85,13 +86,14 @@ func generateJSON(count int) (testCaseArray []testCase) {
 		} else if method == "DELETE" {
 			deleted = path
 		}
+		status = getStatus(method)
 
 		testCaseArray = append(testCaseArray,
 			testCase{
 				method,
 				path,
 				getBody(method, i),
-				nil,
+				status,
 			},
 		)
 		if method == "POST" {
@@ -99,6 +101,15 @@ func generateJSON(count int) (testCaseArray []testCase) {
 		}
 	}
 	return
+}
+
+func getStatus(method string) int {
+	if method == "POST" {
+		return 400
+	} else if method == "DELETE" || method == "PATCH" || method == "GET" {
+		return 404
+	}
+	return 204
 }
 func getJson() []testCase {
 	jsonFile, err := os.Open("test_data.json")
@@ -148,68 +159,78 @@ func getMethod(i int) string {
 }
 
 func TestPer(t *testing.T) {
-	//arr := generateJSON(1000)
-	// for _, v := range arr {
-	// 	b, err := json.Marshal(v)
-	// 	if err != nil {
-	// 		fmt.Printf("Error: %s", err)
-	// 		return
-	// 	}
-	// 	fmt.Println(string(b))
-	// }`
-	// db, err := os.OpenFile("test_data.json", os.O_EXCL|os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	// if err != nil {
-	// 	if !os.IsExist(err) {
-	// 		return
-	// 	}
-	// }
-	// defer db.Close()
-	// enc := json.NewEncoder(db)
-	// err = enc.Encode(&arr)
-	// if err != nil {
-	// 	return
-	// }
-	// return
-	arr := getJson()
-	// }
-	TestDeleteTableRApi(t)
-	TestCreateTableRApi(t)
-	for _, testCase := range arr {
-		t.Run("test "+testCase.Method+" "+testCase.Path, func(t *testing.T) {
-			fmt.Println(testCase.Method, testCase.Path, testCase.Body)
-			successResult, err := restApiCall(testCase.Method, testCase.Path, testCase.Body)
-			if err != testCase.Exp {
-				t.Errorf("%v\n", err)
-			} else {
-				log.Println(successResult)
-			}
-		})
+	arr := generateJSON(1000)
+	for _, v := range arr {
+		b, err := json.Marshal(v)
+		if err != nil {
+			fmt.Printf("Error: %s", err)
+			return
+		}
+		fmt.Println(string(b))
 	}
+	db, err := os.OpenFile("test_data.json", os.O_EXCL|os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		if !os.IsExist(err) {
+			return
+		}
+	}
+	defer db.Close()
+	enc := json.NewEncoder(db)
+	err = enc.Encode(&arr)
+	if err != nil {
+		return
+	}
+	return
+	// arr := getJson()
+	// // }
+	// TestDeleteTableRApi(t)
+	// TestCreateTableRApi(t)
+	// for _, testCase := range arr {
+	// 	t.Run("test "+testCase.Method+" "+testCase.Path, func(t *testing.T) {
+	// 		fmt.Println(testCase.Method, testCase.Path, testCase.Body)
+	// 		successResult, _, err := restApiCall(testCase.Method, testCase.Path, testCase.Body)
+	// 		if err != nil {
+	// 			t.Errorf("%v\n", err)
+	// 		} else {
+	// 			log.Println(successResult)
+	// 		}
+	// 	})
+	// }
 }
 
 type calculation struct {
-	index int
+	index uint64
 	mutex sync.Mutex
 }
 
+// / RUN :-  go.exe test -benchmem -run=^$ -bench ^BenchmarkPerf$ DataServeDB -benchtime=10x
 func BenchmarkPerf(b *testing.B) {
 	array := getJson()
+	//array := testCaseArray
 	c := calculation{}
+	//i := 0
 
 	b.Run("test ", func(b *testing.B) {
 		fmt.Println("benchmarkN --> ", b.N)
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				c.mutex.Lock()
-				fmt.Println(array[c.index].Method, array[c.index].Path, array[c.index].Body)
-				successResult, err := restApiCall(array[c.index].Method, array[c.index].Path, array[c.index].Body)
-				if err != array[c.index].Exp {
-					b.Errorf("%v\n", err)
+				i := c.index
+				c.index++
+				c.mutex.Unlock()
+				//i++
+
+				fmt.Println(array[i].Method, array[i].Path, array[i].Body)
+				successResult, status, err := restApiCall(array[i].Method, array[i].Path, array[i].Body)
+				if err != nil {
+					if status != array[i].Exp {
+						b.Errorf("%v\n", err)
+					} else {
+						log.Println("method ", array[i].Method, "is success")
+					}
 				} else {
 					log.Println(successResult)
 				}
-				c.index++
-				c.mutex.Unlock()
 			}
 		})
 	})

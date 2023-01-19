@@ -32,7 +32,7 @@ var addTests = []getTestModel{
 }
 
 func TestListfilesRApi(t *testing.T) {
-	successResult, err := restApiCall("GET", "re_db/files", "")
+	successResult, _, err := restApiCall("GET", "re_db/files", "")
 	if err != nil {
 		// not implemented yet
 		//log.Fatal(err)
@@ -48,7 +48,7 @@ func TestGetFileByNameRApi(t *testing.T) {
 
 	for i, tc := range addTests {
 		fmt.Println("Test Case ", i)
-		successResult, err := restApiCall("GET", "re_db/files/"+tc.path, "")
+		successResult, _, err := restApiCall("GET", "re_db/files/"+tc.path, "")
 		if err != tc.exp {
 			t.Fatal(err)
 		} else {
@@ -89,7 +89,7 @@ func TestDeleteFile(t *testing.T) {
 
 	for _, file := range files {
 		t.Run("test DELETE"+file.Name(), func(t *testing.T) {
-			successResult, err := restApiCall("DELETE", "re_db/files/level1/"+file.Name(), "")
+			successResult, _, err := restApiCall("DELETE", "re_db/files/level1/"+file.Name(), "")
 			if err != nil {
 				log.Println(err)
 			} else {

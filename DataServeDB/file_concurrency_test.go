@@ -52,7 +52,7 @@ func TestFileCuncurrency(t *testing.T) {
 					log.Println(successResult)
 				}
 			} else {
-				successResult, err := restApiCall(testCaseEl.method, testCaseEl.path, testCaseEl.filename)
+				successResult, _, err := restApiCall(testCaseEl.method, testCaseEl.path, testCaseEl.filename)
 				if err != testCaseEl.exp {
 					log.Println(err)
 				} else {

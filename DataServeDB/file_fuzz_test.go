@@ -19,7 +19,7 @@ func FuzzFile(f *testing.F) {
 				log.Println(successResult)
 			}
 		} else {
-			successResult, err := restApiCall(method, path, body)
+			successResult, _, err := restApiCall(method, path, body)
 			if err != nil {
 				t.Fatalf("%v\n", err)
 			} else {

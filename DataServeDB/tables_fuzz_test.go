@@ -16,7 +16,7 @@ func FuzzTable(f *testing.F) {
 		f.Add(seed.Method, seed.Path, seed.Body)
 	}
 	f.Fuzz(func(t *testing.T, method, path, body string) {
-		successResult, err := restApiCall(method, path, body)
+		successResult, _, err := restApiCall(method, path, body)
 		if err != nil {
 			t.Fatalf("%v\n", err)
 		} else {
