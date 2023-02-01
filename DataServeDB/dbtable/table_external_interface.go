@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	"DataServeDB/comminterfaces"
 	"DataServeDB/commtypes"
@@ -59,6 +60,7 @@ func (t *createTableExternalStruct) AssignDb(dbPtr comminterfaces.DbPtrI) {
 
 type DbTable struct {
 	TblMain              *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
+	mu                   *sync.RWMutex
 	createTableStructure createTableExternalStruct
 }
 
@@ -180,6 +182,9 @@ func GetTableRowWithFieldProperties(table *DbTable, rowByInternalIds tableRowByI
 
 func (t *DbTable) DeleteRowByPrimaryKey(pkValue any) *dberrors.DbError {
 
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	dbType, dbTypeProps := t.TblMain.getPkType()
 
 	//TODO: 'castPkValue' seems to do samething. Check and remove.
@@ -218,6 +223,9 @@ func (t *DbTable) DeleteRowByPrimaryKey(pkValue any) *dberrors.DbError {
 
 func (t *DbTable) UpdateRowJsonByPk(pkValue any, jsonStr string, updateType idbstorer.TableOperationType) *dberrors.DbError {
 	// TODO: test both patch and replace if there behaviour is according to spec.
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	var rowUpdateDataUnmarshalled TableRow
 	if err := json.Unmarshal([]byte(jsonStr), &rowUpdateDataUnmarshalled); err != nil {
@@ -271,6 +279,9 @@ func (t *DbTable) UpdateRowJsonByPk(pkValue any, jsonStr string, updateType idbs
 }
 
 func (t *DbTable) InsertRowJSON(jsonStr string) *dberrors.DbError {
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	var rowDataUnmarshalled TableRow
 	if err := json.Unmarshal([]byte(jsonStr), &rowDataUnmarshalled); err != nil {
@@ -441,6 +452,9 @@ func (t *DbTable) GetRowByPrimaryKeyReturnsJSON(pkValue any) (string, *dberrors.
 }
 
 func (t *DbTable) Get(dbReqCtx *commtypes.DbReqContext) ([]byte, *dberrors.DbError) {
+
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 
 	// TODO: check all paths are handled.
 
