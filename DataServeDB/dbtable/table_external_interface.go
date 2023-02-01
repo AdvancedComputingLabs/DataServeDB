@@ -60,7 +60,7 @@ func (t *createTableExternalStruct) AssignDb(dbPtr comminterfaces.DbPtrI) {
 
 type DbTable struct {
 	TblMain              *tableMain //table structure information to keep it separate from data, so data disk io can be done separately.
-	mu                   *sync.RWMutex
+	mu                   sync.RWMutex
 	createTableStructure createTableExternalStruct
 }
 
